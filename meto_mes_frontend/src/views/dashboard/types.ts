@@ -8,7 +8,7 @@ export interface SelectOption {
 export interface FilterState {
   dateRange: string[];
   product: string | null;
-  origins: ProductOrigin[];
+  origin: ProductOrigin | null;
 }
 
 export interface ProcessMetric {

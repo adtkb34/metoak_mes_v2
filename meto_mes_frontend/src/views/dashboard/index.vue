@@ -4,13 +4,13 @@
       <filters-panel
         :date-range="filters.dateRange"
         :product="filters.product"
-        :origins="filters.origins"
+        :origin="filters.origin"
         :product-options="productOptions"
         :origin-options="originOptions"
         :loading="filtersLoading"
         @update:dateRange="value => (filters.dateRange = value)"
         @update:product="value => (filters.product = value)"
-        @update:origins="value => (filters.origins = value)"
+        @update:origin="value => (filters.origin = value)"
         @submit="handleFiltersSubmit"
         @reset="handleFiltersReset"
       />
@@ -96,17 +96,19 @@ import {
   fetchDashboardProducts
 } from "@/api/dashboard";
 import type { DashboardSummaryParams } from "@/api/dashboard";
-import { PRODUCT_ORIGIN_OPTIONS } from "@/enums/product-origin";
+import { PRODUCT_ORIGIN_OPTIONS, ProductOrigin } from "@/enums/product-origin";
 
 const getDefaultDateRange = (): string[] => {
   const today = dayjs().format("YYYY-MM-DD");
   return [today, today];
 };
 
+const DEFAULT_STEP_TYPE_NO = "002";
+
 const filters = reactive<FilterState>({
   dateRange: getDefaultDateRange(),
   product: null,
-  origins: []
+  origin: ProductOrigin.Suzhou
 });
 
 const productOptions = ref<SelectOption[]>([]);
@@ -154,8 +156,7 @@ const resetProductSelection = () => {
 
 const refreshProductOptions = async () => {
   const hasValidRange = filters.dateRange.length === 2;
-  const selectedOrigin =
-    filters.origins.length === 1 ? filters.origins[0] : undefined;
+  const selectedOrigin = filters.origin ?? undefined;
 
   if (!hasValidRange || selectedOrigin === undefined) {
     return;
@@ -202,7 +203,7 @@ const refreshProductOptions = async () => {
 };
 
 watch(
-  () => filters.origins.slice(),
+  () => filters.origin,
   () => {
     resetProductSelection();
     refreshProductOptions();
@@ -222,7 +223,8 @@ const buildSummaryParams = (): DashboardSummaryParams => {
     startDate: hasRange ? filters.dateRange[0] : undefined,
     endDate: hasRange ? filters.dateRange[1] : undefined,
     product: filters.product,
-    origins: filters.origins
+    origin: filters.origin ?? undefined,
+    stepTypeNo: DEFAULT_STEP_TYPE_NO
   };
 };
 
@@ -231,8 +233,7 @@ const fetchSummary = async () => {
   summaryError.value = null;
   try {
     const params = buildSummaryParams();
-    const selectedOrigin =
-      filters.origins.length === 1 ? filters.origins[0] : undefined;
+    const selectedOrigin = filters.origin ?? undefined;
 
     const shouldFetchProducts = Boolean(
       params.startDate && params.endDate && selectedOrigin !== undefined
@@ -325,7 +326,7 @@ const handleFiltersSubmit = () => {
 const handleFiltersReset = () => {
   filters.dateRange = getDefaultDateRange();
   filters.product = null;
-  filters.origins = [];
+  filters.origin = ProductOrigin.Suzhou;
   handleFiltersSubmit();
 };
 
