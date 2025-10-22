@@ -479,7 +479,7 @@ export class DashboardService {
     if (definition.source === 'INFO') {
       const where: Prisma.mo_auto_adjust_infoWhereInput = {
         station_num: definition.stationNum,
-        beam_sn: { not: null },
+        beam_sn: { not: '' },
       };
 
       const andConditions: Prisma.mo_auto_adjust_infoWhereInput[] = [];
@@ -535,7 +535,7 @@ export class DashboardService {
 
     const rows = await client.mo_auto_adjust_st08.findMany({
       where: {
-        beam_sn: { not: null },
+        beam_sn: { not: '' },
         ...(Object.keys(addTimeCondition).length
           ? { add_time: addTimeCondition }
           : {}),
