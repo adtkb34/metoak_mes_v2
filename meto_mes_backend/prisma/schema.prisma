@@ -1,0 +1,1802 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["views"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model calibresult {
+  id                                   BigInt  @id @default(autoincrement())
+  CameraSN                             String? @db.VarChar(24)
+  TimeStamp                            String? @db.VarChar(24)
+  LeftSharpness                        Float?  @db.Float
+  RightSharpness                       Float?  @db.Float
+  Simor_validPattern                   Float?  @db.Float
+  Simor_mean_reprojection_error        Float?  @db.Float
+  Simor_mean_left_reprojection_error   Float?  @db.Float
+  Simor_mean_right_reprojection_error  Float?  @db.Float
+  Simor_max_left_reprojection_error    Float?  @db.Float
+  Simor_max_right_reprojection_error   Float?  @db.Float
+  Simor_amplify_ratio                  Float?  @db.Float
+  Simor_left_trim                      Float?  @db.Float
+  Simor_right_trim                     Float?  @db.Float
+  Simor_fov_h                          Float?  @db.Float
+  Simor_fov_v                          Float?  @db.Float
+  Simor_simor_calc_result              Float?  @db.Float
+  ISP_validPattern                     Float?  @db.Float
+  ISP_mean_reprojection_error          Float?  @db.Float
+  ISP_mean_left_reprojection_error     Float?  @db.Float
+  ISP_mean_right_reprojection_error    Float?  @db.Float
+  ISP_max_left_reprojection_error      Float?  @db.Float
+  ISP_max_right_reprojection_error     Float?  @db.Float
+  ISP_amplify_ratio                    Float?  @db.Float
+  ISP_left_trim                        Float?  @db.Float
+  ISP_right_trim                       Float?  @db.Float
+  ISP_fov_h                            Float?  @db.Float
+  ISP_fov_v                            Float?  @db.Float
+  ISP_simor_calc_result                Float?  @db.Float
+  ISP_RectifyVerticalOffset            Float?  @db.Float
+  Simor_left_fx                        Float?  @db.Float
+  Simor_left_fy                        Float?  @db.Float
+  Simor_left_cx                        Float?  @db.Float
+  Simor_left_cy                        Float?  @db.Float
+  Simor_left_k1                        Float?  @db.Float
+  Simor_left_k2                        Float?  @db.Float
+  Simor_left_k3                        Float?  @db.Float
+  Simor_left_p1                        Float?  @db.Float
+  Simor_left_p2                        Float?  @db.Float
+  Simor_right_fx                       Float?  @db.Float
+  Simor_right_fy                       Float?  @db.Float
+  Simor_right_cx                       Float?  @db.Float
+  Simor_right_cy                       Float?  @db.Float
+  Simor_right_k1                       Float?  @db.Float
+  Simor_right_k2                       Float?  @db.Float
+  Simor_right_k3                       Float?  @db.Float
+  Simor_right_p1                       Float?  @db.Float
+  Simor_right_p2                       Float?  @db.Float
+  Simor_width                          Float?  @db.Float
+  Simor_height                         Float?  @db.Float
+  Simor_bxf                            Float?  @db.Float
+  Simor_baseline                       Float?  @db.Float
+  Simor_focus                          Float?  @db.Float
+  Simor_cx                             Float?  @db.Float
+  Simor_cy                             Float?  @db.Float
+  Simor_out_width                      Float?  @db.Float
+  Simor_out_height                     Float?  @db.Float
+  Simor_r0                             Float?  @db.Float
+  Simor_r1                             Float?  @db.Float
+  Simor_r2                             Float?  @db.Float
+  Simor_t0                             Float?  @db.Float
+  Simor_t1                             Float?  @db.Float
+  Simor_t2                             Float?  @db.Float
+  Simor_left_r0                        Float?  @db.Float
+  Simor_left_r1                        Float?  @db.Float
+  Simor_left_r2                        Float?  @db.Float
+  Simor_right_r0                       Float?  @db.Float
+  Simor_right_r1                       Float?  @db.Float
+  Simor_right_r2                       Float?  @db.Float
+  Simor_virtual_width                  Float?  @db.Float
+  Simor_virtual_height                 Float?  @db.Float
+  Simor_ROI_X                          Float?  @db.Float
+  Simor_ROI_Y                          Float?  @db.Float
+  ISP_left_fx                          Float?  @db.Float
+  ISP_left_fy                          Float?  @db.Float
+  ISP_left_cx                          Float?  @db.Float
+  ISP_left_cy                          Float?  @db.Float
+  ISP_left_k1                          Float?  @db.Float
+  ISP_left_k2                          Float?  @db.Float
+  ISP_left_k3                          Float?  @db.Float
+  ISP_left_k4                          Float?  @db.Float
+  ISP_left_k5                          Float?  @db.Float
+  ISP_left_k6                          Float?  @db.Float
+  ISP_left_p1                          Float?  @db.Float
+  ISP_left_p2                          Float?  @db.Float
+  ISP_right_fx                         Float?  @db.Float
+  ISP_right_fy                         Float?  @db.Float
+  ISP_right_cx                         Float?  @db.Float
+  ISP_right_cy                         Float?  @db.Float
+  ISP_right_k1                         Float?  @db.Float
+  ISP_right_k2                         Float?  @db.Float
+  ISP_right_k3                         Float?  @db.Float
+  ISP_right_k4                         Float?  @db.Float
+  ISP_right_k5                         Float?  @db.Float
+  ISP_right_k6                         Float?  @db.Float
+  ISP_right_p1                         Float?  @db.Float
+  ISP_right_p2                         Float?  @db.Float
+  ISP_width                            Float?  @db.Float
+  ISP_height                           Float?  @db.Float
+  ISP_bxf                              Float?  @db.Float
+  ISP_baseline                         Float?  @db.Float
+  ISP_focus                            Float?  @db.Float
+  ISP_cx                               Float?  @db.Float
+  ISP_cy                               Float?  @db.Float
+  ISP_out_width                        Float?  @db.Float
+  ISP_out_height                       Float?  @db.Float
+  ISP_r0                               Float?  @db.Float
+  ISP_r1                               Float?  @db.Float
+  ISP_r2                               Float?  @db.Float
+  ISP_t0                               Float?  @db.Float
+  ISP_t1                               Float?  @db.Float
+  ISP_t2                               Float?  @db.Float
+  ISP_left_r0                          Float?  @db.Float
+  ISP_left_r1                          Float?  @db.Float
+  ISP_left_r2                          Float?  @db.Float
+  ISP_right_r0                         Float?  @db.Float
+  ISP_right_r1                         Float?  @db.Float
+  ISP_right_r2                         Float?  @db.Float
+  ISP_virtual_width                    Float?  @db.Float
+  ISP_virtual_height                   Float?  @db.Float
+  ISP_ROI_X                            Float?  @db.Float
+  ISP_ROI_Y                            Float?  @db.Float
+  Simor_Ref_fx                         Float?  @db.Float
+  Simor_Ref_fy                         Float?  @db.Float
+  Simor_Ref_cx                         Float?  @db.Float
+  Simor_Ref_cy                         Float?  @db.Float
+  Simor_Ref_k1                         Float?  @db.Float
+  Simor_Ref_k2                         Float?  @db.Float
+  Simor_Ref_k3                         Float?  @db.Float
+  Simor_Ref_p1                         Float?  @db.Float
+  Simor_Ref_p2                         Float?  @db.Float
+  Simor_Ref_width                      Float?  @db.Float
+  Simor_Ref_height                     Float?  @db.Float
+  LeftCenterOffsetX                    Int?
+  LeftCenterOffsetY                    Int?
+  RightCenterOffsetX                   Int?
+  RightCenterOffsetY                   Int?
+  Station                              Int?
+  mo_process_step_production_result_id BigInt?
+}
+
+model delivery_check {
+  taskid            BigInt
+  sn                String    @db.VarChar(32)
+  stepid            BigInt
+  distance_truth    Float?    @db.Float
+  distance_measured Float?    @db.Float
+  density           Float?    @db.Float
+  precision1        Float?    @db.Float
+  kpi_precision     Float?    @db.Float
+  kpi_density       Float?    @db.Float
+  lineoffset        Float?    @db.Float
+  dispoffset        Float?    @db.Float
+  result            BigInt?
+  timestamp         DateTime? @db.DateTime(0)
+
+  @@id([taskid, sn, stepid])
+}
+
+model dist_measuring_check {
+  taskid            BigInt
+  sn                String    @db.VarChar(32)
+  stepid            BigInt
+  result            BigInt?
+  target_left       BigInt?
+  target_top        BigInt?
+  target_width      BigInt?
+  target_height     BigInt?
+  areaid            BigInt
+  distance_truth    Float?    @db.Float
+  distance_measured Float?    @db.Float
+  density           Float?    @db.Float
+  precision1        Float?    @db.Float
+  kpi_precision     Float?    @db.Float
+  kpi_density       Float?    @db.Float
+  timestamp         DateTime? @db.DateTime(0)
+
+  @@id([taskid, sn, stepid, areaid])
+}
+
+model error_descriptions {
+  id         Int     @id @default(autoincrement())
+  code       String? @db.VarChar(255)
+  message    String  @db.VarChar(255)
+  procedure_ String? @db.VarChar(255)
+}
+
+model filllight_check {
+  taskid             BigInt
+  sn                 String    @db.VarChar(32)
+  stepid             BigInt
+  result             BigInt?
+  fill_light_status  BigInt?
+  density_target     Float?    @db.Float
+  kpi_density_target Float?    @db.Float
+  timestamp          DateTime? @db.DateTime(0)
+
+  @@id([taskid, sn, stepid])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model final_check_mono_m55h {
+  id              Int       @id @default(autoincrement())
+  datetime        DateTime? @db.DateTime(0)
+  sn              String?   @db.VarChar(64)
+  error_code      Int?
+  operator        String?   @db.VarChar(64)
+  image_ok        Boolean?
+  image_path      String?   @db.VarChar(255)
+  check_result    Boolean?
+  can0_ok         Boolean?
+  can1_ok         Boolean?
+  version_adas    String?   @db.VarChar(64)
+  version_spi     String?   @db.VarChar(64)
+  version_mcu     String?   @db.VarChar(64)
+  focus           Float?
+  baseline        Float?
+  product_version String?   @db.VarChar(64)
+  pack_version    String?   @db.VarChar(64)
+}
+
+model firmware_check {
+  taskid                BigInt
+  sn                    String    @db.VarChar(32)
+  stepid                BigInt
+  result                BigInt?
+  usb_version           String?   @db.LongText
+  fpga_version          String?   @db.LongText
+  usb_version_standard  String?   @db.LongText
+  fpga_version_standard String?   @db.LongText
+  timestamp             DateTime? @db.DateTime(0)
+
+  @@id([taskid, sn, stepid])
+}
+
+model flyway_schema_history {
+  installed_rank Int      @id
+  version        String?  @db.VarChar(50)
+  description    String   @db.VarChar(200)
+  type           String   @db.VarChar(20)
+  script         String   @db.VarChar(1000)
+  checksum       Int?
+  installed_by   String   @db.VarChar(100)
+  installed_on   DateTime @default(now()) @db.Timestamp(0)
+  execution_time Int
+  success        Boolean
+
+  @@index([success], map: "flyway_schema_history_s_idx")
+}
+
+model fov_fadezone_check {
+  taskid           BigInt
+  sn               String    @db.VarChar(32)
+  stepid           BigInt
+  result           BigInt?
+  fov              BigInt?
+  density_fadezone Float?    @db.Float
+  kpi_fadezone     Float?    @db.Float
+  timestamp        DateTime? @db.DateTime(0)
+
+  @@id([taskid, sn, stepid])
+}
+
+model isp_param_check {
+  taskid    BigInt
+  sn        String    @db.VarChar(32)
+  stepid    BigInt
+  result    BigInt?
+  lo        Float?    @db.Float
+  disp      Float?    @db.Float
+  kpi_lo    Float?    @db.Float
+  kpi_disp  Float?    @db.Float
+  timestamp DateTime? @db.DateTime(0)
+
+  @@id([taskid, sn, stepid])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_aa_final_comprehensive_inspection {
+  id                                   BigInt    @id @default(autoincrement())
+  current_consumption                  Decimal?  @db.Decimal(10, 4)
+  frame_rate                           Decimal?  @db.Decimal(10, 2)
+  bad_pixels                           Int?
+  contamination_level                  String?   @db.VarChar(50)
+  clarity_score                        Decimal?  @db.Decimal(10, 2)
+  image_quality_color                  String?   @db.VarChar(250)
+  image_quality_gray                   String?   @db.VarChar(50)
+  flare_level                          String?   @db.VarChar(50)
+  oc_x_offset                          Decimal?  @db.Decimal(10, 4)
+  oc_y_offset                          Decimal?  @db.Decimal(10, 4)
+  mo_process_step_production_result_id BigInt?
+  error_code                           Int?
+  station_num                          Int?
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  beam_sn                              String?   @db.VarChar(255)
+  position                             String?   @db.VarChar(255)
+  current_consumption_usl              Decimal?  @db.Decimal(10, 2)
+  current_consumption_lsl              Decimal?  @db.Decimal(10, 2)
+  frame_rate_usl                       Decimal?  @db.Decimal(10, 2)
+  frame_rate_lsl                       Decimal?  @db.Decimal(10, 2)
+  clarity_score_usl                    Decimal?  @db.Decimal(10, 2)
+  clarity_score_lsl                    Decimal?  @db.Decimal(10, 2)
+  oc_x_offset_usl                      Decimal?  @db.Decimal(10, 3)
+  oc_x_offset_lsl                      Decimal?  @db.Decimal(10, 3)
+  oc_y_offset_usl                      Decimal?  @db.Decimal(10, 3)
+  oc_y_offset_lsl                      Decimal?  @db.Decimal(10, 3)
+  sfr_center                           Decimal?  @db.Decimal(10, 2)
+  sfr_center_usl                       Decimal?  @db.Decimal(10, 2)
+  sfr_center_lsl                       Decimal?  @db.Decimal(10, 2)
+  sfr_top_left                         Decimal?  @db.Decimal(10, 2)
+  sfr_top_left_usl                     Decimal?  @db.Decimal(10, 2)
+  sfr_top_left_lsl                     Decimal?  @db.Decimal(10, 2)
+  sfr_top_right                        Decimal?  @db.Decimal(10, 2)
+  sfr_top_right_usl                    Decimal?  @db.Decimal(10, 2)
+  sfr_top_right_lsl                    Decimal?  @db.Decimal(10, 2)
+  sfr_bottom_left                      Decimal?  @db.Decimal(10, 2)
+  sfr_bottom_left_usl                  Decimal?  @db.Decimal(10, 2)
+  sfr_bottom_left_lsl                  Decimal?  @db.Decimal(10, 2)
+  sfr_bottom_right                     Decimal?  @db.Decimal(10, 2)
+  sfr_bottom_right_usl                 Decimal?  @db.Decimal(10, 2)
+  sfr_bottom_right_lsl                 Decimal?  @db.Decimal(10, 2)
+  custom_chart_spec                    String?   @db.VarChar(255)
+  color_board_spec                     String?   @db.VarChar(255)
+  fixture_no_spec                      String?   @db.VarChar(255)
+  illumination_spec                    String?   @db.VarChar(255)
+  height_spec                          Decimal?  @db.Decimal(10, 2)
+  fov                                  Decimal?  @db.Decimal(10, 2)
+}
+
+model mo_aaqc_config {
+  id              Int       @id @default(autoincrement()) @db.UnsignedInt
+  type_num1       Int       @db.UnsignedInt
+  type_num2       Int       @db.UnsignedInt
+  threshold_diff  Decimal   @db.Decimal(6, 2)
+  threshold_count Int       @db.UnsignedInt
+  operation_time  DateTime? @db.DateTime(0)
+  operator        String?   @db.VarChar(45)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_adjust_focus {
+  id                          BigInt                @id @default(autoincrement())
+  camera_sn                   String                @db.VarChar(16)
+  station_number              Int
+  operator                    String                @db.VarChar(64)
+  start_time                  DateTime              @db.DateTime(0)
+  end_time                    DateTime?             @db.DateTime(0)
+  side                        mo_adjust_focus_side?
+  sharpness_center            Float?                @db.Float
+  sharpness_center_max        Float?                @db.Float
+  sharpness_leftup            Float?                @db.Float
+  sharpness_leftup_max        Float?                @db.Float
+  sharpness_rightup           Float?                @db.Float
+  sharpness_rightup_max       Float?                @db.Float
+  sharpness_leftdown          Float?                @db.Float
+  sharpness_leftdown_max      Float?                @db.Float
+  sharpness_rightdown         Float?                @db.Float
+  sharpness_rightdown_max     Float?                @db.Float
+  lens_sn                     String?               @db.VarChar(16)
+  cmos_sn                     String?               @db.Char(30)
+  image_path                  String?               @db.VarChar(256)
+  error_code                  Int?                  @default(0)
+  mtf_center_lsl              Float?                @db.Float
+  mtf_center_usl              Float?                @db.Float
+  mtf_leftup_lsl              Float?                @db.Float
+  mtf_leftup_usl              Float?                @db.Float
+  mtf_rightup_lsl             Float?                @db.Float
+  mtf_rightup_usl             Float?                @db.Float
+  mtf_leftdown_lsl            Float?                @db.Float
+  mtf_leftdown_usl            Float?                @db.Float
+  mtf_rightdown_lsl           Float?                @db.Float
+  mtf_rightdown_usl           Float?                @db.Float
+  tool_version                String?               @db.VarChar(16)
+  light_field_black_point     Int?
+  light_field_black_threshold Int?
+  dark_field_white_point      Int?
+  dark_field_white_threshold  Int?
+  abnormal_point_threshold    Int?
+  dirty_count                 Int?
+  mo_user_info                mo_user_info          @relation(fields: [operator], references: [user_name], onUpdate: Restrict, map: "FK_Reference_8")
+
+  @@index([operator], map: "FK_Reference_8")
+  @@index([start_time], map: "Index_3")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_after_aa_coating_process_record {
+  id                                   BigInt    @id @default(autoincrement())
+  spray_pressure                       Decimal?  @db.Decimal(10, 2)
+  spray_program_code                   String?   @db.VarChar(50)
+  mo_process_step_production_result_id BigInt?
+  error_code                           Int?
+  station_num                          Int?
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  beam_sn                              String?   @db.VarChar(255)
+  position                             String?   @db.VarChar(255)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_assemble_info {
+  id             Int          @id @default(autoincrement())
+  camera_sn      String       @db.VarChar(16)
+  pcba_code      String       @db.VarChar(20)
+  station_number Int
+  operator       String       @db.VarChar(64)
+  start_time     DateTime     @db.DateTime(0)
+  end_time       DateTime?    @db.DateTime(0)
+  invalid        Boolean?     @default(false)
+  mo_user_info   mo_user_info @relation(fields: [operator], references: [user_name], onUpdate: Restrict, map: "FK_Reference_12")
+
+  @@index([operator], map: "FK_Reference_12")
+  @@index([camera_sn], map: "FK_Reference_7")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_assembling_info {
+  id             Int       @id @default(autoincrement())
+  beam           String    @db.VarChar(32)
+  component      String    @db.VarChar(20)
+  component_type Int       @db.TinyInt
+  workstation    Int
+  operator       String    @db.VarChar(64)
+  start_time     DateTime  @db.DateTime(0)
+  end_time       DateTime? @db.DateTime(0)
+  order_id       Int?
+  invalid        Boolean?  @default(false)
+  tool_version   String    @db.VarChar(12)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_auto_adjust_info {
+  id               Int       @id @default(autoincrement())
+  beam_sn          String    @db.VarChar(32)
+  station_num      Int?
+  operation_time   DateTime? @db.DateTime(0)
+  operation_result Int?
+  add_time         DateTime? @db.DateTime(0)
+  ng_reason        String?   @db.VarChar(160)
+  error_code       Int?      @default(0)
+  lens_sn          String?   @db.VarChar(16)
+  tool_version     String?   @db.Char(1)
+
+  @@index([beam_sn], map: "FK_mo_aa_station_info_1")
+}
+
+model mo_auto_adjust_st02 {
+  id             Int       @id @default(autoincrement()) @db.UnsignedInt
+  beam_sn        String    @db.VarChar(32)
+  operation_time DateTime? @db.DateTime(0)
+  result         Boolean?
+  ng_reason      String?   @db.VarChar(128)
+  data           String?   @db.VarChar(256)
+}
+
+model mo_auto_adjust_st03 {
+  id             Int       @id @default(autoincrement()) @db.UnsignedInt
+  beam_sn        String    @db.VarChar(32)
+  operation_time DateTime? @db.DateTime(0)
+  result         Boolean?
+  ng_reason      String?   @db.VarChar(128)
+  data           String?   @db.VarChar(256)
+}
+
+model mo_auto_adjust_st06 {
+  id             Int                       @id @default(autoincrement()) @db.UnsignedInt
+  beam_sn        String                    @db.VarChar(32)
+  operation_time DateTime?                 @db.DateTime(0)
+  result         Boolean?
+  ng_reason      String?                   @db.VarChar(128)
+  image_path     String?                   @db.VarChar(256)
+  side           mo_auto_adjust_st06_side?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_auto_adjust_st07 {
+  id                     BigInt                    @id @default(autoincrement())
+  beam_sn                String                    @db.VarChar(20)
+  side                   mo_auto_adjust_st07_side?
+  add_time               DateTime                  @db.DateTime(0)
+  mtf_center_value       Float?                    @db.Float
+  mtf_center_lsl         Float?                    @db.Float
+  mtf_center_usl         Float?                    @db.Float
+  mtf_leftup_value       Float?                    @db.Float
+  mtf_leftup_lsl         Float?                    @db.Float
+  mtf_leftup_usl         Float?                    @db.Float
+  mtf_rightup_value      Float?                    @db.Float
+  mtf_rightup_lsl        Float?                    @db.Float
+  mtf_rightup_usl        Float?                    @db.Float
+  mtf_leftdown_value     Float?                    @db.Float
+  mtf_leftdown_lsl       Float?                    @db.Float
+  mtf_leftdown_usl       Float?                    @db.Float
+  mtf_rightdown_value    Float?                    @db.Float
+  mtf_rightdown_lsl      Float?                    @db.Float
+  mtf_rightdown_usl      Float?                    @db.Float
+  mtf_corner_diff_value  Float?                    @db.Float
+  mtf_corner_diff_lsl    Float?                    @db.Float
+  mtf_corner_diff_usl    Float?                    @db.Float
+  image_path             String?                   @db.VarChar(256)
+  mtf_center_value2      Float?                    @db.Float
+  mtf_center_lsl2        Float?                    @db.Float
+  mtf_center_usl2        Float?                    @db.Float
+  mtf_leftup_value2      Float?                    @db.Float
+  mtf_leftup_lsl2        Float?                    @db.Float
+  mtf_leftup_usl2        Float?                    @db.Float
+  mtf_rightup_value2     Float?                    @db.Float
+  mtf_rightup_lsl2       Float?                    @db.Float
+  mtf_rightup_usl2       Float?                    @db.Float
+  mtf_leftdown_value2    Float?                    @db.Float
+  mtf_leftdown_lsl2      Float?                    @db.Float
+  mtf_leftdown_usl2      Float?                    @db.Float
+  mtf_rightdown_value2   Float?                    @db.Float
+  mtf_rightdown_lsl2     Float?                    @db.Float
+  mtf_rightdown_usl2     Float?                    @db.Float
+  mtf_corner_diff_value2 Float?                    @db.Float
+  mtf_corner_diff_lsl2   Float?                    @db.Float
+  mtf_corner_diff_usl2   Float?                    @db.Float
+  image_path2            String?                   @db.VarChar(256)
+  taskid                 BigInt?                   @db.UnsignedBigInt
+  type_num               Int?                      @db.UnsignedInt
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_auto_adjust_st08 {
+  id                                              BigInt                    @id @default(autoincrement())
+  beam_sn                                         String                    @db.VarChar(20)
+  side                                            mo_auto_adjust_st08_side?
+  add_time                                        DateTime?                 @default(now()) @db.DateTime(0)
+  mtf_center_value                                Float?                    @db.Float
+  mtf_center_lsl                                  Float?                    @db.Float
+  mtf_leftup_value                                Float?                    @db.Float
+  mtf_leftup_lsl                                  Float?                    @db.Float
+  mtf_rightup_value                               Float?                    @db.Float
+  mtf_rightup_lsl                                 Float?                    @db.Float
+  mtf_leftdown_value                              Float?                    @db.Float
+  mtf_leftdown_lsl                                Float?                    @db.Float
+  mtf_rightdown_value                             Float?                    @db.Float
+  mtf_rightdown_lsl                               Float?                    @db.Float
+  image_path                                      String?                   @db.VarChar(256)
+  oc_x_offset                                     Float?                    @db.Float
+  oc_x_offset_usl                                 Float?                    @db.Float
+  oc_y_offset_usl                                 Float?                    @db.Float
+  oc_y_offset                                     Float?                    @db.Float
+  cod_x_offset                                    Float?                    @db.Float
+  cod_y_offset                                    Float?                    @db.Float
+  cod_x_offset_usl                                Float?                    @db.Float
+  cod_y_offset_usl                                Float?                    @db.Float
+  mtf_range_offset                                Float?                    @db.Float
+  mtf_range_offset_usl                            Float?                    @db.Float
+  mo_process_step_production_result_id            BigInt?
+  position                                        String?                   @db.VarChar(255)
+  stage                                           String?                   @db.VarChar(255)
+  aa_claw_grip_pressure                           Float?                    @db.Float
+  aa_claw_grip_pressure_spec                      Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_center_diff_usl Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_tl_diff_usl     Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_tr_diff_usl     Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_bl_diff_usl     Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_br_diff_usl     Float?                    @db.Float
+  error_code                                      Int?
+  ng_reason                                       String?                   @db.VarChar(100)
+  uv_exposure_time_spec                           Decimal?                  @db.Decimal(10, 2)
+  uv_energy_spec                                  Decimal?                  @db.Decimal(10, 2)
+  check_glue_weight_spec                          Decimal?                  @db.Decimal(10, 3)
+  axis_movement_distance_spec                     Decimal?                  @db.Decimal(10, 2)
+  test_card_illuminance_spec                      Decimal?                  @db.Decimal(10, 2)
+  test_card_height_spec                           Decimal?                  @db.Decimal(10, 2)
+  white_field_dirt                                Float?                    @db.Float
+  white_field_dirt_usl                            Float?                    @db.Float
+  black_field_dark_spot                           Float?                    @db.Float
+  black_field_dark_spot_usl                       Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_center_diff     Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_tl_diff         Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_tr_diff         Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_bl_diff         Float?                    @db.Float
+  release_claw_minus_uv_cured_mtf_br_diff         Float?                    @db.Float
+  station_num                                     Int?
+  mtf_center_value_diff                           Float?
+  mtf_center_diff_usl                             Float?
+  mtf_leftup_value_diff                           Float?
+  mtf_leftup_diff_usl                             Float?
+  mtf_rightup_value_diff                          Float?
+  mtf_rightup_diff_usl                            Float?
+  mtf_leftdown_value_diff                         Float?
+  mtf_leftdown_diff_usl                           Float?
+  mtf_rightdown_value_diff                        Float?
+  mtf_rightdown_diff_usl                          Float?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_beam_appearance_inspection {
+  id                                   BigInt    @id @default(autoincrement())
+  aa_hole_diameter                     Decimal?  @db.Decimal(10, 4)
+  aa_hole_distance                     Decimal?  @db.Decimal(10, 4)
+  aa_hole_center_x                     Decimal?  @db.Decimal(10, 4)
+  aa_hole_center_y                     Decimal?  @db.Decimal(10, 4)
+  thread_hole_distance                 Decimal?  @db.Decimal(10, 4)
+  thread_hole_center_x                 Decimal?  @db.Decimal(10, 4)
+  thread_hole_center_y                 Decimal?  @db.Decimal(10, 4)
+  surface_height_diff                  Decimal?  @db.Decimal(10, 4)
+  surface_to_beam_diff                 Decimal?  @db.Decimal(10, 4)
+  beam_length                          Decimal?  @db.Decimal(10, 4)
+  beam_width                           Decimal?  @db.Decimal(10, 4)
+  mo_process_step_production_result_id BigInt?
+  error_code                           Int?
+  station_num                          Int?
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  beam_sn                              String?   @db.VarChar(255)
+  position                             String?   @db.VarChar(255)
+  aa_hole_diameter_usl                 Decimal?  @db.Decimal(10, 4)
+  aa_hole_diameter_lsl                 Decimal?  @db.Decimal(10, 4)
+  aa_hole_distance_usl                 Decimal?  @db.Decimal(10, 4)
+  aa_hole_distance_lsl                 Decimal?  @db.Decimal(10, 4)
+  thread_hole_distance_usl             Decimal?  @db.Decimal(10, 4)
+  thread_hole_distance_lsl             Decimal?  @db.Decimal(10, 4)
+  surface_height_diff_usl              Decimal?  @db.Decimal(10, 4)
+  surface_to_beam_diff_usl             Decimal?  @db.Decimal(10, 4)
+  beam_length_usl                      Decimal?  @db.Decimal(10, 4)
+  beam_length_lsl                      Decimal?  @db.Decimal(10, 4)
+  beam_width_usl                       Decimal?  @db.Decimal(10, 4)
+  beam_width_lsl                       Decimal?  @db.Decimal(10, 4)
+  aa_hole_side_distance_x              Float?    @db.Float
+  aa_hole_side_distance_y              Float?    @db.Float
+  thread_hole_distance_x_out           Float?    @db.Float
+  thread_hole_distance_y_out           Float?    @db.Float
+  thread_hole_distance_x_in            Float?    @db.Float
+  thread_hole_distance_y_in            Float?    @db.Float
+  aa_hole_side_distance_x_usl          Float?    @db.Float
+  aa_hole_side_distance_x_lsl          Float?    @db.Float
+  aa_hole_side_distance_y_usl          Float?    @db.Float
+  aa_hole_side_distance_y_lsl          Float?    @db.Float
+  thread_hole_distance_x_out_usl       Float?    @db.Float
+  thread_hole_distance_x_out_lsl       Float?    @db.Float
+  thread_hole_distance_y_out_usl       Float?    @db.Float
+  thread_hole_distance_y_out_lsl       Float?    @db.Float
+  thread_hole_distance_x_in_usl        Float?    @db.Float
+  thread_hole_distance_x_in_lsl        Float?    @db.Float
+  thread_hole_distance_y_in_usl        Float?    @db.Float
+  thread_hole_distance_y_in_lsl        Float?    @db.Float
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_beam_info {
+  id               Int       @id @default(autoincrement())
+  beam_sn          String    @unique(map: "AK_uq_product_sn") @db.VarChar(20)
+  work_order_code  String?   @db.VarChar(16)
+  serial_number    Int?
+  create_time      DateTime? @db.DateTime(0)
+  is_produced      Boolean?  @default(false)
+  produce_order_id Int?
+  is_used          Int?      @default(0)
+}
+
+model mo_beam_material_code {
+  id              Int     @id @default(autoincrement())
+  project_name    String? @db.VarChar(64)
+  material_code   String? @db.VarChar(32)
+  material_letter String  @db.Char(1)
+  product_type    String? @db.VarChar(32)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_calibration {
+  id                         BigInt       @id @default(autoincrement())
+  camera_sn                  String       @db.VarChar(16)
+  station_number             Int
+  operator                   String       @db.VarChar(64)
+  start_time                 DateTime     @db.DateTime(0)
+  end_time                   DateTime?    @db.DateTime(0)
+  sharpness_left             Float?       @db.Float
+  sharpness_right            Float?       @db.Float
+  left_trim                  Int?
+  right_trim                 Int?
+  validPattern               Int?
+  meanReprojectionError      Float?       @db.Float
+  meanLeftReprojectionError  Float?       @db.Float
+  meanRightReprojectionError Float?       @db.Float
+  maxLeftReprojectionError   Float?       @db.Float
+  maxRightReprojectionError  Float?       @db.Float
+  img_yml2data_fov           Float?       @db.Float
+  isp_yml2data_fov           Float?       @db.Float
+  epr_filename               String?      @db.VarChar(256)
+  yml_filename               String?      @db.VarChar(256)
+  isp_line_offset            Float?       @db.Float
+  file_path                  String?      @db.VarChar(256)
+  error_code                 Int?
+  tool_version               String?      @db.VarChar(255)
+  self_check_errcode         BigInt?
+  self_check_error_desc      String?      @db.VarChar(200)
+  mo_user_info               mo_user_info @relation(fields: [operator], references: [user_name], onUpdate: Restrict, map: "FK_Reference_11")
+
+  @@index([operator], map: "FK_Reference_11")
+  @@index([start_time], map: "Index_3")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_cmos_appearance_inspection {
+  id                                   BigInt    @id @default(autoincrement())
+  sensor_parallelism                   Decimal?  @db.Decimal(10, 4)
+  hole_distance                        Decimal?  @db.Decimal(10, 4)
+  mo_process_step_production_result_id BigInt?
+  error_code                           Int?
+  station_num                          Int?
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  beam_sn                              String?   @db.VarChar(255)
+  position                             String?   @db.VarChar(255)
+  hole_distance_usl                    Decimal?  @db.Decimal(10, 2)
+  hole_distance_lsl                    Decimal?  @db.Decimal(10, 2)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_customer_order {
+  id             BigInt    @id @default(autoincrement())
+  order_code     String    @db.VarChar(16)
+  order_date     DateTime? @db.Date
+  material_code  String?   @db.VarChar(16)
+  material_name  String?   @db.VarChar(256)
+  model_type     String?   @db.VarChar(64)
+  workshop       String?   @db.VarChar(32)
+  product_count  Int?
+  product_unit   String?   @db.VarChar(16)
+  business_state String?   @db.VarChar(16)
+  material_state String?   @db.VarChar(16)
+  plan_begin     DateTime? @db.DateTime(0)
+  plan_end       DateTime? @db.DateTime(0)
+
+  @@index([order_code], map: "AK_uq_order_code")
+}
+
+model mo_device_status {
+  id                  Int       @id @default(autoincrement())
+  product_material_no String?   @db.VarChar(255)
+  device_no           String?   @db.VarChar(255)
+  others              Json?
+  add_time            DateTime? @default(now()) @db.DateTime(0)
+  production_count    Int?
+  defect_count        Int?
+  uph                 Int?
+  oee                 Float?    @db.Float
+  status              Int?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_dirty_check {
+  id                                   Int                  @id @default(autoincrement())
+  stain_size_usl                       Float?               @db.Float
+  stain_count_usl                      Float?               @db.Float
+  stains                               String?              @db.VarChar(255)
+  image_path                           String?              @db.Text
+  error_code                           Int?
+  beam_sn                              String?              @db.VarChar(255)
+  ng_reason                            String?              @db.VarChar(100)
+  add_time                             DateTime?            @default(now()) @db.DateTime(0)
+  station_num                          Int?
+  side                                 mo_dirty_check_side?
+  position                             String?              @db.VarChar(255)
+  mo_process_step_production_result_id BigInt?
+  plasma_power_spec                    Float?               @db.Float
+  lens_gripper_spec                    Float?               @db.Float
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_error_desc {
+  id          Int     @id @default(autoincrement())
+  stage       String  @db.VarChar(24)
+  pos_index   Int?    @default(1)
+  error_code  Int?
+  description String? @db.VarChar(256)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_final_check {
+  id                 BigInt       @id @default(autoincrement())
+  camera_sn          String       @db.VarChar(16)
+  station_number     Int
+  operator           String       @db.VarChar(64)
+  start_time         DateTime     @db.DateTime(0)
+  end_time           DateTime?    @db.DateTime(0)
+  stepid             Int?
+  check_result       Boolean?
+  image_path         String?      @db.VarChar(256)
+  file_name          String?      @db.VarChar(256)
+  taskid             BigInt?
+  timestamp_tag      BigInt?
+  return_repair_date DateTime?    @db.Date
+  mo_user_info       mo_user_info @relation(fields: [operator], references: [user_name], onUpdate: Restrict, map: "FK_Reference_9")
+
+  @@index([camera_sn], map: "FK_Reference_4")
+  @@index([operator], map: "FK_Reference_9")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_final_result {
+  id                 Int       @id @default(autoincrement())
+  camera_sn          String    @db.VarChar(16)
+  station_number     Int
+  operator           String    @db.VarChar(64)
+  check_time         DateTime  @db.DateTime(0)
+  check_type         String    @db.VarChar(16)
+  check_result       Boolean?
+  taskid             BigInt?
+  error_code         Int?
+  image_path         String?   @db.VarChar(256)
+  tool_version       String?   @db.VarChar(16)
+  is_deleted         Boolean?  @default(false)
+  return_repair_date DateTime? @db.Date
+
+  @@unique([camera_sn, taskid], map: "ak_unique")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_high_temp_curing_record {
+  id                                   BigInt    @id @default(autoincrement())
+  tray_no                              String    @db.VarChar(50)
+  oven_no                              String    @db.VarChar(50)
+  min_temp                             Decimal?  @db.Decimal(6, 2)
+  max_temp                             Decimal?  @db.Decimal(6, 2)
+  bake_duration_minutes                Int?
+  mo_process_step_production_result_id BigInt?
+  error_code                           Int?
+  station_num                          Int?
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  beam_sn                              String?   @db.VarChar(255)
+  position                             String?   @db.VarChar(255)
+  temperature_reaching_time            String?   @db.VarChar(100)
+  gripper_number                       String?   @db.VarChar(30)
+  baking_end_time                      String?   @db.VarChar(100)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_imu_calib_results {
+  id                              Int       @id @default(autoincrement())
+  case_name                       String?   @db.VarChar(255)
+  sn                              String?   @db.VarChar(255)
+  reprojection_error_cam0_mean    Float?    @db.Float
+  reprojection_error_cam0_median  Float?    @db.Float
+  reprojection_error_cam0_std     Float?    @db.Float
+  gyroscope_error_imu0_mean       Float?    @db.Float
+  gyroscope_error_imu0_median     Float?    @db.Float
+  gyroscope_error_imu0_std        Float?    @db.Float
+  accelerometer_error_imu0_mean   Float?    @db.Float
+  accelerometer_error_imu0_median Float?    @db.Float
+  accelerometer_error_imu0_std    Float?    @db.Float
+  tx_mm                           Float?    @db.Float
+  ty_mm                           Float?    @db.Float
+  tz_mm                           Float?    @db.Float
+  timeshift_ms                    Float?    @db.Float
+  q_angle                         Float?    @db.Float
+  root                            String?   @db.VarChar(512)
+  path                            String?   @db.VarChar(255)
+  relative_path_bag               String?   @db.VarChar(256)
+  relative_path_yml_imu           String?   @db.VarChar(256)
+  relative_path_yml_imucam        String?   @db.VarChar(256)
+  create_time                     DateTime? @default(now()) @db.DateTime(0)
+  software_tool                   String?   @db.VarChar(50)
+  software_tool_version           String?   @db.VarChar(50)
+  mo_calibration_id               BigInt?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_imu_result {
+  id                          BigInt    @id @default(autoincrement())
+  camera_sn                   String?   @db.VarChar(255)
+  r_roll                      Float?    @db.Float
+  r_pitch                     Float?    @db.Float
+  r_yaw                       Float?    @db.Float
+  t_x                         Float?    @db.Float
+  t_y                         Float?    @db.Float
+  t_z                         Float?    @db.Float
+  accelerometer_error_mean    Float?    @db.Float
+  accelerometer_error_std     Float?    @db.Float
+  gyroscope_error_mean        Float?    @db.Float
+  gyroscope_error_std         Float?    @db.Float
+  reprojection_error_mean     Float?    @db.Float
+  reprojection_error_std      Float?    @db.Float
+  create_time                 DateTime? @default(now()) @db.DateTime(0)
+  update_time                 DateTime? @db.DateTime(0)
+  is_delete                   Boolean?
+  calibresult_id              BigInt?
+  position                    Int?
+  accelerometer_noise_density Float?    @db.Float
+  accelerometer_random_walk   Float?    @db.Float
+  gyroscope_noise_density     Float?    @db.Float
+  gyroscope_random_walk       Float?    @db.Float
+  status                      Int       @default(dbgenerated("(-(1))"))
+  error_no                    String?   @db.VarChar(255)
+  software_tool               String?   @db.VarChar(50)
+  software_tool_version       String?   @db.VarChar(50)
+}
+
+model mo_ir_pasting {
+  id                                   BigInt    @id @default(autoincrement())
+  batch_no                             String?   @db.VarChar(255)
+  dispense_method                      String?   @db.VarChar(255)
+  dispense_time                        Float?    @db.Float
+  cure_time                            Float?    @db.Float
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  station_num                          Int?
+  error_code                           Int?
+  operator                             String?   @db.VarChar(255)
+  mo_process_step_production_result_id BigInt?
+}
+
+model mo_isp_manual_check {
+  taskid    Int
+  sn        String   @db.VarChar(32)
+  result    Int
+  timestamp DateTime @db.DateTime(0)
+
+  @@id([taskid, sn])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_laser_marking_inspection {
+  id                                   BigInt    @id @default(autoincrement())
+  laser_power                          String?   @db.VarChar(10)
+  laser_template_no                    String?   @db.VarChar(255)
+  mo_process_step_production_result_id BigInt?
+  error_code                           Int?
+  station_num                          Int?
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  beam_sn                              String?   @db.VarChar(255)
+}
+
+model mo_lens_assembly {
+  id                                   BigInt    @id @default(autoincrement())
+  batch_no                             String?   @db.VarChar(255)
+  assembly_pressure                    Float?    @db.Float
+  assembly_pressure_usl                Float?    @db.Float
+  assembly_pressure_lsl                Float?    @db.Float
+  assembly_height                      Float?    @db.Float
+  assembly_height_usl                  Float?    @db.Float
+  assembly_height_lsl                  Float?    @db.Float
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  station_num                          Int?
+  error_code                           Int?
+  operator                             String?   @db.VarChar(255)
+  mo_process_step_production_result_id BigInt?
+  assembly_pressure_spec               Float?    @db.Float
+  assembly_height_spec                 Float?    @db.Float
+  assembly_angle_spec                  Float?    @db.Float
+  position                             Int?
+}
+
+model mo_lens_baking {
+  id                                   BigInt    @id @default(autoincrement())
+  batch_no                             String?   @db.VarChar(255)
+  cure_time                            Float?    @db.Float
+  cure_power                           Float?    @db.Float
+  cure_temperature                     Float?    @db.Float
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  station_num                          Int?
+  error_code                           Int?
+  operator                             String?   @db.VarChar(255)
+  mo_process_step_production_result_id BigInt?
+}
+
+model mo_lens_cap_fastening {
+  id                                   BigInt    @id @default(autoincrement())
+  batch_no                             String?   @db.VarChar(255)
+  screw_height                         Float?    @db.Float
+  screw_height_usl                     Float?    @db.Float
+  screw_height_lsl                     Float?    @db.Float
+  screw_torque                         Float?    @db.Float
+  screw_torque_usl                     Float?    @db.Float
+  screw_torque_lsl                     Float?    @db.Float
+  screw_pressure                       Float?    @db.Float
+  screw_pressure_usl                   Float?    @db.Float
+  screw_pressure_lsl                   Float?    @db.Float
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  station_num                          Int?
+  error_code                           Int?
+  operator                             String?   @db.VarChar(255)
+  mo_process_step_production_result_id BigInt?
+  screw_pressure_spec                  Float?    @db.Float
+}
+
+model mo_lens_dispensing {
+  id                                   BigInt    @id @default(autoincrement())
+  batch_no                             String?   @db.VarChar(255)
+  front_cover_dispense_time            Float?    @db.Float
+  front_cover_cure_time                Float?    @db.Float
+  rear_cover_dispense_time             Float?    @db.Float
+  rear_cover_cure_time                 Float?    @db.Float
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  station_num                          Int?
+  error_code                           Int?
+  operator                             String?   @db.VarChar(255)
+  mo_process_step_production_result_id BigInt?
+}
+
+model mo_lens_mtf_checking {
+  id                                   BigInt    @id @default(autoincrement())
+  batch_no                             String?   @db.VarChar(255)
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  station_num                          Int?
+  error_code                           Int?
+  operator                             String?   @db.VarChar(255)
+  mo_process_step_production_result_id BigInt?
+  job_id                               String?   @db.VarChar(255)
+  frequency                            Int?
+  block                                Int?
+  position                             Int?
+  t_mtf                                Float?    @db.Float
+  s_mtf                                Float?    @db.Float
+  t_peak                               Float?    @db.Float
+  s_peak                               Float?    @db.Float
+  t_fs                                 Float?    @db.Float
+  s_fs                                 Float?    @db.Float
+  astigmatism                          Float?    @db.Float
+  field_curvature_t                    Float?    @db.Float
+  field_curvature_s                    Float?    @db.Float
+  offset_t                             Float?    @db.Float
+  offset_s                             Float?    @db.Float
+  uniformity_t                         Float?    @db.Float
+  uniformity_s                         Float?    @db.Float
+  depth_of_focus                       Float?    @db.Float
+  back_focal_distance                  Float?    @db.Float
+  focal_length                         Float?    @db.Float
+}
+
+model mo_material_binding {
+  id                                   BigInt    @id @default(autoincrement())
+  camera_sn                            String?   @db.VarChar(255)
+  camera_batch                         String?   @db.VarChar(255)
+  category                             String?   @db.VarChar(255)
+  category_no                          String?   @db.VarChar(255)
+  material_batch_no                    String?   @db.VarChar(255)
+  material_serial_no                   String?   @db.VarChar(255)
+  is_deleted                           BigInt?   @default(0)
+  create_time                          DateTime? @default(dbgenerated("(now())")) @db.DateTime(0)
+  update_time                          DateTime? @db.DateTime(0)
+  mo_process_step_production_result_id BigInt?
+  position                             Int?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_operation_record {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  operation_desc String?   @db.Text
+  operation_time DateTime? @db.DateTime(0)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_oqc_info {
+  id             Int          @id @default(autoincrement())
+  camera_sn      String       @db.VarChar(16)
+  station_number Int
+  operator       String       @db.VarChar(64)
+  start_time     DateTime     @db.DateTime(0)
+  end_time       DateTime?    @db.DateTime(0)
+  stepid         Int?
+  check_result   Boolean?
+  file_name      String?      @db.VarChar(256)
+  image_path     String?      @db.VarChar(256)
+  timestamp_tag  Int          @db.UnsignedInt
+  mo_user_info   mo_user_info @relation(fields: [operator], references: [user_name], onUpdate: Restrict, map: "FK_Reference_10")
+
+  @@index([operator], map: "FK_Reference_10")
+  @@index([camera_sn], map: "FK_Reference_5")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_packing_info {
+  id                 Int          @id @default(autoincrement())
+  packing_code       String       @db.VarChar(32)
+  camera_sn          String       @db.VarChar(16)
+  station_number     Int
+  operator           String       @db.VarChar(64)
+  start_time         DateTime     @db.DateTime(0)
+  end_time           DateTime?    @db.DateTime(0)
+  tool_version       String?      @db.VarChar(16)
+  is_deleted         Boolean?     @default(false)
+  return_repair_date DateTime?    @db.Date
+  mo_user_info       mo_user_info @relation(fields: [operator], references: [user_name], onUpdate: Restrict, map: "FK_Reference_14")
+
+  @@index([camera_sn], map: "FK_Reference_13")
+  @@index([operator], map: "FK_Reference_14")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_process_flow {
+  id           Int          @id @default(autoincrement())
+  process_code String?      @db.VarChar(32)
+  process_name String?      @db.VarChar(64)
+  stage_code   String       @db.VarChar(32)
+  process_desc String?      @db.VarChar(256)
+  add_time     DateTime?    @db.DateTime(0)
+  is_required  Boolean?     @default(false)
+  mo_workstage mo_workstage @relation(fields: [stage_code], references: [stage_code], onUpdate: Restrict, map: "FK_Reference_3")
+
+  @@index([stage_code], map: "FK_Reference_31")
+}
+
+model mo_process_step_production_result {
+  id                    BigInt    @id @default(autoincrement())
+  product_sn            String?   @db.VarChar(255)
+  product_batch_no      String?   @db.VarChar(255)
+  step_type             String?   @db.VarChar(255)
+  step_type_no          String?   @db.VarChar(255)
+  error_code            Int?
+  ng_reason             String?   @db.VarChar(100)
+  station_num           Int?
+  start_time            DateTime? @db.DateTime(0)
+  end_time              DateTime? @db.DateTime(0)
+  operator              String?   @db.VarChar(255)
+  software_tool         String?   @db.VarChar(255)
+  software_tool_version String?   @db.VarChar(255)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_produce_order {
+  id                  Int       @id @default(autoincrement())
+  work_order_code     String?   @db.VarChar(32)
+  order_date          DateTime? @db.Date
+  material_code       String?   @db.VarChar(16)
+  material_name       String?   @db.VarChar(256)
+  model_type          String?   @db.VarChar(64)
+  workshop            String?   @db.VarChar(32)
+  produce_count       Int?
+  produce_unit        String?   @db.VarChar(16)
+  planned_starttime   DateTime? @db.DateTime(0)
+  planned_endtime     DateTime? @db.DateTime(0)
+  added_time          DateTime? @db.DateTime(0)
+  flow_code           String?   @db.VarChar(32)
+  flow_assemble_shell Int?      @default(0)
+  bom_version         String?   @db.VarChar(32)
+  schedule_state      String?   @db.VarChar(16)
+  cmos_pn             String?   @db.VarChar(32)
+  lens_sn             String?   @db.VarChar(32)
+  fpga_version        String?   @db.VarChar(32)
+  order_state         Int?      @default(0)
+  completed_count     Int?      @default(0)
+  product_type        String?   @db.VarChar(16)
+  description         String?   @db.VarChar(255)
+
+  @@unique([work_order_code, order_date, material_code, produce_count], map: "aq_")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_produce_property {
+  id             Int       @id @default(autoincrement())
+  order_id       Int
+  property_name  String?   @db.VarChar(64)
+  property_value String?   @db.VarChar(64)
+  add_time       DateTime? @db.DateTime(0)
+  invalid        Boolean?  @default(false)
+}
+
+model mo_rejection_description {
+  description_id Int     @default(autoincrement())
+  workstation_id Int
+  description    String  @db.VarChar(512)
+  valid          Boolean
+
+  @@id([description_id, workstation_id])
+}
+
+model mo_rejection_info {
+  id                 Int       @id @unique(map: "id_UNIQUE") @default(autoincrement())
+  workstation_id     Int?
+  description_id     Int?
+  produce_order_code String?   @db.VarChar(24)
+  product_id         String?   @db.VarChar(16)
+  total              Int?      @default(0)
+  quantity           Int?      @default(0)
+  rejectdate         DateTime? @db.Date
+  user_add           String?   @db.VarChar(128)
+  timestamp_add      DateTime? @db.DateTime(0)
+  rework_description String?   @db.VarChar(512)
+  repaired           Boolean?  @default(false)
+  user_upd           String?   @db.VarChar(128)
+  timestamp_upd      DateTime? @db.DateTime(0)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_screw_tightening_inspection {
+  id                                   BigInt    @id @default(autoincrement())
+  torque                               Decimal?  @db.Decimal(10, 4)
+  angle                                Decimal?  @db.Decimal(10, 2)
+  duration                             Float?    @db.Float
+  screw_height                         Decimal?  @db.Decimal(10, 4)
+  mo_process_step_production_result_id BigInt?
+  error_code                           Int?
+  station_num                          Int?
+  ng_reason                            String?   @db.VarChar(100)
+  add_time                             DateTime? @default(now()) @db.DateTime(0)
+  beam_sn                              String?   @db.VarChar(255)
+  position                             String?   @db.VarChar(255)
+  torque_usl                           Decimal?  @db.Decimal(10, 2)
+  torque_lsl                           Decimal?  @db.Decimal(10, 2)
+  angle_usl                            Decimal?  @db.Decimal(10, 2)
+  angle_lsl                            Decimal?  @db.Decimal(10, 2)
+  duration_usl                         Float?    @db.Float
+  duration_lsl                         Float?    @db.Float
+  screw_height_usl                     Decimal?  @db.Decimal(10, 2)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_spc_config {
+  id                Int       @id @default(autoincrement())
+  user_id           Int?
+  datetime          DateTime? @default(now()) @db.DateTime(0)
+  station           Int?
+  table_name        String?   @db.VarChar(64)
+  field_name        String?   @db.VarChar(64)
+  usl               Float?    @db.Float
+  lsl               Float?    @db.Float
+  subgroup_length   Int?      @default(1)
+  rules             Int?      @default(0)
+  is_real_time      Boolean?  @default(false)
+  statistics_length Int?      @default(0)
+  position          Int?      @default(0)
+  user_name         String?   @db.VarChar(64)
+
+  @@index([table_name, field_name], map: "idx_table_field")
+  @@index([user_id, station], map: "idx_user_station")
+}
+
+model mo_stage_property {
+  id            Int      @id @default(autoincrement()) @db.UnsignedInt
+  stage         String   @db.VarChar(16)
+  property_name String?  @db.VarChar(45)
+  property_desc String?  @db.VarChar(45)
+  is_show       Boolean? @default(false)
+
+  @@unique([stage, property_name], map: "Index_2")
+}
+
+model mo_stereo_postcheck {
+  id            Int       @id @default(autoincrement())
+  datetime      DateTime? @db.DateTime(0)
+  sn            String?   @db.VarChar(64)
+  error_code    Int?      @default(0)
+  operator      String?   @db.VarChar(64)
+  station       Int?
+  is_version_ok Boolean?
+  is_image_ok   Boolean?
+}
+
+model mo_stereo_precheck {
+  id                              Int       @id @default(autoincrement())
+  datetime                        DateTime? @db.DateTime(0)
+  sn                              String?   @db.VarChar(64)
+  error_code                      Int?
+  is_dirty_detect_enabled         Boolean?
+  dirty_count_left                Int?
+  dirty_count_right               Int?
+  dirty_standard_cof              Float?    @db.Float
+  is_clarity_detect_enabled       Boolean?
+  clarity_left                    Float?    @db.Float
+  clarity_right                   Float?    @db.Float
+  clarity_standard_val            Float?    @db.Float
+  clarity_standard_mdiff          Float?    @db.Float
+  is_lo_detect_enabled            Boolean?
+  lo_medium                       Float?    @db.Float
+  lo_mean                         Float?    @db.Float
+  lo_max                          Float?    @db.Float
+  lo_min                          Float?    @db.Float
+  lo_stddev                       Float?    @db.Float
+  lo_standard_val                 Float?    @db.Float
+  x_offset_medium                 Float?    @db.Float
+  x_offset_mean                   Float?    @db.Float
+  x_offset_max                    Float?    @db.Float
+  x_offset_min                    Float?    @db.Float
+  x_offset_stddev                 Float?    @db.Float
+  x_offset_standard_val           Float?    @db.Float
+  x_offset_standard_tolerance     Float?    @db.Float
+  is_color_cast_detect_enabled    Boolean?
+  color_cast_r_mean_left          Float?    @db.Float
+  color_cast_g_mean_left          Float?    @db.Float
+  color_cast_b_mean_left          Float?    @db.Float
+  color_cast_r_mean_right         Float?    @db.Float
+  color_cast_g_mean_right         Float?    @db.Float
+  color_cast_b_mean_right         Float?    @db.Float
+  color_cast_r_stddev_left        Float?    @db.Float
+  color_cast_g_stddev_left        Float?    @db.Float
+  color_cast_b_stddev_left        Float?    @db.Float
+  color_cast_r_stddev_right       Float?    @db.Float
+  color_cast_g_stddev_right       Float?    @db.Float
+  color_cast_b_stddev_right       Float?    @db.Float
+  color_cast_standard_r_center    Float?    @db.Float
+  color_cast_standard_r_tolerance Float?    @db.Float
+  color_cast_standard_g_center    Float?    @db.Float
+  color_cast_standard_g_tolerance Float?    @db.Float
+  color_cast_standard_b_center    Float?    @db.Float
+  color_cast_standard_b_tolerance Float?    @db.Float
+  is_cod_detect_enabled           Boolean?
+  cod_x_left                      Float?    @db.Float
+  cod_y_left                      Float?    @db.Float
+  cod_x_right                     Float?    @db.Float
+  cod_y_right                     Float?    @db.Float
+  cod_standard_x_center           Float?    @db.Float
+  cod_standard_x_tolerance        Float?    @db.Float
+  cod_standard_y_center           Float?    @db.Float
+  cod_standard_y_tolerance        Float?    @db.Float
+  is_imu_valid                    Boolean?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_tag_info {
+  id               Int       @id @default(autoincrement())
+  tag_sn           String    @unique(map: "AK_uq_product_sn") @db.VarChar(20)
+  work_order_code  String?   @db.VarChar(16)
+  front_section    String?   @db.VarChar(16)
+  serial_number    Int?
+  create_time      DateTime? @db.DateTime(0)
+  produce_order_id Int?
+  operator         String?   @db.VarChar(64)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_tag_shell_info {
+  id             BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  camera_sn      String       @db.VarChar(16)
+  shell_sn       String       @db.VarChar(20)
+  station_number Int
+  operator       String       @db.VarChar(64)
+  operation_time DateTime     @db.DateTime(0)
+  invalid        Boolean?     @default(false)
+  order_id       Int?
+  order_code     String?      @db.VarChar(24)
+  mo_user_info   mo_user_info @relation(fields: [operator], references: [user_name], onUpdate: Restrict, map: "FK_Reference_15")
+
+  @@index([operator], map: "FK_Reference_15")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_user_info {
+  user_name         String              @id @db.VarChar(128)
+  user_password     String?             @default("password") @db.VarChar(32)
+  user_level        Int?
+  work_code         String?             @db.VarChar(16)
+  real_name         String?             @db.VarChar(32)
+  create_time       DateTime?           @db.DateTime(0)
+  user_state        Int?                @default(0)
+  mo_adjust_focus   mo_adjust_focus[]
+  mo_assemble_info  mo_assemble_info[]
+  mo_calibration    mo_calibration[]
+  mo_final_check    mo_final_check[]
+  mo_oqc_info       mo_oqc_info[]
+  mo_packing_info   mo_packing_info[]
+  mo_tag_shell_info mo_tag_shell_info[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_user_operation {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  operation_desc String?   @db.Text
+  operation_time DateTime? @db.DateTime(0)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_uv_dispensing {
+  id                                   Int                    @id @default(autoincrement())
+  beam_sn                              String?                @db.VarChar(255)
+  glue_width                           Float?                 @db.Float
+  glue_width_usl                       Float?                 @db.Float
+  circle_center_offset                 Float?                 @db.Float
+  circle_center_offset_usl             Float?                 @db.Float
+  image_path                           String?                @db.Text
+  add_time                             DateTime?              @default(now()) @db.DateTime(0)
+  error_code                           Int?
+  ng_reason                            String?                @db.VarChar(100)
+  station_num                          Int?
+  side                                 mo_uv_dispensing_side?
+  position                             String?                @db.VarChar(255)
+  mo_process_step_production_result_id BigInt?
+  glue_width_lsl                       Float?                 @db.Float
+  check_glue_weight                    Float?                 @db.Float
+  glue_width_min                       Float?                 @db.Float
+  glue_width_max                       Float?                 @db.Float
+  glue_height                          Float?                 @db.Float
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_workstage {
+  id               Int               @id @default(autoincrement())
+  stage_code       String?           @unique(map: "stage_code") @db.VarChar(50)
+  stage_name       String            @db.VarChar(64)
+  stage_desc       String?           @db.VarChar(256)
+  add_time         DateTime?         @db.DateTime(0)
+  show_report      Int?              @default(0)
+  show_ptype       Boolean?          @default(false)
+  manual_result    Boolean?          @default(false)
+  sys_step_type_no String?           @db.VarChar(10)
+  target_table     String?           @db.VarChar(100)
+  step_type_no     String?           @db.VarChar(10)
+  mo_process_flow  mo_process_flow[]
+
+  @@index([stage_code], map: "AK_uq_stage_code")
+}
+
+model product_material_batch {
+  id                    BigInt    @id @default(autoincrement())
+  product_sn            String?   @db.VarChar(255)
+  product_sn_tag        String?   @db.VarChar(255)
+  material              String?   @db.VarChar(255)
+  batch_no              String?   @db.VarChar(255)
+  is_disabled           Boolean?  @default(false)
+  is_deleted            Boolean?
+  create_time           DateTime? @db.DateTime(0)
+  update_time           DateTime? @db.DateTime(0)
+  plc                   String?   @db.VarChar(255)
+  plc_version           String?   @db.VarChar(255)
+  operator              String?   @db.VarChar(255)
+  serial_no             String?   @db.VarChar(255)
+  workstation_no        String?   @db.VarChar(255)
+  workshop_no           String?   @db.VarChar(255)
+  production_process_no String?   @db.VarChar(255)
+}
+
+model serial_number_check {
+  taskid    Int
+  sn        String   @db.VarChar(32)
+  result    Int
+  timestamp DateTime @db.DateTime(0)
+
+  @@id([taskid, sn])
+}
+
+model simor_param_check {
+  taskid    Int
+  sn        String   @db.VarChar(45)
+  stepid    Int
+  result    Int
+  timestamp DateTime @db.DateTime(0)
+
+  @@id([taskid, sn, stepid])
+}
+
+model table_config {
+  id          BigInt    @id @default(autoincrement())
+  table_name  String    @db.VarChar(255)
+  table_field String    @db.VarChar(255)
+  position    Json?
+  stage       Json?
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  updated_at  DateTime? @default(now()) @db.Timestamp(0)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model transfer_box {
+  id           BigInt   @id @default(autoincrement())
+  batch_number String?  @db.VarChar(50)
+  product_code String?  @db.VarChar(50)
+  work_order   String?  @db.VarChar(50)
+  box_number   String?  @db.VarChar(50)
+  is_finished  Boolean? @default(false)
+  device_no    String?  @db.VarChar(50)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mo_step_attr_keys {
+  attr_key     String? @db.VarChar(255)
+  attr_no      String? @db.VarChar(10)
+  step_type_no String? @db.VarChar(10)
+
+  @@ignore
+}
+
+model error_code_records {
+  id         Int       @id @default(autoincrement())
+  table_name String    @db.VarChar(255)
+  row_id     Int
+  error_code String    @db.VarChar(50)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model imu_params_check {
+  taskid              BigInt
+  sn                  String    @db.VarChar(32)
+  stepid              BigInt
+  result              BigInt?
+  timestamp           DateTime? @db.DateTime(0)
+  acc_noise           Float?    @db.Float
+  acc_noise_std       Float?    @db.Float
+  acc_random_walk     Float?    @db.Float
+  acc_random_walk_std Float?    @db.Float
+  gyr_noise           Float?    @db.Float
+  gyr_noise_std       Float?    @db.Float
+  gyr_random_walk     Float?    @db.Float
+  gyr_random_walk_std Float?    @db.Float
+  rx_left             Float?    @db.Float
+  ry_left             Float?    @db.Float
+  rz_left             Float?    @db.Float
+  tx_left             Float?    @db.Float
+  ty_left             Float?    @db.Float
+  tz_left             Float?    @db.Float
+  tx_left_std_floor   Float?    @db.Float
+  tx_left_std_ceil    Float?    @db.Float
+  ty_left_std_floor   Float?    @db.Float
+  ty_left_std_ceil    Float?    @db.Float
+  tz_left_std_floor   Float?    @db.Float
+  tz_left_std_ceil    Float?    @db.Float
+  rx_right            Float?    @db.Float
+  ry_right            Float?    @db.Float
+  rz_right            Float?    @db.Float
+  tx_right            Float?    @db.Float
+  ty_right            Float?    @db.Float
+  tz_right            Float?    @db.Float
+  qangle_left         Float?    @db.Float
+  qangle_left_std     Float?    @db.Float
+
+  @@id([taskid, sn, stepid])
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_order_completecount {
+  work_order_code String? @db.VarChar(16)
+  complete_num    BigInt  @default(0)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_output_history {
+  days  String? @db.VarChar(10)
+  num   BigInt  @default(0)
+  stage String  @default("") @db.VarChar(11)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+/// This view or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+view view_shell_beam_type {
+  shell_sn     String  @db.VarChar(20)
+  beam_sn      String  @db.VarChar(20)
+  order_id     Int     @default(0)
+  order_code   String? @db.VarChar(32)
+  product_type String? @db.VarChar(16)
+  rownum       BigInt  @default(0) @db.UnsignedBigInt
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stage_aa {
+  num   BigInt @default(0)
+  htype String @default("") @db.VarChar(11)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stage_adjust {
+  num   BigInt @default(0)
+  htype String @default("") @db.VarChar(11)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stage_assemble {
+  num   BigInt @default(0)
+  htype String @default("") @db.VarChar(8)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stage_calibrate {
+  num   BigInt @default(0)
+  htype String @default("") @db.VarChar(11)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stage_fitpcba {
+  num   BigInt @default(0)
+  htype String @default("") @db.VarChar(8)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stage_fqc {
+  num   BigInt @default(0)
+  htype String @default("") @db.VarChar(11)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stage_ptype_today {
+  num          BigInt  @default(0)
+  product_type String? @db.VarChar(16)
+  stage        String  @default("") @db.VarChar(9)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stage_today {
+  num   BigInt @default(0)
+  stage String @default("") @db.VarChar(11)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stagecount {
+  days  String? @db.VarChar(10)
+  num   BigInt  @default(0)
+  stage String  @default("") @db.VarChar(11)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_sumwip {
+  num BigInt @default(0)
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stereo_precheck_oqc {
+  id                              Int       @default(0)
+  datetime                        DateTime? @db.DateTime(0)
+  sn                              String?   @db.VarChar(64)
+  error_code                      Int?
+  is_dirty_detect_enabled         Boolean?
+  dirty_count_left                Int?
+  dirty_count_right               Int?
+  dirty_standard_cof              Float?    @db.Float
+  is_clarity_detect_enabled       Boolean?
+  clarity_left                    Float?    @db.Float
+  clarity_right                   Float?    @db.Float
+  clarity_standard_val            Float?    @db.Float
+  clarity_standard_mdiff          Float?    @db.Float
+  is_lo_detect_enabled            Boolean?
+  lo_medium                       Float?    @db.Float
+  lo_mean                         Float?    @db.Float
+  lo_max                          Float?    @db.Float
+  lo_min                          Float?    @db.Float
+  lo_stddev                       Float?    @db.Float
+  lo_standard_val                 Float?    @db.Float
+  x_offset_medium                 Float?    @db.Float
+  x_offset_mean                   Float?    @db.Float
+  x_offset_max                    Float?    @db.Float
+  x_offset_min                    Float?    @db.Float
+  x_offset_stddev                 Float?    @db.Float
+  x_offset_standard_val           Float?    @db.Float
+  x_offset_standard_tolerance     Float?    @db.Float
+  is_color_cast_detect_enabled    Boolean?
+  color_cast_r_mean_left          Float?    @db.Float
+  color_cast_g_mean_left          Float?    @db.Float
+  color_cast_b_mean_left          Float?    @db.Float
+  color_cast_r_mean_right         Float?    @db.Float
+  color_cast_g_mean_right         Float?    @db.Float
+  color_cast_b_mean_right         Float?    @db.Float
+  color_cast_r_stddev_left        Float?    @db.Float
+  color_cast_g_stddev_left        Float?    @db.Float
+  color_cast_b_stddev_left        Float?    @db.Float
+  color_cast_r_stddev_right       Float?    @db.Float
+  color_cast_g_stddev_right       Float?    @db.Float
+  color_cast_b_stddev_right       Float?    @db.Float
+  color_cast_standard_r_center    Float?    @db.Float
+  color_cast_standard_r_tolerance Float?    @db.Float
+  color_cast_standard_g_center    Float?    @db.Float
+  color_cast_standard_g_tolerance Float?    @db.Float
+  color_cast_standard_b_center    Float?    @db.Float
+  color_cast_standard_b_tolerance Float?    @db.Float
+  is_cod_detect_enabled           Boolean?
+  cod_x_left                      Float?    @db.Float
+  cod_y_left                      Float?    @db.Float
+  cod_x_right                     Float?    @db.Float
+  cod_y_right                     Float?    @db.Float
+  cod_standard_x_center           Float?    @db.Float
+  cod_standard_x_tolerance        Float?    @db.Float
+  cod_standard_y_center           Float?    @db.Float
+  cod_standard_y_tolerance        Float?    @db.Float
+  is_imu_valid                    Boolean?
+
+  @@ignore
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view view_stereo_precheck_perfc {
+  id                              Int       @default(0)
+  datetime                        DateTime? @db.DateTime(0)
+  sn                              String?   @db.VarChar(64)
+  error_code                      Int?
+  is_dirty_detect_enabled         Boolean?
+  dirty_count_left                Int?
+  dirty_count_right               Int?
+  dirty_standard_cof              Float?    @db.Float
+  is_clarity_detect_enabled       Boolean?
+  clarity_left                    Float?    @db.Float
+  clarity_right                   Float?    @db.Float
+  clarity_standard_val            Float?    @db.Float
+  clarity_standard_mdiff          Float?    @db.Float
+  is_lo_detect_enabled            Boolean?
+  lo_medium                       Float?    @db.Float
+  lo_mean                         Float?    @db.Float
+  lo_max                          Float?    @db.Float
+  lo_min                          Float?    @db.Float
+  lo_stddev                       Float?    @db.Float
+  lo_standard_val                 Float?    @db.Float
+  x_offset_medium                 Float?    @db.Float
+  x_offset_mean                   Float?    @db.Float
+  x_offset_max                    Float?    @db.Float
+  x_offset_min                    Float?    @db.Float
+  x_offset_stddev                 Float?    @db.Float
+  x_offset_standard_val           Float?    @db.Float
+  x_offset_standard_tolerance     Float?    @db.Float
+  is_color_cast_detect_enabled    Boolean?
+  color_cast_r_mean_left          Float?    @db.Float
+  color_cast_g_mean_left          Float?    @db.Float
+  color_cast_b_mean_left          Float?    @db.Float
+  color_cast_r_mean_right         Float?    @db.Float
+  color_cast_g_mean_right         Float?    @db.Float
+  color_cast_b_mean_right         Float?    @db.Float
+  color_cast_r_stddev_left        Float?    @db.Float
+  color_cast_g_stddev_left        Float?    @db.Float
+  color_cast_b_stddev_left        Float?    @db.Float
+  color_cast_r_stddev_right       Float?    @db.Float
+  color_cast_g_stddev_right       Float?    @db.Float
+  color_cast_b_stddev_right       Float?    @db.Float
+  color_cast_standard_r_center    Float?    @db.Float
+  color_cast_standard_r_tolerance Float?    @db.Float
+  color_cast_standard_g_center    Float?    @db.Float
+  color_cast_standard_g_tolerance Float?    @db.Float
+  color_cast_standard_b_center    Float?    @db.Float
+  color_cast_standard_b_tolerance Float?    @db.Float
+  is_cod_detect_enabled           Boolean?
+  cod_x_left                      Float?    @db.Float
+  cod_y_left                      Float?    @db.Float
+  cod_x_right                     Float?    @db.Float
+  cod_y_right                     Float?    @db.Float
+  cod_standard_x_center           Float?    @db.Float
+  cod_standard_x_tolerance        Float?    @db.Float
+  cod_standard_y_center           Float?    @db.Float
+  cod_standard_y_tolerance        Float?    @db.Float
+  is_imu_valid                    Boolean?
+
+  @@ignore
+}
+
+enum mo_auto_adjust_st07_side {
+  left
+  right
+  EMPTY_ENUM_VALUE @map("")
+}
+
+enum mo_auto_adjust_st08_side {
+  left
+  right
+  EMPTY_ENUM_VALUE @map("")
+}
+
+enum mo_adjust_focus_side {
+  left
+  right
+  mid
+  EMPTY_ENUM_VALUE @map("")
+}
+
+enum mo_auto_adjust_st06_side {
+  left
+  right
+  EMPTY_ENUM_VALUE @map("")
+}
+
+enum mo_dirty_check_side {
+  left
+  right
+  EMPTY_ENUM_VALUE @map("")
+}
+
+enum mo_uv_dispensing_side {
+  left
+  right
+  EMPTY_ENUM_VALUE @map("")
+}
