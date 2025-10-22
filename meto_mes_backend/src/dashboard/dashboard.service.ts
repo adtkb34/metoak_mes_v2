@@ -283,75 +283,72 @@ export class DashboardService {
     params: ProductOptionQueryParams,
   ): Promise<ProductOption[]> {
     const { startDate, endDate, origin } = params;
+    const prismaClient = this.prisma.getClientByOrigin(origin);
 
-    const conditions: Prisma.Sql[] = [Prisma.sql`product_sn IS NOT NULL`];
+    // 🧠 检查表字段
+    const hasAddTime = await prismaClient.$queryRaw<{ Field: string }[]>`
+    SHOW COLUMNS FROM mo_process_step_production_result LIKE 'add_time';
+  `;
+
+    // 如果没有 add_time，就用 start_time
+    const timeField =
+      hasAddTime.length > 0 ? Prisma.sql`add_time` : Prisma.sql`start_time`;
 
     const normalizedStart = this.normalizeDate('start', startDate);
     const normalizedEnd = this.normalizeDate('end', endDate);
 
-    if (normalizedStart) {
-      conditions.push(Prisma.sql`add_time >= ${normalizedStart}`);
-    }
-
-    if (normalizedEnd) {
-      conditions.push(Prisma.sql`add_time <= ${normalizedEnd}`);
-    }
-
+    const conditions: Prisma.Sql[] = [Prisma.sql`product_sn IS NOT NULL`];
+    if (normalizedStart)
+      conditions.push(Prisma.sql`${timeField} >= ${normalizedStart}`);
+    if (normalizedEnd)
+      conditions.push(Prisma.sql`${timeField} <= ${normalizedEnd}`);
     const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
 
     try {
-      const prismaClient = this.prisma.getClientByOrigin(origin);
-
       const rows = await prismaClient.$queryRaw<
         { material_name: string | null; material_code: string | null }[]
       >(Prisma.sql`
-        WITH filtered_sn AS (
-          SELECT DISTINCT product_sn
-          FROM mo_process_step_production_result
-          ${whereClause}
-        ),
-        work_orders AS (
-          SELECT DISTINCT mbi.work_order_code
-          FROM filtered_sn fs
-          JOIN mo_beam_info mbi ON mbi.beam_sn = fs.product_sn
-          WHERE mbi.work_order_code IS NOT NULL
-          UNION
-          SELECT DISTINCT mti.work_order_code
-          FROM filtered_sn fs
-          JOIN mo_tag_info mti ON mti.tag_sn = fs.product_sn
-          WHERE mti.work_order_code IS NOT NULL
-        )
-        SELECT DISTINCT
-          mpo.work_order_code,
-          mpo.material_name,
-          mpo.material_code
-        FROM work_orders wo
-        JOIN mo_produce_order mpo ON mpo.work_order_code = wo.work_order_code
-        WHERE mpo.material_name IS NOT NULL
-          AND mpo.material_code IS NOT NULL
-        ORDER BY mpo.material_name, mpo.material_code;
-      `);
+      WITH filtered_sn AS (
+        SELECT DISTINCT product_sn
+        FROM mo_process_step_production_result
+        ${whereClause}
+      ),
+      work_orders AS (
+        SELECT DISTINCT mbi.work_order_code
+        FROM filtered_sn fs
+        JOIN mo_beam_info mbi ON mbi.beam_sn = fs.product_sn
+        WHERE mbi.work_order_code IS NOT NULL
+        UNION
+        SELECT DISTINCT mti.work_order_code
+        FROM filtered_sn fs
+        JOIN mo_tag_info mti ON mti.tag_sn = fs.product_sn
+        WHERE mti.work_order_code IS NOT NULL
+      )
+      SELECT DISTINCT
+        mpo.work_order_code,
+        mpo.material_name,
+        mpo.material_code
+      FROM work_orders wo
+      JOIN mo_produce_order mpo ON mpo.work_order_code = wo.work_order_code
+      WHERE mpo.material_name IS NOT NULL
+        AND mpo.material_code IS NOT NULL
+      ORDER BY mpo.material_name, mpo.material_code;
+    `);
+
+      // 去重
       const unique = new Map<string, ProductOption>();
-
       for (const row of rows) {
-        console.log(row);
-        const materialName = row.material_name?.trim();
-        if (!materialName) {
-          continue;
-        }
-
-        const materialCode = row.material_code?.trim() ?? '';
-        const code = materialName;
-        const label = `${materialName}${materialCode}`;
-
-        if (!unique.has(code)) {
-          unique.set(code, { label, code });
-        }
+        const name = row.material_name?.trim();
+        const code = row.material_code?.trim() ?? '';
+        if (name && !unique.has(name))
+          unique.set(name, { label: `${name}${code}`, code: name });
       }
-
-      return Array.from(unique.values());
+      return [...unique.values()];
     } catch (error) {
-      this.logger.error('Failed to load dashboard product options', error);
+      this.logger.error(
+        `Failed to load dashboard product options: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
