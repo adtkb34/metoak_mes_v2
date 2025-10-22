@@ -17,13 +17,12 @@
       </el-form-item>
       <el-form-item label="产地">
         <el-select
-          class="filter-select filter-select--multiple"
+          class="filter-select"
           clearable
-          multiple
           filterable
           placeholder="选择产地"
           :disabled="loading || !originOptions.length"
-          :model-value="origins"
+          :model-value="origin"
           @update:model-value="onOriginChange"
         >
           <el-option
@@ -74,19 +73,19 @@ import type { SelectOption } from "../types";
 interface Props {
   dateRange: string[];
   product: string | null;
-  origins: ProductOrigin[];
+  origin: ProductOrigin | null;
   productOptions: SelectOption[];
   originOptions: SelectOption[];
   loading?: boolean;
 }
 
 const props = defineProps<Props>();
-const { dateRange, product, origins, productOptions, originOptions, loading } =
+const { dateRange, product, origin, productOptions, originOptions, loading } =
   toRefs(props);
 const emit = defineEmits([
   "update:dateRange",
   "update:product",
-  "update:origins",
+  "update:origin",
   "submit",
   "reset"
 ]);
@@ -99,8 +98,8 @@ const onProductChange = (value: string | null) => {
   emit("update:product", value ?? null);
 };
 
-const onOriginChange = (value: ProductOrigin[] | null) => {
-  emit("update:origins", value ?? []);
+const onOriginChange = (value: ProductOrigin | null) => {
+  emit("update:origin", value ?? null);
 };
 </script>
 
@@ -127,8 +126,4 @@ const onOriginChange = (value: ProductOrigin[] | null) => {
   max-width: 100%;
 }
 
-.filter-select--multiple {
-  min-width: 240px;
-  width: 260px;
-}
 </style>

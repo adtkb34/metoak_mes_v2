@@ -15,6 +15,14 @@ import type {
   DashboardProductOption
 } from "./dashboard.types";
 
+const STEP_NO_TO_PROCESS_ID: Record<string, string> = {
+  "002": "AA"
+};
+
+const PROCESS_ID_TO_STEP_NO: Record<string, string> = {
+  AA: "002"
+};
+
 interface ExtendedProcessMetric extends ProcessMetric {
   products: string[];
   origins: ProductOrigin[];
@@ -506,17 +514,21 @@ function unique<T>(array: T[]): T[] {
   return Array.from(new Set(array));
 }
 
-function normalizeOrigins(origins?: ProductOrigin[] | null): ProductOrigin[] {
-  if (!Array.isArray(origins)) {
+function normalizeOrigins(
+  origin?: ProductOrigin | ProductOrigin[] | null
+): ProductOrigin[] {
+  if (origin === undefined || origin === null) {
     return [];
   }
+
+  const candidates = Array.isArray(origin) ? origin : [origin];
 
   const validOrigins = new Set<ProductOrigin>([
     ProductOrigin.Suzhou,
     ProductOrigin.Mianyang
   ]);
 
-  return origins.filter(origin => validOrigins.has(origin));
+  return candidates.filter(item => validOrigins.has(item));
 }
 
 export function buildDashboardSummary(
@@ -524,13 +536,17 @@ export function buildDashboardSummary(
 ): DashboardSummaryResponse {
   const { startDate, endDate } = params;
   const product = params.product ?? null;
-  const origins = normalizeOrigins(params.origins);
+  const origins = normalizeOrigins(params.origin);
+  const stepProcessId = params.stepTypeNo
+    ? STEP_NO_TO_PROCESS_ID[params.stepTypeNo]
+    : undefined;
 
   const filteredProcesses = processMetricsSeed.filter(item => {
+    const matchStep = !stepProcessId || item.id === stepProcessId;
     const matchProduct = !product || item.products.includes(product);
     const matchOrigin = !origins.length || origins.some(origin => item.origins.includes(origin));
     const matchDate = inDateRange(item.lastUpdated, startDate, endDate);
-    return matchProduct && matchOrigin && matchDate;
+    return matchStep && matchProduct && matchOrigin && matchDate;
   });
 
   const filteredWorkOrders = workOrderSeed.filter(item => {
@@ -544,7 +560,7 @@ export function buildDashboardSummary(
   });
 
   const processes: ProcessMetric[] = filteredProcesses.map(item => ({
-    id: item.id,
+    id: stepProcessId ? params.stepTypeNo ?? item.id : item.id,
     name: item.name,
     output: item.output,
     firstPassYield: item.firstPassYield,
@@ -574,13 +590,17 @@ export function buildDashboardSummary(
 export function buildProcessDetail(
   params: ProcessDetailParams
 ): ProcessDetailData {
-  const base = processDetailSeed[params.processId];
+  const normalizedId = processDetailSeed[params.processId]
+    ? params.processId
+    : STEP_NO_TO_PROCESS_ID[params.processId] ?? params.processId;
+
+  const base = normalizedId ? processDetailSeed[normalizedId] : undefined;
   if (!base) {
     throw new Error("未找到对应的工序数据");
   }
 
   const product = params.product ?? null;
-  const origins = normalizeOrigins(params.origins);
+  const origins = normalizeOrigins(params.origin);
 
   let rows = base.rows.filter(row => {
     const matchProduct = !product || row.product === product;
@@ -597,7 +617,7 @@ export function buildProcessDetail(
   const stationOptions = toStringOptions(unique(rows.map(row => row.station)));
 
   return {
-    processId: base.processId,
+    processId: params.processId,
     processName: base.processName,
     equipmentOptions,
     stationOptions,

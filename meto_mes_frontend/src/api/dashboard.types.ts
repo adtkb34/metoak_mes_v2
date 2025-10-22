@@ -4,11 +4,13 @@ export interface DashboardSummaryParams {
   startDate?: string;
   endDate?: string;
   product?: string | null;
-  origins?: ProductOrigin[];
+  origin?: ProductOrigin;
+  stepTypeNo?: string;
 }
 
 export interface ProcessDetailParams extends DashboardSummaryParams {
   processId: string;
+  equipmentIds?: string[];
 }
 
 export interface DashboardProductsParams {
