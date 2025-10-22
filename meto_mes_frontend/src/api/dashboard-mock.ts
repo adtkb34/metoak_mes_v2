@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { ProductOrigin, getProductOriginLabel } from "@/enums/product-origin";
 import type {
   DashboardSummaryResponse,
   ProcessDetailData,
@@ -9,12 +10,14 @@ import type {
 } from "@/views/dashboard/types";
 import type {
   DashboardSummaryParams,
-  ProcessDetailParams
+  ProcessDetailParams,
+  DashboardProductsParams,
+  DashboardProductOption
 } from "./dashboard.types";
 
 interface ExtendedProcessMetric extends ProcessMetric {
   products: string[];
-  origins: string[];
+  origins: ProductOrigin[];
   lastUpdated: string;
 }
 
@@ -29,7 +32,7 @@ const processMetricsSeed: ExtendedProcessMetric[] = [
     trend: 3.2,
     targetOutput: 360,
     products: ["XT-1", "XT-2"],
-    origins: ["上海", "苏州"],
+    origins: [ProductOrigin.Suzhou, ProductOrigin.Mianyang],
     lastUpdated: "2025-01-10"
   },
   {
@@ -42,7 +45,7 @@ const processMetricsSeed: ExtendedProcessMetric[] = [
     trend: -1.2,
     targetOutput: 310,
     products: ["XT-1", "XT-Pro"],
-    origins: ["上海", "深圳"],
+    origins: [ProductOrigin.Suzhou],
     lastUpdated: "2025-01-10"
   },
   {
@@ -55,7 +58,7 @@ const processMetricsSeed: ExtendedProcessMetric[] = [
     trend: 0.6,
     targetOutput: 280,
     products: ["XT-1", "XT-2", "XT-Pro"],
-    origins: ["苏州", "深圳"],
+    origins: [ProductOrigin.Mianyang],
     lastUpdated: "2025-01-10"
   },
   {
@@ -68,7 +71,7 @@ const processMetricsSeed: ExtendedProcessMetric[] = [
     trend: 1.8,
     targetOutput: 380,
     products: ["XT-1", "XT-Lite"],
-    origins: ["上海", "武汉"],
+    origins: [ProductOrigin.Suzhou],
     lastUpdated: "2025-01-09"
   },
   {
@@ -81,7 +84,7 @@ const processMetricsSeed: ExtendedProcessMetric[] = [
     trend: 0.4,
     targetOutput: 345,
     products: ["XT-1", "XT-2"],
-    origins: ["苏州", "武汉"],
+    origins: [ProductOrigin.Mianyang],
     lastUpdated: "2025-01-09"
   },
   {
@@ -94,7 +97,7 @@ const processMetricsSeed: ExtendedProcessMetric[] = [
     trend: -0.8,
     targetOutput: 270,
     products: ["XT-Pro", "XT-Lite"],
-    origins: ["深圳", "武汉"],
+    origins: [ProductOrigin.Suzhou, ProductOrigin.Mianyang],
     lastUpdated: "2025-01-08"
   }
 ];
@@ -108,7 +111,7 @@ const workOrderSeed: WorkOrderRow[] = [
     calibrationPass: 410,
     finalPass: 398,
     product: "XT-1",
-    origin: "上海",
+    origin: ProductOrigin.Suzhou,
     startDate: "2025-01-06",
     dueDate: "2025-01-12"
   },
@@ -120,7 +123,7 @@ const workOrderSeed: WorkOrderRow[] = [
     calibrationPass: 288,
     finalPass: 279,
     product: "XT-Pro",
-    origin: "深圳",
+    origin: ProductOrigin.Mianyang,
     startDate: "2025-01-07",
     dueDate: "2025-01-14"
   },
@@ -132,7 +135,7 @@ const workOrderSeed: WorkOrderRow[] = [
     calibrationPass: 174,
     finalPass: 168,
     product: "XT-Lite",
-    origin: "武汉",
+    origin: ProductOrigin.Mianyang,
     startDate: "2025-01-08",
     dueDate: "2025-01-15"
   },
@@ -144,7 +147,7 @@ const workOrderSeed: WorkOrderRow[] = [
     calibrationPass: 340,
     finalPass: 334,
     product: "XT-2",
-    origin: "苏州",
+    origin: ProductOrigin.Suzhou,
     startDate: "2025-01-05",
     dueDate: "2025-01-13"
   },
@@ -156,7 +159,7 @@ const workOrderSeed: WorkOrderRow[] = [
     calibrationPass: 155,
     finalPass: 152,
     product: "XT-1",
-    origin: "上海",
+    origin: ProductOrigin.Suzhou,
     startDate: "2025-01-09",
     dueDate: "2025-01-16"
   }
@@ -183,7 +186,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "AA-20250110-01",
         product: "XT-1",
-        origin: "上海",
+        origin: ProductOrigin.Suzhou,
         batch: "XT1-20250110-A",
         date: "2025-01-10",
         equipment: "AA-01",
@@ -201,7 +204,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "AA-20250110-02",
         product: "XT-2",
-        origin: "苏州",
+        origin: ProductOrigin.Suzhou,
         batch: "XT2-20250110-B",
         date: "2025-01-10",
         equipment: "AA-02",
@@ -219,7 +222,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "AA-20250109-01",
         product: "XT-1",
-        origin: "上海",
+        origin: ProductOrigin.Suzhou,
         batch: "XT1-20250109-A",
         date: "2025-01-09",
         equipment: "AA-03",
@@ -237,7 +240,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "AA-20250109-02",
         product: "XT-2",
-        origin: "苏州",
+        origin: ProductOrigin.Suzhou,
         batch: "XT2-20250109-A",
         date: "2025-01-09",
         equipment: "AA-01",
@@ -255,7 +258,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "AA-20250108-01",
         product: "XT-1",
-        origin: "上海",
+        origin: ProductOrigin.Suzhou,
         batch: "XT1-20250108-A",
         date: "2025-01-08",
         equipment: "AA-02",
@@ -288,7 +291,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "CAL-20250110-01",
         product: "XT-1",
-        origin: "上海",
+        origin: ProductOrigin.Suzhou,
         batch: "XT1-20250110-C",
         date: "2025-01-10",
         equipment: "CAL-01",
@@ -306,7 +309,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "CAL-20250110-02",
         product: "XT-Pro",
-        origin: "深圳",
+        origin: ProductOrigin.Mianyang,
         batch: "XTP-20250110-A",
         date: "2025-01-10",
         equipment: "CAL-02",
@@ -324,7 +327,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "CAL-20250109-01",
         product: "XT-1",
-        origin: "上海",
+        origin: ProductOrigin.Suzhou,
         batch: "XT1-20250109-C",
         date: "2025-01-09",
         equipment: "CAL-03",
@@ -342,7 +345,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "CAL-20250109-02",
         product: "XT-Pro",
-        origin: "深圳",
+        origin: ProductOrigin.Mianyang,
         batch: "XTP-20250109-A",
         date: "2025-01-09",
         equipment: "CAL-02",
@@ -360,7 +363,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "CAL-20250108-01",
         product: "XT-1",
-        origin: "上海",
+        origin: ProductOrigin.Suzhou,
         batch: "XT1-20250108-C",
         date: "2025-01-08",
         equipment: "CAL-01",
@@ -392,7 +395,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "FQC-20250110-01",
         product: "XT-1",
-        origin: "苏州",
+        origin: ProductOrigin.Suzhou,
         batch: "XT1-20250110-F",
         date: "2025-01-10",
         equipment: "FQC-01",
@@ -410,7 +413,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "FQC-20250110-02",
         product: "XT-Pro",
-        origin: "深圳",
+        origin: ProductOrigin.Mianyang,
         batch: "XTP-20250110-F",
         date: "2025-01-10",
         equipment: "FQC-02",
@@ -428,7 +431,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "FQC-20250109-01",
         product: "XT-2",
-        origin: "苏州",
+        origin: ProductOrigin.Suzhou,
         batch: "XT2-20250109-F",
         date: "2025-01-09",
         equipment: "FQC-01",
@@ -446,7 +449,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "FQC-20250109-02",
         product: "XT-Pro",
-        origin: "深圳",
+        origin: ProductOrigin.Mianyang,
         batch: "XTP-20250109-F",
         date: "2025-01-09",
         equipment: "FQC-02",
@@ -464,7 +467,7 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
       {
         id: "FQC-20250108-01",
         product: "XT-1",
-        origin: "苏州",
+        origin: ProductOrigin.Suzhou,
         batch: "XT1-20250108-F",
         date: "2025-01-08",
         equipment: "FQC-01",
@@ -483,8 +486,14 @@ const processDetailSeed: Record<string, ProcessDetailSeed> = {
   }
 };
 
-function toOptions(values: string[]): SelectOption[] {
+function toStringOptions(values: string[]): SelectOption[] {
   return values.map(value => ({ label: value, value }));
+}
+
+function toOriginOptions(values: ProductOrigin[]): SelectOption[] {
+  return values
+    .map(value => ({ label: getProductOriginLabel(value), value }))
+    .filter(option => option.label);
 }
 
 function inDateRange(date: string, start?: string, end?: string) {
@@ -497,8 +506,17 @@ function unique<T>(array: T[]): T[] {
   return Array.from(new Set(array));
 }
 
-function normalizeOrigins(origins?: string[] | null): string[] {
-  return Array.isArray(origins) ? origins : [];
+function normalizeOrigins(origins?: ProductOrigin[] | null): ProductOrigin[] {
+  if (!Array.isArray(origins)) {
+    return [];
+  }
+
+  const validOrigins = new Set<ProductOrigin>([
+    ProductOrigin.Suzhou,
+    ProductOrigin.Mianyang
+  ]);
+
+  return origins.filter(origin => validOrigins.has(origin));
 }
 
 export function buildDashboardSummary(
@@ -545,8 +563,8 @@ export function buildDashboardSummary(
 
   return {
     filters: {
-      products: toOptions(productOptions),
-      origins: toOptions(originOptions)
+      products: toStringOptions(productOptions),
+      origins: toOriginOptions(originOptions)
     },
     processes,
     workOrders: filteredWorkOrders
@@ -575,8 +593,8 @@ export function buildProcessDetail(
     rows = [];
   }
 
-  const equipmentOptions = toOptions(unique(rows.map(row => row.equipment)));
-  const stationOptions = toOptions(unique(rows.map(row => row.station)));
+  const equipmentOptions = toStringOptions(unique(rows.map(row => row.equipment)));
+  const stationOptions = toStringOptions(unique(rows.map(row => row.station)));
 
   return {
     processId: base.processId,
@@ -585,5 +603,34 @@ export function buildProcessDetail(
     stationOptions,
     rows
   };
+}
+
+export function buildDashboardProducts(
+  params: DashboardProductsParams
+): DashboardProductOption[] {
+  const { startDate, endDate } = params;
+
+  const processProducts = processMetricsSeed
+    .filter(item => inDateRange(item.lastUpdated, startDate, endDate))
+    .flatMap(item => item.products);
+
+  const orderProducts = workOrderSeed
+    .filter(order => {
+      if (!startDate || !endDate) {
+        return true;
+      }
+      return (
+        inDateRange(order.startDate, startDate, endDate) ||
+        inDateRange(order.dueDate, startDate, endDate)
+      );
+    })
+    .map(order => order.product);
+
+  const options = unique(processProducts.concat(orderProducts));
+
+  return options.map(product => ({
+    label: product,
+    code: product
+  }));
 }
 

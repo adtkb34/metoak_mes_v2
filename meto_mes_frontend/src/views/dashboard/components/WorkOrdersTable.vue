@@ -7,7 +7,11 @@
         <el-table-column prop="orderId" label="工单号" width="140" />
         <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip />
         <el-table-column prop="product" label="产品" width="110" />
-        <el-table-column prop="origin" label="产地" width="110" />
+        <el-table-column label="产地" width="110">
+          <template #default="{ row }">
+            {{ getProductOriginLabel(row.origin) }}
+          </template>
+        </el-table-column>
         <el-table-column label="预期完成数" width="130">
           <template #default="{ row }">
             {{ formatNumber(row.expectedQuantity) }}
@@ -36,6 +40,7 @@
 
 <script setup lang="ts">
 import { toRefs } from "vue";
+import { getProductOriginLabel } from "@/enums/product-origin";
 import type { WorkOrderRow } from "../types";
 
 interface Props {

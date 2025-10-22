@@ -1,11 +1,13 @@
 import { defineFakeRoute } from "vite-plugin-fake-server/client";
 import type {
   DashboardSummaryParams,
-  ProcessDetailParams
+  ProcessDetailParams,
+  DashboardProductsParams
 } from "@/api/dashboard.types";
 import {
   buildDashboardSummary,
-  buildProcessDetail
+  buildProcessDetail,
+  buildDashboardProducts
 } from "@/api/dashboard-mock";
 
 export default defineFakeRoute([
@@ -50,6 +52,25 @@ export default defineFakeRoute([
         return {
           success: false,
           message: error instanceof Error ? error.message : "获取工序详情失败"
+        };
+      }
+    }
+  },
+  {
+    url: "/dashboard/products",
+    method: "get",
+    response: ({ query }) => {
+      const params = (query ?? {}) as DashboardProductsParams;
+      try {
+        const data = buildDashboardProducts(params);
+        return {
+          success: true,
+          data
+        };
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : "获取产品选项失败"
         };
       }
     }

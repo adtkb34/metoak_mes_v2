@@ -68,12 +68,13 @@
 
 <script setup lang="ts">
 import { toRefs } from "vue";
+import type { ProductOrigin } from "@/enums/product-origin";
 import type { SelectOption } from "../types";
 
 interface Props {
   dateRange: string[];
   product: string | null;
-  origins: string[];
+  origins: ProductOrigin[];
   productOptions: SelectOption[];
   originOptions: SelectOption[];
   loading?: boolean;
@@ -97,7 +98,7 @@ const onProductChange = (value: string | null) => {
   emit("update:product", value ?? null);
 };
 
-const onOriginChange = (value: string[] | null) => {
+const onOriginChange = (value: ProductOrigin[] | null) => {
   emit("update:origins", value ?? []);
 };
 

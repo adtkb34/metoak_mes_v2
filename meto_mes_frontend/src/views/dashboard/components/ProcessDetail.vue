@@ -100,7 +100,11 @@
             <el-table-column prop="date" label="日期" width="110" />
             <el-table-column prop="batch" label="批次" width="160" show-overflow-tooltip />
             <el-table-column prop="product" label="产品" width="110" />
-            <el-table-column prop="origin" label="产地" width="110" />
+            <el-table-column label="产地" width="110">
+              <template #default="{ row }">
+                {{ getProductOriginLabel(row.origin) }}
+              </template>
+            </el-table-column>
             <el-table-column prop="equipment" label="设备" width="110" />
             <el-table-column prop="station" label="工站" width="120" />
             <el-table-column label="产量" width="100">
@@ -151,6 +155,7 @@ import {
   TooltipComponent
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import { getProductOriginLabel } from "@/enums/product-origin";
 import type { DefectBreakdown, ProcessDetailData, ProcessDetailRow } from "../types";
 
 use([BarChart, LineChart, GridComponent, LegendComponent, TitleComponent, TooltipComponent, CanvasRenderer]);

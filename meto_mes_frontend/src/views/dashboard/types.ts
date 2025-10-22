@@ -1,12 +1,14 @@
+import type { ProductOrigin } from "@/enums/product-origin";
+
 export interface SelectOption {
   label: string;
-  value: string;
+  value: string | number;
 }
 
 export interface FilterState {
   dateRange: string[];
   product: string | null;
-  origins: string[];
+  origins: ProductOrigin[];
 }
 
 export interface ProcessMetric {
@@ -37,7 +39,7 @@ export interface WorkOrderRow {
   calibrationPass: number;
   finalPass: number;
   product: string;
-  origin: string;
+  origin: ProductOrigin;
   startDate: string;
   dueDate: string;
 }
@@ -50,7 +52,7 @@ export interface DefectBreakdown {
 export interface ProcessDetailRow {
   id: string;
   product: string;
-  origin: string;
+  origin: ProductOrigin;
   batch: string;
   date: string;
   equipment: string;

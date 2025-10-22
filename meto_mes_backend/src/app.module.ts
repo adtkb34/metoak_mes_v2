@@ -21,6 +21,7 @@ import { AdjustFocusModule } from './adjust-focus/adjust_focus.module';
 import { StereoPostcheckModule } from './stereo-postcheck/stereo-postcheck.module';
 import { Stereo_PrecheckModule } from './stereo_precheck/stereo_precheck.module';
 import { TransferBoxModule } from './transfer-box/transfer-box.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -42,7 +43,8 @@ import { TransferBoxModule } from './transfer-box/transfer-box.module';
     AdjustFocusModule,
     StereoPostcheckModule,
     Stereo_PrecheckModule,
-    TransferBoxModule
+    TransferBoxModule,
+    DashboardModule
   ],
   controllers: [AppController, ImuController],
   providers: [AppService],
