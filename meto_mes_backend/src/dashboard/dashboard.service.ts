@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProductOrigin } from '../common/enums/product-origin.enum';
 
-interface ProductOption {
+export interface ProductOption {
   label: string;
   code: string;
 }
@@ -25,8 +25,8 @@ export class DashboardService {
 
     const conditions: Prisma.Sql[] = [Prisma.sql`product_sn IS NOT NULL`];
 
-    const normalizedStart = this.normalizeDate(startDate, 'start');
-    const normalizedEnd = this.normalizeDate(endDate, 'end');
+    const normalizedStart = this.normalizeDate('start', startDate);
+    const normalizedEnd = this.normalizeDate('end', endDate);
 
     if (normalizedStart) {
       conditions.push(Prisma.sql`add_time >= ${normalizedStart}`);
@@ -36,7 +36,7 @@ export class DashboardService {
       conditions.push(Prisma.sql`add_time <= ${normalizedEnd}`);
     }
 
-    const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, Prisma.sql` AND `)}`;
+    const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
 
     try {
       const prismaClient = this.prisma.getClientByOrigin(origin);
@@ -94,7 +94,7 @@ export class DashboardService {
     }
   }
 
-  private normalizeDate(value?: string, kind: 'start' | 'end'): string | undefined {
+  private normalizeDate(kind: 'start' | 'end', value?: string): string | undefined {
     if (!value) {
       return undefined;
     }
