@@ -5,11 +5,14 @@ import type {
 } from "@/views/dashboard/types";
 import {
   buildDashboardSummary,
-  buildProcessDetail
+  buildProcessDetail,
+  buildDashboardProducts
 } from "./dashboard-mock";
 import type {
   DashboardSummaryParams,
-  ProcessDetailParams
+  ProcessDetailParams,
+  DashboardProductsParams,
+  DashboardProductOption
 } from "./dashboard.types";
 
 interface ApiResponse<T> {
@@ -20,6 +23,7 @@ interface ApiResponse<T> {
 
 const DASHBOARD_SUMMARY_URL = "/dashboard/summary";
 const PROCESS_DETAIL_URL = "/dashboard/process-detail";
+const DASHBOARD_PRODUCTS_URL = "/dashboard/products";
 
 const isMockEnabled = (() => {
   const flag = import.meta.env.VITE_USE_DASHBOARD_MOCK;
@@ -65,4 +69,25 @@ export async function fetchProcessDetail(
   return unwrapResponse(response, "获取工序详情失败");
 }
 
-export type { DashboardSummaryParams, ProcessDetailParams };
+export async function fetchDashboardProducts(
+  params: DashboardProductsParams
+): Promise<DashboardProductOption[]> {
+  if (isMockEnabled) {
+    return Promise.resolve(buildDashboardProducts(params));
+  }
+
+  const response = await http.request<ApiResponse<DashboardProductOption[]>>(
+    "get",
+    DASHBOARD_PRODUCTS_URL,
+    { params }
+  );
+
+  return unwrapResponse(response, "获取产品选项失败");
+}
+
+export type {
+  DashboardSummaryParams,
+  ProcessDetailParams,
+  DashboardProductsParams,
+  DashboardProductOption
+};

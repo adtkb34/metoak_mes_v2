@@ -85,13 +85,17 @@ import type {
   SelectOption,
   WorkOrderRow
 } from "./types";
-import { fetchDashboardSummary, fetchProcessDetail } from "@/api/dashboard";
+import {
+  fetchDashboardSummary,
+  fetchProcessDetail,
+  fetchDashboardProducts
+} from "@/api/dashboard";
 import type { DashboardSummaryParams } from "@/api/dashboard";
+import { PRODUCT_ORIGIN_OPTIONS } from "@/enums/product-origin";
 
 const getDefaultDateRange = (): string[] => {
-  const end = dayjs();
-  const start = end.subtract(6, "day");
-  return [start.format("YYYY-MM-DD"), end.format("YYYY-MM-DD")];
+  const today = dayjs().format("YYYY-MM-DD");
+  return [today, today];
 };
 
 const filters = reactive<FilterState>({
@@ -101,7 +105,9 @@ const filters = reactive<FilterState>({
 });
 
 const productOptions = ref<SelectOption[]>([]);
-const originOptions = ref<SelectOption[]>([]);
+const originOptions = ref<SelectOption[]>(
+  PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }))
+);
 const processes = ref<ProcessMetric[]>([]);
 const workOrders = ref<WorkOrderRow[]>([]);
 
@@ -141,9 +147,35 @@ const fetchSummary = async () => {
   summaryError.value = null;
   try {
     const params = buildSummaryParams();
+
+    const shouldFetchProducts = Boolean(params.startDate && params.endDate);
+    const productOptionsPromise = shouldFetchProducts
+      ? fetchDashboardProducts({
+          startDate: params.startDate,
+          endDate: params.endDate
+        }).catch((error: any) => {
+          const message = error?.message ?? "获取产品选项失败";
+          ElMessage.warning(message);
+          return [];
+        })
+      : Promise.resolve([]);
+
     const result = await fetchDashboardSummary(params);
-    productOptions.value = result.filters.products;
-    originOptions.value = result.filters.origins;
+    const productOptionPayload = await productOptionsPromise;
+
+    const nextProductOptions = productOptionPayload.length
+      ? productOptionPayload.map(item => ({ label: item.label, value: item.code }))
+      : result.filters.products;
+
+    productOptions.value = nextProductOptions;
+    const availableProductCodes = new Set(nextProductOptions.map(item => item.value));
+    if (filters.product && !availableProductCodes.has(filters.product)) {
+      filters.product = null;
+    }
+
+    originOptions.value = result.filters.origins.length
+      ? result.filters.origins
+      : PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }));
     processes.value = result.processes;
     workOrders.value = result.workOrders;
     if (!result.processes.length && !result.workOrders.length) {

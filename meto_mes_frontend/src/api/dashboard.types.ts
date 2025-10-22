@@ -1,10 +1,22 @@
+import type { ProductOrigin } from "@/enums/product-origin";
+
 export interface DashboardSummaryParams {
   startDate?: string;
   endDate?: string;
   product?: string | null;
-  origins?: string[];
+  origins?: ProductOrigin[];
 }
 
 export interface ProcessDetailParams extends DashboardSummaryParams {
   processId: string;
+}
+
+export interface DashboardProductsParams {
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface DashboardProductOption {
+  label: string;
+  code: string;
 }
