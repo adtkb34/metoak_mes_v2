@@ -3,7 +3,7 @@
     <el-form :inline="true" label-width="80px" class="filter-form">
       <el-form-item label="时间范围">
         <el-date-picker
-          class="w-80"
+          class="filter-date-picker"
           type="daterange"
           unlink-panels
           range-separator="至"
@@ -17,7 +17,7 @@
       </el-form-item>
       <el-form-item label="产品">
         <el-select
-          class="w-56"
+          class="filter-select"
           clearable
           filterable
           placeholder="选择产品"
@@ -35,7 +35,7 @@
       </el-form-item>
       <el-form-item label="产地">
         <el-select
-          class="w-64"
+          class="filter-select filter-select--multiple"
           clearable
           multiple
           filterable
@@ -113,5 +113,21 @@ const onOriginChange = (value: string[] | null) => {
 
 .filters-panel {
   width: 100%;
+}
+
+.filter-date-picker {
+  width: 320px;
+  max-width: 100%;
+}
+
+.filter-select {
+  min-width: 220px;
+  width: 240px;
+  max-width: 100%;
+}
+
+.filter-select--multiple {
+  min-width: 240px;
+  width: 260px;
 }
 </style>
