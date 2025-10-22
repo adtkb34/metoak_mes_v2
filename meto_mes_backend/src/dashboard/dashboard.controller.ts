@@ -14,7 +14,11 @@ export class DashboardController {
   ): Promise<{ success: true; data: ProductOption[] }> {
     const origin = this.parseOrigin(originParam);
 
-    const data = await this.dashboardService.getProductOptions({ startDate, endDate, origin });
+    const data = await this.dashboardService.getProductOptions({
+      startDate,
+      endDate,
+      origin,
+    });
 
     return {
       success: true,

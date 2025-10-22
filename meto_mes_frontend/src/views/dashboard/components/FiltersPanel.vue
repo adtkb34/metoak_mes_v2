@@ -81,7 +81,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const { dateRange, product, origins, productOptions, originOptions, loading } = toRefs(props);
+const { dateRange, product, origins, productOptions, originOptions, loading } =
+  toRefs(props);
 const emit = defineEmits([
   "update:dateRange",
   "update:product",
@@ -101,7 +102,6 @@ const onProductChange = (value: string | null) => {
 const onOriginChange = (value: ProductOrigin[] | null) => {
   emit("update:origins", value ?? []);
 };
-
 </script>
 
 <style scoped>

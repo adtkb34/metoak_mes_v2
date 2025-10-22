@@ -20,7 +20,9 @@ export class DashboardService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async getProductOptions(params: ProductOptionQueryParams): Promise<ProductOption[]> {
+  async getProductOptions(
+    params: ProductOptionQueryParams,
+  ): Promise<ProductOption[]> {
     const { startDate, endDate, origin } = params;
 
     const conditions: Prisma.Sql[] = [Prisma.sql`product_sn IS NOT NULL`];
@@ -61,6 +63,7 @@ export class DashboardService {
           WHERE mti.work_order_code IS NOT NULL
         )
         SELECT DISTINCT
+          mpo.work_order_code,
           mpo.material_name,
           mpo.material_code
         FROM work_orders wo
@@ -69,10 +72,10 @@ export class DashboardService {
           AND mpo.material_code IS NOT NULL
         ORDER BY mpo.material_name, mpo.material_code;
       `);
-
       const unique = new Map<string, ProductOption>();
 
       for (const row of rows) {
+        console.log(row);
         const materialName = row.material_name?.trim();
         if (!materialName) {
           continue;
@@ -94,7 +97,10 @@ export class DashboardService {
     }
   }
 
-  private normalizeDate(kind: 'start' | 'end', value?: string): string | undefined {
+  private normalizeDate(
+    kind: 'start' | 'end',
+    value?: string,
+  ): string | undefined {
     if (!value) {
       return undefined;
     }
@@ -105,9 +111,7 @@ export class DashboardService {
     }
 
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      return kind === 'start'
-        ? `${trimmed} 00:00:00`
-        : `${trimmed} 23:59:59`;
+      return kind === 'start' ? `${trimmed} 00:00:00` : `${trimmed} 23:59:59`;
     }
 
     return trimmed;

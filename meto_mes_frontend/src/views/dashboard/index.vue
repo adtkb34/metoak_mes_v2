@@ -22,7 +22,12 @@
           <span class="text-base font-medium text-gray-700">
             {{ headerTitle }}
           </span>
-          <el-button v-if="isDetailVisible" link type="primary" @click="handleBackToOverview">
+          <el-button
+            v-if="isDetailVisible"
+            link
+            type="primary"
+            @click="handleBackToOverview"
+          >
             返回工序概览
           </el-button>
         </div>
@@ -120,12 +125,17 @@ const selectedProcessId = ref<string | null>(null);
 const processDetail = ref<ProcessDetailData | null>(null);
 
 const isDetailVisible = computed(() => selectedProcessId.value !== null);
-const filtersLoading = computed(() => overviewLoading.value || detailLoading.value);
+const filtersLoading = computed(
+  () => overviewLoading.value || detailLoading.value
+);
 
 const selectedProcessName = computed(() => {
   if (!selectedProcessId.value) return "";
   if (processDetail.value?.processName) return processDetail.value.processName;
-  return processes.value.find(item => item.id === selectedProcessId.value)?.name ?? selectedProcessId.value;
+  return (
+    processes.value.find(item => item.id === selectedProcessId.value)?.name ??
+    selectedProcessId.value
+  );
 });
 
 const headerTitle = computed(() =>
@@ -144,7 +154,8 @@ const resetProductSelection = () => {
 
 const refreshProductOptions = async () => {
   const hasValidRange = filters.dateRange.length === 2;
-  const selectedOrigin = filters.origins.length === 1 ? filters.origins[0] : undefined;
+  const selectedOrigin =
+    filters.origins.length === 1 ? filters.origins[0] : undefined;
 
   if (!hasValidRange || selectedOrigin === undefined) {
     return;
@@ -220,7 +231,8 @@ const fetchSummary = async () => {
   summaryError.value = null;
   try {
     const params = buildSummaryParams();
-    const selectedOrigin = filters.origins.length === 1 ? filters.origins[0] : undefined;
+    const selectedOrigin =
+      filters.origins.length === 1 ? filters.origins[0] : undefined;
 
     const shouldFetchProducts = Boolean(
       params.startDate && params.endDate && selectedOrigin !== undefined
@@ -238,16 +250,23 @@ const fetchSummary = async () => {
       : Promise.resolve([]);
 
     const result = await fetchDashboardSummary(params);
-    const productOptionPayload = shouldFetchProducts ? await productOptionsPromise : [];
+    const productOptionPayload = shouldFetchProducts
+      ? await productOptionsPromise
+      : [];
 
     const nextProductOptions = shouldFetchProducts
       ? productOptionPayload.length
-        ? productOptionPayload.map(item => ({ label: item.label, value: item.code }))
+        ? productOptionPayload.map(item => ({
+            label: item.label,
+            value: item.code
+          }))
         : result.filters.products
       : [];
 
     productOptions.value = nextProductOptions;
-    const availableProductCodes = new Set(nextProductOptions.map(item => item.value));
+    const availableProductCodes = new Set(
+      nextProductOptions.map(item => item.value)
+    );
     if (filters.product && !availableProductCodes.has(filters.product)) {
       filters.product = null;
     }

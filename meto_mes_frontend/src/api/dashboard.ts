@@ -31,7 +31,10 @@ const isMockEnabled = (() => {
   return String(flag).toLowerCase() === "true";
 })();
 
-function unwrapResponse<T>(response: ApiResponse<T>, defaultMessage: string): T {
+function unwrapResponse<T>(
+  response: ApiResponse<T>,
+  defaultMessage: string
+): T {
   if (!response.success) {
     throw new Error(response.message ?? defaultMessage);
   }
@@ -72,9 +75,10 @@ export async function fetchProcessDetail(
 export async function fetchDashboardProducts(
   params: DashboardProductsParams
 ): Promise<DashboardProductOption[]> {
-  if (isMockEnabled) {
-    return Promise.resolve(buildDashboardProducts(params));
-  }
+  // if (isMockEnabled) {
+
+  //   return Promise.resolve(buildDashboardProducts(params));
+  // }
 
   const response = await http.request<ApiResponse<DashboardProductOption[]>>(
     "get",
