@@ -14,6 +14,7 @@ export interface ProcessDetailParams extends DashboardSummaryParams {
 export interface DashboardProductsParams {
   startDate?: string;
   endDate?: string;
+  origin?: ProductOrigin;
 }
 
 export interface DashboardProductOption {

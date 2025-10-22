@@ -15,24 +15,6 @@
           @update:model-value="onDateRangeChange"
         />
       </el-form-item>
-      <el-form-item label="产品">
-        <el-select
-          class="filter-select"
-          clearable
-          filterable
-          placeholder="选择产品"
-          :disabled="loading || !productOptions.length"
-          :model-value="product"
-          @update:model-value="onProductChange"
-        >
-          <el-option
-            v-for="item in productOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
-      </el-form-item>
       <el-form-item label="产地">
         <el-select
           class="filter-select filter-select--multiple"
@@ -46,6 +28,24 @@
         >
           <el-option
             v-for="item in originOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="产品">
+        <el-select
+          class="filter-select"
+          clearable
+          filterable
+          placeholder="选择产品"
+          :disabled="loading || !productOptions.length"
+          :model-value="product"
+          @update:model-value="onProductChange"
+        >
+          <el-option
+            v-for="item in productOptions"
             :key="item.value"
             :label="item.label"
             :value="item.value"

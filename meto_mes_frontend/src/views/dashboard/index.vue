@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import dayjs from "dayjs";
 import { ElMessage } from "element-plus";
 import FiltersPanel from "./components/FiltersPanel.vue";
@@ -132,6 +132,16 @@ const headerTitle = computed(() =>
   isDetailVisible.value ? `${selectedProcessName.value} 工序详情` : "工序概览"
 );
 
+watch(
+  () => filters.origins.slice(),
+  () => {
+    productOptions.value = [];
+    if (filters.product) {
+      filters.product = null;
+    }
+  }
+);
+
 const buildSummaryParams = (): DashboardSummaryParams => {
   const hasRange = filters.dateRange.length === 2;
   return {
@@ -147,12 +157,16 @@ const fetchSummary = async () => {
   summaryError.value = null;
   try {
     const params = buildSummaryParams();
+    const selectedOrigin = filters.origins.length === 1 ? filters.origins[0] : undefined;
 
-    const shouldFetchProducts = Boolean(params.startDate && params.endDate);
+    const shouldFetchProducts = Boolean(
+      params.startDate && params.endDate && selectedOrigin !== undefined
+    );
     const productOptionsPromise = shouldFetchProducts
       ? fetchDashboardProducts({
           startDate: params.startDate,
-          endDate: params.endDate
+          endDate: params.endDate,
+          origin: selectedOrigin
         }).catch((error: any) => {
           const message = error?.message ?? "获取产品选项失败";
           ElMessage.warning(message);
@@ -161,11 +175,13 @@ const fetchSummary = async () => {
       : Promise.resolve([]);
 
     const result = await fetchDashboardSummary(params);
-    const productOptionPayload = await productOptionsPromise;
+    const productOptionPayload = shouldFetchProducts ? await productOptionsPromise : [];
 
-    const nextProductOptions = productOptionPayload.length
-      ? productOptionPayload.map(item => ({ label: item.label, value: item.code }))
-      : result.filters.products;
+    const nextProductOptions = shouldFetchProducts
+      ? productOptionPayload.length
+        ? productOptionPayload.map(item => ({ label: item.label, value: item.code }))
+        : result.filters.products
+      : [];
 
     productOptions.value = nextProductOptions;
     const availableProductCodes = new Set(nextProductOptions.map(item => item.value));

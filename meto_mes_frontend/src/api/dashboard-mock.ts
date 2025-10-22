@@ -608,14 +608,25 @@ export function buildProcessDetail(
 export function buildDashboardProducts(
   params: DashboardProductsParams
 ): DashboardProductOption[] {
-  const { startDate, endDate } = params;
+  const { startDate, endDate, origin } = params;
+
+  const matchesOrigin = (origins: ProductOrigin | ProductOrigin[]): boolean => {
+    if (!origin) return true;
+    const list = Array.isArray(origins) ? origins : [origins];
+    return list.includes(origin);
+  };
 
   const processProducts = processMetricsSeed
-    .filter(item => inDateRange(item.lastUpdated, startDate, endDate))
+    .filter(
+      item => matchesOrigin(item.origins) && inDateRange(item.lastUpdated, startDate, endDate)
+    )
     .flatMap(item => item.products);
 
   const orderProducts = workOrderSeed
     .filter(order => {
+      if (!matchesOrigin(order.origin)) {
+        return false;
+      }
       if (!startDate || !endDate) {
         return true;
       }

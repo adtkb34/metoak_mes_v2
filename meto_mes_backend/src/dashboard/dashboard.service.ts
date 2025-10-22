@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ProductOrigin } from '../common/enums/product-origin.enum';
 
 interface ProductOption {
   label: string;
@@ -10,6 +11,7 @@ interface ProductOption {
 interface ProductOptionQueryParams {
   startDate?: string;
   endDate?: string;
+  origin?: ProductOrigin;
 }
 
 @Injectable()
@@ -19,7 +21,7 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getProductOptions(params: ProductOptionQueryParams): Promise<ProductOption[]> {
-    const { startDate, endDate } = params;
+    const { startDate, endDate, origin } = params;
 
     const conditions: Prisma.Sql[] = [Prisma.sql`product_sn IS NOT NULL`];
 
@@ -37,7 +39,9 @@ export class DashboardService {
     const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, Prisma.sql` AND `)}`;
 
     try {
-      const rows = await this.prisma.$queryRaw<
+      const prismaClient = this.prisma.getClientByOrigin(origin);
+
+      const rows = await prismaClient.$queryRaw<
         { material_name: string | null; material_code: string | null }[]
       >(Prisma.sql`
         WITH filtered_sn AS (
