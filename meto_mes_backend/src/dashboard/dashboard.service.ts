@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, mo_workstage } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ProductOrigin,
@@ -156,17 +156,12 @@ export class DashboardService {
       });
 
       processMetrics = [
-        {
-          id: stepTypeNo,
-          name: stage?.stage_name ?? `工序 ${stepTypeNo}`,
-          output: statistics.totalOutput,
-          firstPassYield: statistics.firstPassRate,
-          finalYield: statistics.finalPassRate,
-          wip: 0,
-          trend: 0,
-          targetOutput: 0,
-        },
+        this.buildProcessMetricRow(stepTypeNo, stage, statistics),
       ];
+    }
+
+    if (!processMetrics.length) {
+      processMetrics = [this.buildProcessMetricRow(stepTypeNo, stage)];
     }
 
     let products: ProductOption[] = [];
@@ -190,6 +185,40 @@ export class DashboardService {
       processes: processMetrics,
       workOrders: [],
     };
+  }
+
+  private buildProcessMetricRow(
+    stepTypeNo: string,
+    stage: mo_workstage | null,
+    statistics?: StatisticsResult,
+  ): ProcessMetricRow {
+    return {
+      id: stepTypeNo,
+      name: this.getStageDisplayName(stage, stepTypeNo),
+      output: statistics?.totalOutput ?? 0,
+      firstPassYield: statistics?.firstPassRate ?? 0,
+      finalYield: statistics?.finalPassRate ?? 0,
+      wip: 0,
+      trend: 0,
+      targetOutput: 0,
+    };
+  }
+
+  private getStageDisplayName(
+    stage: mo_workstage | null,
+    stepTypeNo: string,
+  ): string {
+    const stageName = stage?.stage_name?.trim();
+    if (stageName) {
+      return stageName;
+    }
+
+    const stageCode = stage?.stage_code?.trim();
+    if (stageCode) {
+      return stageCode;
+    }
+
+    return `工序 ${stepTypeNo}`;
   }
 
   async getProcessDetail(
