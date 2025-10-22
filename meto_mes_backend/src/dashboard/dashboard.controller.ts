@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ProductOrigin } from '../common/enums/product-origin.enum';
-import { DashboardService } from './dashboard.service';
+import { DashboardService, type ProductOption } from './dashboard.service';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -11,7 +11,7 @@ export class DashboardController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('origin') originParam?: string,
-  ) {
+  ): Promise<{ success: true; data: ProductOption[] }> {
     const origin = this.parseOrigin(originParam);
 
     const data = await this.dashboardService.getProductOptions({ startDate, endDate, origin });
