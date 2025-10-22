@@ -132,13 +132,76 @@ const headerTitle = computed(() =>
   isDetailVisible.value ? `${selectedProcessName.value} 工序详情` : "工序概览"
 );
 
-watch(
-  () => filters.origins.slice(),
-  () => {
+let productOptionsRequestToken = 0;
+
+const resetProductSelection = () => {
+  productOptionsRequestToken++;
+  productOptions.value = [];
+  if (filters.product) {
+    filters.product = null;
+  }
+};
+
+const refreshProductOptions = async () => {
+  const hasValidRange = filters.dateRange.length === 2;
+  const selectedOrigin = filters.origins.length === 1 ? filters.origins[0] : undefined;
+
+  if (!hasValidRange || selectedOrigin === undefined) {
+    return;
+  }
+
+  const requestToken = ++productOptionsRequestToken;
+
+  try {
+    const result = await fetchDashboardProducts({
+      startDate: filters.dateRange[0],
+      endDate: filters.dateRange[1],
+      origin: selectedOrigin
+    });
+
+    if (requestToken !== productOptionsRequestToken) {
+      return;
+    }
+
+    const nextProductOptions = result.map(item => ({
+      label: item.label,
+      value: item.code
+    }));
+
+    productOptions.value = nextProductOptions;
+
+    if (
+      filters.product &&
+      !nextProductOptions.some(option => option.value === filters.product)
+    ) {
+      filters.product = null;
+    }
+  } catch (error: any) {
+    if (requestToken !== productOptionsRequestToken) {
+      return;
+    }
+
+    const message = error?.message ?? "获取产品选项失败";
+    ElMessage.warning(message);
     productOptions.value = [];
     if (filters.product) {
       filters.product = null;
     }
+  }
+};
+
+watch(
+  () => filters.origins.slice(),
+  () => {
+    resetProductSelection();
+    refreshProductOptions();
+  }
+);
+
+watch(
+  () => filters.dateRange.slice(),
+  () => {
+    refreshProductOptions();
   }
 );
 
