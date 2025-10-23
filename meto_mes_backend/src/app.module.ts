@@ -22,6 +22,7 @@ import { StereoPostcheckModule } from './stereo-postcheck/stereo-postcheck.modul
 import { Stereo_PrecheckModule } from './stereo_precheck/stereo_precheck.module';
 import { TransferBoxModule } from './transfer-box/transfer-box.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { SerialNumberDataModule } from './serial-number-data/serial-number-data.module';
 
 @Module({
   imports: [
@@ -44,7 +45,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     StereoPostcheckModule,
     Stereo_PrecheckModule,
     TransferBoxModule,
-    DashboardModule
+    DashboardModule,
+    SerialNumberDataModule
   ],
   controllers: [AppController, ImuController],
   providers: [AppService],
