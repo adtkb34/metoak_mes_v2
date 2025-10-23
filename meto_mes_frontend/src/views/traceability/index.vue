@@ -47,10 +47,7 @@ const tableData = computed(() => buildTreeData(flowSteps.value));
 const recordColumns = computed(() => deriveRecordColumns(tableData.value));
 
 const stageColumns: TraceabilityColumn[] = [
-  { prop: "processName", label: "工序名称" },
-  { prop: "stageName", label: "工段名称" },
-  { prop: "stageCode", label: "工序编码" },
-  { prop: "stepTypeNo", label: "步骤号" }
+  { prop: "stageName", label: "工段名称" }
 ];
 
 onMounted(async () => {
@@ -90,7 +87,9 @@ function handleReset() {
   hasSearched.value = false;
 }
 
-function buildTreeData(steps: TraceabilityProcessStep[]): TraceabilityTreeRow[] {
+function buildTreeData(
+  steps: TraceabilityProcessStep[]
+): TraceabilityTreeRow[] {
   const rows: TraceabilityTreeRow[] = [];
 
   steps.forEach((step, stepIndex) => {
@@ -110,7 +109,9 @@ function buildTreeData(steps: TraceabilityProcessStep[]): TraceabilityTreeRow[] 
       return;
     }
 
-    const sorted = [...records].sort((a, b) => getComparableTime(b) - getComparableTime(a));
+    const sorted = [...records].sort(
+      (a, b) => getComparableTime(b) - getComparableTime(a)
+    );
     const [latest, ...rest] = sorted;
 
     const latestRow = createTreeRow(latest, step, stepIndex, 0, true);
@@ -124,7 +125,9 @@ function buildTreeData(steps: TraceabilityProcessStep[]): TraceabilityTreeRow[] 
   return rows;
 }
 
-function deriveRecordColumns(rows: TraceabilityTreeRow[]): TraceabilityColumn[] {
+function deriveRecordColumns(
+  rows: TraceabilityTreeRow[]
+): TraceabilityColumn[] {
   const reservedKeys = new Set([
     "id",
     "children",
@@ -142,7 +145,7 @@ function deriveRecordColumns(rows: TraceabilityTreeRow[]): TraceabilityColumn[] 
 
   const labelMap: Record<string, string> = {
     serialNumber: "序列号",
-    process: "工序",
+    // process: "工序",
     timestamp: "时间",
     result: "结果",
     operator: "操作人员",
@@ -160,7 +163,11 @@ function deriveRecordColumns(rows: TraceabilityTreeRow[]): TraceabilityColumn[] 
   }));
 }
 
-function collectKeys(row: TraceabilityTreeRow, keys: Set<string>, reserved: Set<string>) {
+function collectKeys(
+  row: TraceabilityTreeRow,
+  keys: Set<string>,
+  reserved: Set<string>
+) {
   Object.keys(row).forEach(key => {
     if (!reserved.has(key)) {
       keys.add(key);
@@ -198,7 +205,9 @@ function createTreeRow(
   };
 }
 
-function formatRecord(record: TraceabilityProcessRecord): TraceabilityProcessRecord {
+function formatRecord(
+  record: TraceabilityProcessRecord
+): TraceabilityProcessRecord {
   const formatted: TraceabilityProcessRecord = {};
   Object.entries(record || {}).forEach(([key, value]) => {
     if (value === null || value === undefined) {
@@ -208,7 +217,9 @@ function formatRecord(record: TraceabilityProcessRecord): TraceabilityProcessRec
 
     if (isTimeKey(key)) {
       const parsed = Date.parse(value as string);
-      formatted[key] = Number.isNaN(parsed) ? String(value) : formatToUTC8(parsed);
+      formatted[key] = Number.isNaN(parsed)
+        ? String(value)
+        : formatToUTC8(parsed);
       return;
     }
 
@@ -249,7 +260,11 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
       <template #header>
         <span>查询条件</span>
       </template>
-      <el-form :model="query" label-width="84px" class="traceability-filter-form">
+      <el-form
+        :model="query"
+        label-width="84px"
+        class="traceability-filter-form"
+      >
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="序列号">
@@ -263,7 +278,12 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
           </el-col>
           <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="工艺流程">
-              <el-select v-model="query.processCode" placeholder="请选择工艺" clearable filterable>
+              <el-select
+                v-model="query.processCode"
+                placeholder="请选择工艺"
+                clearable
+                filterable
+              >
                 <el-option
                   v-for="item in processOptions"
                   :key="item.process_code"
@@ -274,7 +294,9 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="24" :md="8" class="traceability-filter-actions">
-            <el-button type="primary" @click="handleSearch" :loading="loading">查询</el-button>
+            <el-button type="primary" @click="handleSearch" :loading="loading"
+              >查询</el-button
+            >
             <el-button @click="handleReset" :disabled="loading">重置</el-button>
           </el-col>
         </el-row>
@@ -287,7 +309,6 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
       </template>
       <el-row :gutter="16">
         <el-col :xs="24" :md="12" class="traceability-base-block">
-          <h4 class="traceability-block-title">基础数据</h4>
           <el-descriptions
             v-if="baseInfo.length"
             :column="1"
@@ -295,7 +316,11 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
             size="small"
             class="traceability-descriptions"
           >
-            <el-descriptions-item v-for="item in baseInfo" :key="item.label" :label="item.label">
+            <el-descriptions-item
+              v-for="item in baseInfo"
+              :key="item.label"
+              :label="item.label"
+            >
               {{ item.value ?? "-" }}
             </el-descriptions-item>
           </el-descriptions>
@@ -304,10 +329,31 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
         </el-col>
         <el-col :xs="24" :md="12" class="traceability-base-block">
           <h4 class="traceability-block-title">物料信息</h4>
-          <el-table v-if="materials.length" :data="materials" border height="260" size="small">
-            <el-table-column prop="material" label="物料" min-width="120" show-overflow-tooltip />
-            <el-table-column prop="batchNo" label="批次号" min-width="120" show-overflow-tooltip />
-            <el-table-column prop="time" label="时间" min-width="160" show-overflow-tooltip />
+          <el-table
+            v-if="materials.length"
+            :data="materials"
+            border
+            height="260"
+            size="small"
+          >
+            <el-table-column
+              prop="material"
+              label="物料"
+              min-width="120"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="batchNo"
+              label="批次号"
+              min-width="120"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="time"
+              label="时间"
+              min-width="160"
+              show-overflow-tooltip
+            />
           </el-table>
           <el-empty v-else-if="hasSearched" description="暂无物料信息" />
           <el-empty v-else description="请先查询" />
@@ -347,7 +393,10 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
             show-overflow-tooltip
           />
         </el-table>
-        <el-empty v-else-if="hasSearched && !loading" description="暂无工序数据" />
+        <el-empty
+          v-else-if="hasSearched && !loading"
+          description="暂无工序数据"
+        />
         <el-empty v-else description="请先查询" />
       </div>
     </el-card>
