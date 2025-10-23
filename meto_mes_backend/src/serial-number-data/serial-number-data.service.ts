@@ -1,4 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  PrismaClient,
+  mo_assemble_info,
+  mo_material_binding,
+  mo_tag_shell_info,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProductOrigin } from '../common/enums/product-origin.enum';
 import { STEP_NO } from 'src/utils/stepNo';
@@ -20,6 +26,12 @@ export interface SerialNumberAaBaseInfo {
   result: string;
   operator: string;
   error_code: string;
+}
+
+export interface SerialNumberMaterialInfo {
+  material: string;
+  batchNo: string;
+  time: string | null;
 }
 
 export type DatabaseConfig = Record<string, unknown>;
@@ -127,6 +139,160 @@ export class SerialNumberDataService {
       }
     }
     return processes;
+  }
+
+  async getMaterialsBySerialNumber(
+    serialNumber: string,
+  ): Promise<SerialNumberMaterialInfo[]> {
+    const normalizedSerialNumber = serialNumber?.trim();
+    if (!normalizedSerialNumber) {
+      return [];
+    }
+
+    const clients = this.getPrismaClients();
+    const results: SerialNumberMaterialInfo[] = [];
+    const seen = new Set<string>();
+    const candidateCameraSns = new Set<string>([normalizedSerialNumber]);
+    const tagRecords: mo_tag_shell_info[] = [];
+    const seenTagRecordIds = new Set<string>();
+
+    const addEntry = (
+      material: string,
+      batchNo?: string | null,
+      time?: Date | null,
+    ) => {
+      const normalizedMaterial = material?.trim() || '物料';
+      const normalizedBatchNo =
+        typeof batchNo === 'string' ? batchNo.trim() : '';
+      if (!normalizedBatchNo) {
+        return;
+      }
+
+      const entry: SerialNumberMaterialInfo = {
+        material: normalizedMaterial,
+        batchNo: normalizedBatchNo,
+        time: this.formatTimestamp(time ?? null),
+      };
+
+      const key = `${entry.material}|${entry.batchNo}|${entry.time ?? ''}`;
+      if (seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      results.push(entry);
+    };
+
+    const addCandidateCameraSn = (value?: string | null) => {
+      if (typeof value !== 'string') {
+        return;
+      }
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return;
+      }
+      candidateCameraSns.add(trimmed);
+    };
+
+    for (const client of clients) {
+      const tagByCamera = await client.mo_tag_shell_info.findFirst({
+        where: { camera_sn: normalizedSerialNumber },
+        orderBy: [{ operation_time: 'desc' }, { id: 'desc' }],
+      });
+      const tagByShell = await client.mo_tag_shell_info.findFirst({
+        where: { shell_sn: normalizedSerialNumber },
+        orderBy: [{ operation_time: 'desc' }, { id: 'desc' }],
+      });
+
+      for (const record of [tagByCamera, tagByShell]) {
+        if (!record) {
+          continue;
+        }
+
+        const key =
+          record.id != null
+            ? record.id.toString()
+            : `${record.camera_sn ?? ''}|${record.shell_sn ?? ''}|${record.operation_time?.getTime() ?? ''}`;
+        if (seenTagRecordIds.has(key)) {
+          continue;
+        }
+
+        seenTagRecordIds.add(key);
+        tagRecords.push(record);
+        addCandidateCameraSn(record.camera_sn);
+      }
+    }
+
+    const cameraSnList = Array.from(candidateCameraSns);
+
+    for (const client of clients) {
+      for (const cameraSn of cameraSnList) {
+        if (!cameraSn) {
+          continue;
+        }
+
+        const bindings =
+          (await client.mo_material_binding.findMany({
+            where: { camera_sn: cameraSn },
+            orderBy: [{ create_time: 'desc' }, { id: 'desc' }],
+          })) as mo_material_binding[];
+        const assembleRecords =
+          (await client.mo_assemble_info.findMany({
+            where: { camera_sn: cameraSn },
+            orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
+          })) as mo_assemble_info[];
+
+        for (const binding of bindings) {
+          const materialName =
+            (typeof binding.category === 'string' && binding.category.trim()) ||
+            (typeof binding.category_no === 'string' &&
+              binding.category_no.trim()) ||
+            '物料';
+          const batchNo =
+            (typeof binding.material_batch_no === 'string' &&
+              binding.material_batch_no.trim()) ||
+            (typeof binding.material_serial_no === 'string' &&
+              binding.material_serial_no.trim()) ||
+            null;
+
+          addEntry(
+            materialName,
+            batchNo,
+            binding.create_time ?? binding.update_time ?? null,
+          );
+        }
+
+        for (const record of assembleRecords) {
+          const pcbaCode =
+            typeof record.pcba_code === 'string'
+              ? record.pcba_code.trim()
+              : '';
+          if (!pcbaCode) {
+            continue;
+          }
+
+          addEntry('PCBA', pcbaCode, record.start_time ?? null);
+        }
+      }
+    }
+
+    for (const record of tagRecords) {
+      if (typeof record.shell_sn === 'string') {
+        const shellSn = record.shell_sn.trim();
+        if (shellSn) {
+          addEntry('外壳', shellSn, record.operation_time ?? null);
+        }
+      }
+
+      if (typeof record.camera_sn === 'string') {
+        const cameraSn = record.camera_sn.trim();
+        if (cameraSn) {
+          addEntry('模组', cameraSn, record.operation_time ?? null);
+        }
+      }
+    }
+
+    return results;
   }
 
   async getSuzhouShunyuAaBaseInfo(
@@ -325,6 +491,27 @@ export class SerialNumberDataService {
     }
 
     return value.toISOString();
+  }
+
+  private getPrismaClients(): PrismaClient[] {
+    const clients: PrismaClient[] = [];
+    const pushUnique = (client: PrismaClient | null | undefined) => {
+      if (!client) {
+        return;
+      }
+
+      if (!clients.includes(client)) {
+        clients.push(client);
+      }
+    };
+
+    pushUnique(this.prisma);
+
+    for (const origin of [ProductOrigin.SUZHOU, ProductOrigin.MIANYANG]) {
+      pushUnique(this.prisma.getClientByOrigin(origin));
+    }
+
+    return clients;
   }
 
   private pickInfoTimestamp(
