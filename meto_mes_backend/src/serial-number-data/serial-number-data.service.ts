@@ -19,6 +19,7 @@ export interface SerialNumberAaBaseInfo {
   timestamp: string | null;
   result: string;
   operator: string;
+  error_code: string;
 }
 
 export type DatabaseConfig = Record<string, unknown>;
@@ -151,6 +152,7 @@ export class SerialNumberDataService {
       timestamp: this.formatTimestamp(record.start_time),
       result: this.parseResultValue(parseResult, record.error_code),
       operator: this.extractOperator(record),
+      error_code: this.normalizeErrorCode(record.error_code),
     }));
   }
 
@@ -177,6 +179,7 @@ export class SerialNumberDataService {
       timestamp: this.pickInfoTimestamp(record),
       result: this.parseResultValue(parseResult, record.operation_result),
       operator: this.extractOperator(record),
+      error_code: this.normalizeErrorCode(record.error_code),
     }));
   }
 
@@ -201,6 +204,7 @@ export class SerialNumberDataService {
         ? (this.parseResultValue(parseResult, record.ng_reason) ?? '')
         : (record.ng_reason ?? ''),
       operator: this.extractOperator(record),
+      error_code: this.normalizeErrorCode(record.error_code),
     }));
   }
 
@@ -234,6 +238,7 @@ export class SerialNumberDataService {
         ? (this.parseResultValue(parseResult, record.ng_reason) ?? '')
         : (record.ng_reason ?? ''),
       operator: this.extractOperator(record),
+      error_code: this.normalizeErrorCode(record.error_code),
     }));
   }
 
@@ -260,6 +265,7 @@ export class SerialNumberDataService {
           ? 'SUCCESS'
           : this.parseResultValue(parseResult, record.error_code),
       operator: this.extractOperator(record),
+      error_code: this.normalizeErrorCode(record.error_code),
     }));
   }
 
@@ -282,6 +288,7 @@ export class SerialNumberDataService {
       timestamp: this.formatTimestamp(record.start_time),
       result: 'SUCCESS',
       operator: this.extractOperator(record),
+      error_code: '',
     }));
   }
 
@@ -308,6 +315,7 @@ export class SerialNumberDataService {
           ? 'SUCCESS'
           : this.parseResultValue(parseResult, record.error_code),
       operator: this.extractOperator(record),
+      error_code: this.normalizeErrorCode(record.error_code),
     }));
   }
 
@@ -358,6 +366,29 @@ export class SerialNumberDataService {
       this.logger.warn(`Failed to parse AA result: ${message}`);
       return `${raw}`;
     }
+  }
+
+  private normalizeErrorCode(raw: unknown): string {
+    if (raw === null || raw === undefined) {
+      return '';
+    }
+
+    if (typeof raw === 'string') {
+      return raw;
+    }
+
+    if (typeof raw === 'number') {
+      if (Number.isNaN(raw) || !Number.isFinite(raw)) {
+        return '';
+      }
+      return String(raw);
+    }
+
+    if (typeof raw === 'bigint') {
+      return raw.toString();
+    }
+
+    return `${raw}`;
   }
 
   private extractOperator(record: unknown): string {
