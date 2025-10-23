@@ -77,6 +77,7 @@ export class QualityManagementController {
     @Query('endTime') endTime?: string,
     @Query('cameraSN') cameraSN?: string,
     @Query('page') page?: string,
+    @Query('material_code') material_code?: string,
   ) {
     const pageNumber = page ? Number(page) : null;
     const res = await this.qualityService.getTableData({
@@ -85,6 +86,7 @@ export class QualityManagementController {
       endTime,
       cameraSN,
       pageNumber,
+      material_code,
     });
     return convertBigInt(res);
   }
@@ -95,12 +97,14 @@ export class QualityManagementController {
     @Query('startTime') startTime?: string,
     @Query('endTime') endTime?: string,
     @Query('cameraSN') cameraSN?: string,
+    @Query('material_code') material_code?: string,
   ) {
     return await this.qualityService.getErrorCodesV2({
       stepNo,
       startTime,
       endTime,
       cameraSN,
+      material_code,
     });
   }
 

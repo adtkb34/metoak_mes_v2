@@ -395,22 +395,28 @@ export class QualityManagementService {
     endTime?: string;
     cameraSN?: string;
     pageNumber?: number | null;
+    material_code?: string;
   }
   ) {
-    const { stepNo, startTime, endTime, cameraSN, pageNumber } = params;
+    const { stepNo, startTime, endTime, cameraSN, pageNumber, material_code } = params;
 
     const tableName = this.spcService.allowedSteps.filter(step => step.key === stepNo)[0].tableName
     const mapFieldComment = await this.getFieldComment(tableName)
+    const keyCandidates = this.resolveGroupingCandidates(mapFieldComment);
+    const snExpression = this.buildProductSnExpression(tableName, mapFieldComment);
     const result = await this.getResult(
       tableName,
       stepNo,
       startTime,
       endTime,
       cameraSN,
-      pageNumber)
+      pageNumber,
+      keyCandidates,
+      material_code,
+      snExpression)
 
 
-    let newRes = await this.mergeRows(result.rows, tableName, mapFieldComment)
+    let newRes = await this.mergeRows(result.rows, tableName, mapFieldComment, keyCandidates)
     // console.log(newRes)
 
     for (const o of newRes.data) {
@@ -482,42 +488,116 @@ export class QualityManagementService {
     }, {} as { [key: string]: string });
   }
 
-  async getResult(tableName: string, stepNo: string, startTime?: string, endTime?: string, cameraSN?: string, pageNumber?: number | null) {
-    let sqlData = `SELECT * FROM \`${tableName}\` left join mo_process_step_production_result ON mo_process_step_production_result.id = mo_process_step_production_result_id where mo_process_step_production_result.step_type_no = ${stepNo}`
-    const conditions: string[] = []
-    if (startTime) conditions.push(`mo_process_step_production_result.add_time >= '${startTime}'`)
-    if (endTime) conditions.push(`mo_process_step_production_result.add_time <= '${endTime}'`)
-    if (cameraSN) conditions.push(`beam_sn = '${cameraSN}'`)
-
-    let sqlCount = `SELECT COUNT(*) as total FROM \`${tableName}\` 
-      LEFT JOIN mo_process_step_production_result 
-      ON mo_process_step_production_result.id = mo_process_step_production_result_id 
-      WHERE mo_process_step_production_result.step_type_no = ${stepNo}`
-
-    if (conditions.length > 0) {
-      sqlData += ` AND ${conditions.join(' AND ')}`
-      sqlCount += ` AND ${conditions.join(' AND ')}`
+  private resolveGroupingCandidates(mapFieldComment: { [key: string]: string }): string[] {
+    const candidates: string[] = [];
+    if (Object.prototype.hasOwnProperty.call(mapFieldComment, 'mo_process_step_production_result_id')) {
+      candidates.push('mo_process_step_production_result_id');
     }
-
-    let sqlErrorCount = sqlCount + ` AND ${tableName}.error_code != 0`
-
-    const [{ total }] = await this.prisma.$queryRawUnsafe<{ total: bigint }[]>(sqlCount)
-    const [{ errorCount }] = await this.prisma.$queryRawUnsafe<{ errorCount: bigint }[]>(sqlErrorCount.replace('COUNT(*) as total', 'COUNT(*) as errorCount'))
-
-    sqlData += ` order by ${tableName}.id desc`
-
-    if (pageNumber) sqlData += `  limit ${100 * (pageNumber - 1)}, 100`
-    console.log(sqlData)
-    const rows: any[] = await this.prisma.$queryRawUnsafe(sqlData);
-    return {
-      rows: rows,
-      total: total,
-      errorCount: errorCount
+    if (Object.prototype.hasOwnProperty.call(mapFieldComment, 'taskid')) {
+      candidates.push('taskid');
     }
-
+    if (Object.prototype.hasOwnProperty.call(mapFieldComment, 'id')) {
+      candidates.push('id');
+    }
+    return candidates;
   }
 
-  async mergeRows(rows, tableName, mapFieldComment) {
+  private buildUniqueKeyExpression(tableName: string, keyCandidates: string[]): string {
+    const qualifiedColumns = keyCandidates.map(column => `\`${tableName}\`.${column}`);
+    if (qualifiedColumns.length === 0) {
+      return `\`${tableName}\`.id`;
+    }
+    if (qualifiedColumns.length === 1) {
+      return qualifiedColumns[0];
+    }
+    return `COALESCE(${qualifiedColumns.join(', ')})`;
+  }
+
+  private buildProductSnExpression(tableName: string, mapFieldComment: { [key: string]: string }): string {
+    const possibleColumns = ['product_sn', 'beam_sn', 'camera_sn', 'sn', 'tag_sn'];
+    const qualified = possibleColumns
+      .filter(column => Object.prototype.hasOwnProperty.call(mapFieldComment, column))
+      .map(column => `\`${tableName}\`.${column}`);
+    qualified.push('mo_process_step_production_result.product_sn');
+    const uniqueQualified = Array.from(new Set(qualified));
+    if (uniqueQualified.length === 1) {
+      return uniqueQualified[0];
+    }
+    return `COALESCE(${uniqueQualified.join(', ')})`;
+  }
+
+  async getResult(
+    tableName: string,
+    stepNo: string,
+    startTime?: string,
+    endTime?: string,
+    cameraSN?: string,
+    pageNumber?: number | null,
+    keyCandidates: string[] = [],
+    material_code?: string,
+    snExpression?: string,
+  ) {
+    const tableIdentifier = `\`${tableName}\``;
+    const uniqueKeyExpr = this.buildUniqueKeyExpression(tableName, keyCandidates);
+    const sanitizedStepNo = stepNo.replace(/'/g, "''");
+    const sanitizedStart = startTime ? startTime.replace(/'/g, "''") : undefined;
+    const sanitizedEnd = endTime ? endTime.replace(/'/g, "''") : undefined;
+    const sanitizedCamera = cameraSN ? cameraSN.replace(/'/g, "''") : undefined;
+    const sanitizedMaterial = material_code ? material_code.replace(/'/g, "''") : undefined;
+    const productSnExpr = snExpression ?? 'mo_process_step_production_result.product_sn';
+
+    const conditions: string[] = [];
+    if (sanitizedStart) conditions.push(`mo_process_step_production_result.add_time >= '${sanitizedStart}'`);
+    if (sanitizedEnd) conditions.push(`mo_process_step_production_result.add_time <= '${sanitizedEnd}'`);
+    if (sanitizedCamera) conditions.push(`(${productSnExpr}) = '${sanitizedCamera}'`);
+    if (sanitizedMaterial) {
+      const materialFilter = `(
+        EXISTS (
+          SELECT 1
+          FROM mo_beam_info
+            INNER JOIN mo_produce_order
+              ON mo_produce_order.work_order_code = mo_beam_info.work_order_code
+          WHERE mo_beam_info.beam_sn = ${productSnExpr}
+            AND mo_produce_order.material_code = '${sanitizedMaterial}'
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM mo_tag_info
+            INNER JOIN mo_produce_order
+              ON mo_produce_order.work_order_code = mo_tag_info.work_order_code
+          WHERE mo_tag_info.tag_sn = ${productSnExpr}
+            AND mo_produce_order.material_code = '${sanitizedMaterial}'
+        )
+      )`;
+      conditions.push(materialFilter);
+    }
+
+    const fromClause = `FROM ${tableIdentifier}
+      LEFT JOIN mo_process_step_production_result
+        ON mo_process_step_production_result.id = ${tableIdentifier}.mo_process_step_production_result_id`;
+
+    const whereParts = [`mo_process_step_production_result.step_type_no = '${sanitizedStepNo}'`, ...conditions];
+    const whereClause = whereParts.length > 0 ? `WHERE ${whereParts.join(' AND ')}` : '';
+
+    const sqlCount = `SELECT COUNT(DISTINCT ${uniqueKeyExpr}) as total ${fromClause} ${whereClause}`;
+    const errorWhereParts = [...whereParts, `${tableIdentifier}.error_code != 0`];
+    const sqlErrorCount = `SELECT COUNT(DISTINCT ${uniqueKeyExpr}) as errorCount ${fromClause} ${errorWhereParts.length > 0 ? 'WHERE ' + errorWhereParts.join(' AND ') : ''}`;
+
+    let sqlData = `SELECT * ${fromClause} ${whereClause} order by ${tableIdentifier}.id desc`;
+    if (pageNumber) sqlData += `  limit ${100 * (pageNumber - 1)}, 100`;
+
+    const [{ total }] = await this.prisma.$queryRawUnsafe<{ total: bigint }[]>(sqlCount);
+    const [{ errorCount }] = await this.prisma.$queryRawUnsafe<{ errorCount: bigint }[]>(sqlErrorCount);
+    const rows: any[] = await this.prisma.$queryRawUnsafe(sqlData);
+
+    return {
+      rows,
+      total,
+      errorCount,
+    };
+  }
+
+  async mergeRows(rows, tableName, mapFieldComment, keyCandidates: string[]) {
     type DictType = { [key: string]: any };
     let mergeRows: DictType[] = []
     type FieldComment = {
@@ -529,20 +609,31 @@ export class QualityManagementService {
       [key: string]: FieldComment;
     };
     let newMapFieldComment: NewMapFieldComment = {}
-    const groupByField = (list, field) => {
-      return list.reduce((acc, item) => {
-        const key = item[field];
-        if (!acc[key]) {
-          acc[key] = [];
+    const computeGroupKey = (item: Record<string, any>, index: number) => {
+      for (const column of keyCandidates) {
+        if (Object.prototype.hasOwnProperty.call(item, column)) {
+          const value = item[column];
+          if (value !== null && value !== undefined) {
+            return String(value);
+          }
         }
-        acc[key].push(item);
-        return acc;
-      }, {});
+      }
+      if (Object.prototype.hasOwnProperty.call(item, 'id') && item['id'] !== null && item['id'] !== undefined) {
+        return String(item['id']);
+      }
+      return `row_${index}`;
     };
     type GroupedList = {
-      [key: string]: Array<{ position: number; stage: string }>;
+      [key: string]: Array<Record<string, any>>;
     };
-    const groupedList: GroupedList = groupByField(rows, 'mo_process_step_production_result_id');
+    const groupedList: GroupedList = rows.reduce((acc: GroupedList, item: Record<string, any>, index: number) => {
+      const key = computeGroupKey(item, index);
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(item);
+      return acc;
+    }, {} as GroupedList);
 
     const configs = await this.prisma.table_config.findMany({
       where: {
@@ -704,26 +795,29 @@ export class QualityManagementService {
     cameraSN?: string;
   }) {
     const { stepNo, startTime, endTime, cameraSN, table, material_code } = params;
-    console.log(111111111)
+    const sanitizedStepNo = stepNo.replace(/'/g, "''");
+    const sanitizedMaterial = material_code ? material_code.replace(/'/g, "''") : undefined;
     let tableName = 'mo_process_step_production_result';
     let sqlList: string[] = [
       `
       SELECT mo_process_step_production_result.error_code, mo_process_step_production_result.ng_reason
       FROM  mo_process_step_production_result
-        INNER JOIN mo_beam_info 
+        INNER JOIN mo_beam_info
           ON mo_beam_info.beam_sn = mo_process_step_production_result.product_sn
-        INNER JOIN mo_produce_order 
+        INNER JOIN mo_produce_order
           ON mo_produce_order.work_order_code = mo_beam_info.work_order_code
-      WHERE mo_process_step_production_result.step_type_no = '${stepNo}'
+      WHERE mo_process_step_production_result.step_type_no = '${sanitizedStepNo}'
+      ${sanitizedMaterial ? `AND mo_produce_order.material_code = '${sanitizedMaterial}'` : ''}
       `,
       `
       SELECT mo_process_step_production_result.error_code, mo_process_step_production_result.ng_reason
       FROM  mo_process_step_production_result
-        INNER JOIN mo_tag_info 
+        INNER JOIN mo_tag_info
           ON mo_tag_info.tag_sn = mo_process_step_production_result.product_sn
-        INNER JOIN mo_produce_order 
+        INNER JOIN mo_produce_order
           ON mo_produce_order.work_order_code = mo_tag_info.work_order_code
-      WHERE mo_process_step_production_result.step_type_no = '${stepNo}'
+      WHERE mo_process_step_production_result.step_type_no = '${sanitizedStepNo}'
+      ${sanitizedMaterial ? `AND mo_produce_order.material_code = '${sanitizedMaterial}'` : ''}
       `
     ]
 
