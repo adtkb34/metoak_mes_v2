@@ -11,7 +11,8 @@ export class TraceabilityController {
   @Get()
   async getTraceability(
     @Query('serialNumber') serialNumber: string,
+    @Query('processCode') processCode?: string,
   ): Promise<TraceabilityResponse> {
-    return this.traceabilityService.getTraceability(serialNumber);
+    return this.traceabilityService.getTraceability(serialNumber, processCode);
   }
 }
