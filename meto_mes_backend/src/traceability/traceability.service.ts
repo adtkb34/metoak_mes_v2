@@ -43,8 +43,17 @@ interface FlowContext {
   client: PrismaClient;
 }
 
-type ProcessFlowWithStage = Awaited<
+type ProcessFlowRecord = Awaited<
   ReturnType<PrismaClient['mo_process_flow']['findMany']>
+>[number];
+
+type ProcessFlowWithStage = Array<
+  ProcessFlowRecord & {
+    mo_workstage?: {
+      stage_name: string | null;
+      step_type_no: string | null;
+    } | null;
+  }
 >;
 
 @Injectable()
