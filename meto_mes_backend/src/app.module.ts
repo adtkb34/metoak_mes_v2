@@ -23,6 +23,7 @@ import { Stereo_PrecheckModule } from './stereo_precheck/stereo_precheck.module'
 import { TransferBoxModule } from './transfer-box/transfer-box.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SerialNumberDataModule } from './serial-number-data/serial-number-data.module';
+import { TraceabilityModule } from './traceability/traceability.module';
 
 @Module({
   imports: [
@@ -46,7 +47,8 @@ import { SerialNumberDataModule } from './serial-number-data/serial-number-data.
     Stereo_PrecheckModule,
     TransferBoxModule,
     DashboardModule,
-    SerialNumberDataModule
+    SerialNumberDataModule,
+    TraceabilityModule,
   ],
   controllers: [AppController, ImuController],
   providers: [AppService],
