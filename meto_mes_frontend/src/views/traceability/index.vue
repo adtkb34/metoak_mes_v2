@@ -1,0 +1,417 @@
+<script setup lang="ts">
+import { computed, reactive, ref, onMounted } from "vue";
+import {
+  getTraceability,
+  type TraceabilityProcessRecord,
+  type TraceabilityProcessStep,
+  type TraceabilityResponse
+} from "@/api/traceability";
+import { useProcessStore } from "@/store/modules/processFlow";
+import { message } from "@/utils/message";
+import { formatToUTC8 } from "@/utils/date";
+
+defineOptions({ name: "Traceability" });
+
+interface TraceabilityTreeRow extends TraceabilityProcessRecord {
+  id: string;
+  stageCode: string;
+  processName: string | null;
+  stageName: string | null;
+  stepTypeNo: string;
+  children?: TraceabilityTreeRow[];
+  __isLatest?: boolean;
+}
+
+interface TraceabilityColumn {
+  prop: string;
+  label: string;
+}
+
+const processStore = useProcessStore();
+
+const query = reactive({
+  serialNumber: "",
+  processCode: ""
+});
+
+const loading = ref(false);
+const hasSearched = ref(false);
+const traceability = ref<TraceabilityResponse | null>(null);
+
+const processOptions = computed(() => processStore.processFlow.list ?? []);
+const baseInfo = computed(() => traceability.value?.base ?? []);
+const materials = computed(() => traceability.value?.materials ?? []);
+const flowSteps = computed(() => traceability.value?.flow?.steps ?? []);
+
+const tableData = computed(() => buildTreeData(flowSteps.value));
+const recordColumns = computed(() => deriveRecordColumns(tableData.value));
+
+const stageColumns: TraceabilityColumn[] = [
+  { prop: "processName", label: "工序名称" },
+  { prop: "stageName", label: "工段名称" },
+  { prop: "stageCode", label: "工序编码" },
+  { prop: "stepTypeNo", label: "步骤号" }
+];
+
+onMounted(async () => {
+  await processStore.setProcessFlow();
+});
+
+async function handleSearch() {
+  const serialNumber = query.serialNumber.trim();
+  const processCode = query.processCode.trim();
+
+  if (!serialNumber) {
+    message("请输入序列号", { type: "error" });
+    return;
+  }
+
+  loading.value = true;
+  hasSearched.value = true;
+
+  try {
+    const response = await getTraceability({
+      serialNumber,
+      processCode: processCode || undefined
+    });
+    traceability.value = response;
+  } catch (error) {
+    console.error(error);
+    message("查询失败，请稍后重试", { type: "error" });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function handleReset() {
+  query.serialNumber = "";
+  query.processCode = "";
+  traceability.value = null;
+  hasSearched.value = false;
+}
+
+function buildTreeData(steps: TraceabilityProcessStep[]): TraceabilityTreeRow[] {
+  const rows: TraceabilityTreeRow[] = [];
+
+  steps.forEach((step, stepIndex) => {
+    const records = Array.isArray(step.data) ? step.data : [];
+
+    if (records.length === 0) {
+      rows.push({
+        id: `${step.stepTypeNo}-${stepIndex}`,
+        stageCode: step.stageCode,
+        processName: step.processName,
+        stageName: step.stageName,
+        stepTypeNo: step.stepTypeNo,
+        __isLatest: true,
+        status: "暂无数据",
+        children: []
+      });
+      return;
+    }
+
+    const sorted = [...records].sort((a, b) => getComparableTime(b) - getComparableTime(a));
+    const [latest, ...rest] = sorted;
+
+    const latestRow = createTreeRow(latest, step, stepIndex, 0, true);
+    latestRow.children = rest.map((record, recordIndex) =>
+      createTreeRow(record, step, stepIndex, recordIndex + 1, false)
+    );
+
+    rows.push(latestRow);
+  });
+
+  return rows;
+}
+
+function deriveRecordColumns(rows: TraceabilityTreeRow[]): TraceabilityColumn[] {
+  const reservedKeys = new Set([
+    "id",
+    "children",
+    "__isLatest",
+    "stageCode",
+    "processName",
+    "stageName",
+    "stepTypeNo"
+  ]);
+  const keys = new Set<string>();
+
+  rows.forEach(row => {
+    collectKeys(row, keys, reservedKeys);
+  });
+
+  const labelMap: Record<string, string> = {
+    serialNumber: "序列号",
+    process: "工序",
+    timestamp: "时间",
+    result: "结果",
+    operator: "操作人员",
+    error_code: "错误码",
+    status: "状态",
+    check_result: "判定结果",
+    start_time: "开始时间",
+    end_time: "结束时间",
+    image_path: "图片路径"
+  };
+
+  return Array.from(keys).map(prop => ({
+    prop,
+    label: labelMap[prop] ?? formatColumnLabel(prop)
+  }));
+}
+
+function collectKeys(row: TraceabilityTreeRow, keys: Set<string>, reserved: Set<string>) {
+  Object.keys(row).forEach(key => {
+    if (!reserved.has(key)) {
+      keys.add(key);
+    }
+  });
+  if (Array.isArray(row.children)) {
+    row.children.forEach(child => collectKeys(child, keys, reserved));
+  }
+}
+
+function formatColumnLabel(prop: string): string {
+  return prop
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function createTreeRow(
+  record: TraceabilityProcessRecord,
+  step: TraceabilityProcessStep,
+  stepIndex: number,
+  recordIndex: number,
+  isLatest: boolean
+): TraceabilityTreeRow {
+  const formatted = formatRecord(record);
+  return {
+    id: `${step.stepTypeNo || stepIndex}-${recordIndex}`,
+    stageCode: step.stageCode,
+    processName: step.processName,
+    stageName: step.stageName,
+    stepTypeNo: step.stepTypeNo,
+    __isLatest: isLatest,
+    ...formatted
+  };
+}
+
+function formatRecord(record: TraceabilityProcessRecord): TraceabilityProcessRecord {
+  const formatted: TraceabilityProcessRecord = {};
+  Object.entries(record || {}).forEach(([key, value]) => {
+    if (value === null || value === undefined) {
+      formatted[key] = "";
+      return;
+    }
+
+    if (isTimeKey(key)) {
+      const parsed = Date.parse(value as string);
+      formatted[key] = Number.isNaN(parsed) ? String(value) : formatToUTC8(parsed);
+      return;
+    }
+
+    if (typeof value === "object") {
+      formatted[key] = JSON.stringify(value);
+      return;
+    }
+
+    formatted[key] = String(value);
+  });
+  return formatted;
+}
+
+function getComparableTime(record: TraceabilityProcessRecord): number {
+  const entries = Object.entries(record || {});
+  for (const [key, value] of entries) {
+    if (!isTimeKey(key)) continue;
+    const parsed = Date.parse(value as string);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return Number.MIN_SAFE_INTEGER;
+}
+
+function isTimeKey(key: string): boolean {
+  return /(time|date)$/i.test(key) || key.toLowerCase().includes("time");
+}
+
+function rowClassName({ row }: { row: TraceabilityTreeRow }) {
+  return row.__isLatest ? "is-latest" : "";
+}
+</script>
+
+<template>
+  <div class="traceability-page">
+    <el-card class="traceability-card traceability-card--filters">
+      <template #header>
+        <span>查询条件</span>
+      </template>
+      <el-form :model="query" label-width="84px" class="traceability-filter-form">
+        <el-row :gutter="16">
+          <el-col :xs="24" :sm="12" :md="8">
+            <el-form-item label="序列号">
+              <el-input
+                v-model="query.serialNumber"
+                placeholder="请输入序列号"
+                clearable
+                @keyup.enter="handleSearch"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8">
+            <el-form-item label="工艺流程">
+              <el-select v-model="query.processCode" placeholder="请选择工艺" clearable filterable>
+                <el-option
+                  v-for="item in processOptions"
+                  :key="item.process_code"
+                  :label="`${item.process_code} (${item.process_name})`"
+                  :value="item.process_code"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="24" :md="8" class="traceability-filter-actions">
+            <el-button type="primary" @click="handleSearch" :loading="loading">查询</el-button>
+            <el-button @click="handleReset" :disabled="loading">重置</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+    </el-card>
+
+    <el-card class="traceability-card" v-loading="loading">
+      <template #header>
+        <span>基本信息</span>
+      </template>
+      <el-row :gutter="16">
+        <el-col :xs="24" :md="12" class="traceability-base-block">
+          <h4 class="traceability-block-title">基础数据</h4>
+          <el-descriptions
+            v-if="baseInfo.length"
+            :column="1"
+            border
+            size="small"
+            class="traceability-descriptions"
+          >
+            <el-descriptions-item v-for="item in baseInfo" :key="item.label" :label="item.label">
+              {{ item.value ?? "-" }}
+            </el-descriptions-item>
+          </el-descriptions>
+          <el-empty v-else-if="hasSearched" description="暂无基础数据" />
+          <el-empty v-else description="请先查询" />
+        </el-col>
+        <el-col :xs="24" :md="12" class="traceability-base-block">
+          <h4 class="traceability-block-title">物料信息</h4>
+          <el-table v-if="materials.length" :data="materials" border height="260" size="small">
+            <el-table-column prop="material" label="物料" min-width="120" show-overflow-tooltip />
+            <el-table-column prop="batchNo" label="批次号" min-width="120" show-overflow-tooltip />
+            <el-table-column prop="time" label="时间" min-width="160" show-overflow-tooltip />
+          </el-table>
+          <el-empty v-else-if="hasSearched" description="暂无物料信息" />
+          <el-empty v-else description="请先查询" />
+        </el-col>
+      </el-row>
+    </el-card>
+
+    <el-card class="traceability-card" v-loading="loading">
+      <template #header>
+        <span>工序追溯</span>
+      </template>
+      <div class="traceability-table-wrapper">
+        <el-table
+          v-if="tableData.length"
+          :data="tableData"
+          border
+          row-key="id"
+          :tree-props="{ children: 'children' }"
+          :row-class-name="rowClassName"
+          class="traceability-table"
+        >
+          <el-table-column type="index" label="#" width="60" />
+          <el-table-column
+            v-for="column in stageColumns"
+            :key="column.prop"
+            :prop="column.prop"
+            :label="column.label"
+            min-width="140"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            v-for="column in recordColumns"
+            :key="column.prop"
+            :prop="column.prop"
+            :label="column.label"
+            min-width="160"
+            show-overflow-tooltip
+          />
+        </el-table>
+        <el-empty v-else-if="hasSearched && !loading" description="暂无工序数据" />
+        <el-empty v-else description="请先查询" />
+      </div>
+    </el-card>
+  </div>
+</template>
+
+<style scoped lang="scss">
+.traceability-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.traceability-card {
+  width: 100%;
+}
+
+.traceability-card--filters {
+  .traceability-filter-form {
+    padding-top: 4px;
+  }
+
+  .traceability-filter-actions {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+
+    .el-button {
+      min-width: 80px;
+    }
+  }
+}
+
+.traceability-base-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.traceability-block-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.traceability-descriptions {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.traceability-table-wrapper {
+  min-height: 320px;
+}
+
+.traceability-table {
+  width: 100%;
+}
+
+.traceability-table :deep(.is-latest > td) {
+  background-color: var(--el-color-primary-light-9);
+  font-weight: 600;
+}
+
+.traceability-table :deep(td) {
+  vertical-align: middle;
+}
+</style>
