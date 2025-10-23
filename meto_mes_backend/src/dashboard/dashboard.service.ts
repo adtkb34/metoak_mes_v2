@@ -360,23 +360,28 @@ export class DashboardService {
 
       try {
         const client = this.prisma.getClientByOrigin(params.origin);
-        const aggregated = await this.loadProcessProductionMetrics({
-          client,
-          processIds,
-          range: { start, end },
-        });
+        await Promise.all(
+          metrics.map(async (metric) => {
+            if (!metric.processId?.trim()) {
+              return;
+            }
 
-        for (const metric of metrics) {
-          const data = aggregated.get(metric.processId);
-          if (!data) {
-            continue;
-          }
+            const data = await this.loadProcessProductionMetrics({
+              client,
+              stepTypeNo: metric.processId,
+              range: { start, end },
+            });
 
-          metric.output = data.output;
-          metric.firstPassYield = data.firstPassYield;
-          metric.finalYield = data.finalYield;
-          metric.productYield = data.productYield;
-        }
+            if (!data) {
+              return;
+            }
+
+            metric.output = data.output;
+            metric.firstPassYield = data.firstPassYield;
+            metric.finalYield = data.finalYield;
+            metric.productYield = data.productYield;
+          }),
+        );
       } catch (error) {
         this.logger.error(
           `Failed to load process metrics from mo_process_production_result: ${error.message}`,
@@ -482,13 +487,14 @@ export class DashboardService {
 
   private async loadProcessProductionMetrics(params: {
     client: PrismaClient;
-    processIds: string[];
+    stepTypeNo: string;
     range: DateRange;
-  }): Promise<Map<string, AggregatedProcessMetric>> {
-    const { client, processIds, range } = params;
+  }): Promise<AggregatedProcessMetric | undefined> {
+    const { client, stepTypeNo, range } = params;
 
-    if (!processIds.length) {
-      return new Map();
+    const normalizedStep = stepTypeNo?.trim();
+    if (!normalizedStep) {
+      return undefined;
     }
 
     let columns: string[] = [];
@@ -501,7 +507,7 @@ export class DashboardService {
       this.logger.warn(
         `无法获取 mo_process_production_result 的列信息: ${error.message}`,
       );
-      return new Map();
+      return undefined;
     }
 
     const stepColumn = this.detectColumn(columns, [
@@ -514,7 +520,7 @@ export class DashboardService {
 
     if (!stepColumn) {
       this.logger.warn('mo_process_production_result 表缺少工序编号字段');
-      return new Map();
+      return undefined;
     }
 
     const timeColumn = this.detectColumn(columns, [
@@ -594,14 +600,9 @@ export class DashboardService {
       );
     }
 
-    const processConditions: Prisma.Sql[] = [];
-    const processIdList = Prisma.join(
-      processIds.map((id) => Prisma.sql`${id}`),
-      Prisma.sql`, `,
-    );
-    processConditions.push(
-      Prisma.sql`${Prisma.raw(stepColumn)} IN (${processIdList})`,
-    );
+    const processConditions: Prisma.Sql[] = [
+      Prisma.sql`${Prisma.raw(stepColumn)} = ${normalizedStep}`,
+    ];
 
     if (timeColumn) {
       if (range.start) {
@@ -649,7 +650,15 @@ export class DashboardService {
       weight: number;
     }
 
-    const aggregated = new Map<string, AggregationState>();
+    const state: AggregationState = {
+      output: 0,
+      firstPassWeighted: 0,
+      finalWeighted: 0,
+      productWeighted: 0,
+      weight: 0,
+    };
+
+    let hasRows = false;
 
     for (const row of rows) {
       const step = row.step?.trim();
@@ -657,14 +666,7 @@ export class DashboardService {
         continue;
       }
 
-      const state =
-        aggregated.get(step) ?? {
-          output: 0,
-          firstPassWeighted: 0,
-          finalWeighted: 0,
-          productWeighted: 0,
-          weight: 0,
-        };
+      hasRows = true;
 
       const outputValue = outputColumn
         ? this.parseNumericValue(row.output)
@@ -692,28 +694,26 @@ export class DashboardService {
       }
 
       state.weight += effectiveWeight;
-      aggregated.set(step, state);
     }
 
-    const result = new Map<string, AggregatedProcessMetric>();
-
-    for (const [step, state] of aggregated.entries()) {
-      const weight = state.weight || 0;
-      result.set(step, {
-        output: state.output,
-        firstPassYield: weight
-          ? this.clampRate(state.firstPassWeighted / weight)
-          : 0,
-        finalYield: weight
-          ? this.clampRate(state.finalWeighted / weight)
-          : 0,
-        productYield: weight
-          ? this.clampRate(state.productWeighted / weight)
-          : 0,
-      });
+    if (!hasRows) {
+      return undefined;
     }
 
-    return result;
+    const weight = state.weight || 0;
+
+    return {
+      output: state.output,
+      firstPassYield: weight
+        ? this.clampRate(state.firstPassWeighted / weight)
+        : 0,
+      finalYield: weight
+        ? this.clampRate(state.finalWeighted / weight)
+        : 0,
+      productYield: weight
+        ? this.clampRate(state.productWeighted / weight)
+        : 0,
+    };
   }
 
   private detectColumn(
