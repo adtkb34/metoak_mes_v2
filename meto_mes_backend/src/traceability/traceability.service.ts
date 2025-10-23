@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import {
   SerialNumberAaBaseInfo,
   SerialNumberDataService,
+  SerialNumberMaterialInfo,
 } from 'src/serial-number-data/serial-number-data.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SnType } from 'src/utils/sn';
@@ -27,10 +28,15 @@ export interface TraceabilityFlow extends TraceabilitySerialNumber {
   steps: TraceabilityProcessStep[];
 }
 
+export interface TraceabilityBaseOption {
+  label: string;
+  value: string | null;
+}
+
 export interface TraceabilityResponse {
-  base: Option[]
-  materials: 
-  flow: TraceabilityFlow;
+  base: TraceabilityBaseOption[];
+  materials: SerialNumberMaterialInfo[];
+  flow: TraceabilityFlow | null;
 }
 
 interface WorkOrderContext {
@@ -83,10 +89,24 @@ export class TraceabilityService {
       );
     }
 
+    const flow = this.selectPrimaryFlow(flows);
+
+    const base = this.buildBaseInformation({
+      querySerialNumber: normalizedSerialNumber,
+      serialNumbers,
+      flow,
+      processCode: normalizedProcessCode,
+    });
+
+    const materials =
+      await this.serialNumberDataService.getMaterialsBySerialNumber(
+        normalizedSerialNumber,
+      );
+
     return {
-      serialNumber: normalizedSerialNumber,
-      relatedSerialNumbers: serialNumbers,
-      flows,
+      base,
+      materials,
+      flow,
     };
   }
 
@@ -151,6 +171,92 @@ export class TraceabilityService {
     }
 
     return { ...entry, workOrderCode, flowCode, steps };
+  }
+
+  private selectPrimaryFlow(flows: TraceabilityFlow[]): TraceabilityFlow | null {
+    if (!flows || flows.length === 0) {
+      return null;
+    }
+
+    const withSteps = flows.find((candidate) => candidate.steps.length > 0);
+    if (withSteps) {
+      return withSteps;
+    }
+
+    const withFlowCode = flows.find((candidate) => candidate.flowCode);
+    if (withFlowCode) {
+      return withFlowCode;
+    }
+
+    return flows[0] ?? null;
+  }
+
+  private buildBaseInformation({
+    querySerialNumber,
+    serialNumbers,
+    flow,
+    processCode,
+  }: {
+    querySerialNumber: string;
+    serialNumbers: TraceabilitySerialNumber[];
+    flow: TraceabilityFlow | null;
+    processCode?: string;
+  }): TraceabilityBaseOption[] {
+    const entries: TraceabilityBaseOption[] = [];
+    const seenKeys = new Set<string>();
+
+    const push = (label: string, value?: string | null) => {
+      const normalizedValue = this.normalizeBaseValue(value);
+      const key = `${label}|${normalizedValue ?? ''}`;
+      if (seenKeys.has(key)) {
+        return;
+      }
+      seenKeys.add(key);
+      entries.push({ label, value: normalizedValue });
+    };
+
+    push('查询序列号', querySerialNumber);
+
+    for (const entry of serialNumbers) {
+      const label = this.getSnLabel(entry.type);
+      const value = this.normalizeBaseValue(entry.serialNumber);
+      if (!label || value == null) {
+        continue;
+      }
+      push(label, value);
+    }
+
+    if (processCode) {
+      push('指定流程', processCode);
+    }
+
+    push('工单号', flow?.workOrderCode ?? null);
+
+    if (flow?.flowCode) {
+      push('流程编码', flow.flowCode);
+    }
+
+    return entries;
+  }
+
+  private normalizeBaseValue(value?: string | null): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private getSnLabel(type: SnType): string {
+    switch (type) {
+      case SnType.BEAM:
+        return '模组序列号';
+      case SnType.SHELL:
+        return '外壳序列号';
+      default:
+        return '序列号';
+    }
   }
 
   private async resolveSerialNumbers(
