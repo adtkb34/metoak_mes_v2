@@ -30,7 +30,9 @@ export class SerialNumberDataService {
    * TODO: Replace the mock implementation with an integration
    * to the underlying data sources once they are available.
    */
-  async getProcessDataBySerialNumber(serialNumber: string): Promise<SerialNumberProcessData> {
+  async getProcessDataBySerialNumber(
+    serialNumber: string,
+  ): Promise<SerialNumberProcessData> {
     return {
       serialNumber,
       processes: [],
@@ -39,11 +41,12 @@ export class SerialNumberDataService {
 
   async getSuzhouShunyuAaBaseInfo(
     serialNumber: string,
-    dbConfig: DatabaseConfig,
     parseResult: ResultParser,
   ): Promise<SerialNumberAaBaseInfo> {
-    void dbConfig;
+    env.DATABASE_URL_SUZHOU;
     void parseResult;
+
+    // 通过mo_auto_adjust_info 获取数据
 
     return {
       serialNumber,
@@ -56,11 +59,12 @@ export class SerialNumberDataService {
 
   async getSuzhouGuanghaojieAaBaseInfo(
     serialNumber: string,
-    dbConfig: DatabaseConfig,
     parseResult: ResultParser,
   ): Promise<SerialNumberAaBaseInfo> {
-    void dbConfig;
+    env.DATABASE_URL_SUZHOU;
     void parseResult;
+
+    // 通过mo_auto_adjust_info 获取数据
 
     return {
       serialNumber,
@@ -73,11 +77,12 @@ export class SerialNumberDataService {
 
   async getMianyangAiweishiAaBaseInfo(
     serialNumber: string,
-    dbConfig: DatabaseConfig,
     parseResult: ResultParser,
   ): Promise<SerialNumberAaBaseInfo> {
-    void dbConfig;
+    env.DATABASE_URL_MIANYANG;
     void parseResult;
+
+    // 通过mo_auto_adjust_info 获取数据 add_time
 
     return {
       serialNumber,
