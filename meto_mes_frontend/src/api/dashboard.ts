@@ -26,7 +26,7 @@ const PROCESS_DETAIL_URL = "/dashboard/process-detail";
 const DASHBOARD_PRODUCTS_URL = "/dashboard/products";
 
 const isMockEnabled = (() => {
-  const flag = import.meta.env.VITE_USE_DASHBOARD_MOCK;
+  const flag = false;
   if (typeof flag === "boolean") return flag;
   return String(flag).toLowerCase() === "true";
 })();
@@ -55,6 +55,7 @@ export async function fetchDashboardSummary(
     DASHBOARD_SUMMARY_URL,
     { data: params }
   );
+  console.log(response);
   return unwrapResponse(response, "获取仪表盘数据失败");
 }
 
@@ -75,10 +76,9 @@ export async function fetchProcessDetail(
 export async function fetchDashboardProducts(
   params: DashboardProductsParams
 ): Promise<DashboardProductOption[]> {
-  // if (isMockEnabled) {
-
-  //   return Promise.resolve(buildDashboardProducts(params));
-  // }
+  if (isMockEnabled) {
+    return Promise.resolve(buildDashboardProducts(params));
+  }
 
   const response = await http.request<ApiResponse<DashboardProductOption[]>>(
     "get",
