@@ -479,7 +479,7 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
 
     <el-card class="traceability-card" v-loading="baseLoading">
       <template #header>
-        <span>基本信息</span>
+        <span class="traceability-card-title">基本信息</span>
       </template>
       <el-row :gutter="16">
         <el-col :xs="24" :md="12" class="traceability-base-block">
@@ -537,7 +537,7 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
     <el-card class="traceability-card">
       <template #header>
         <div class="traceability-card-header">
-          <span>工序追溯</span>
+          <span class="traceability-card-title">工序追溯</span>
           <el-icon v-if="processLoading" class="is-loading traceability-loading-icon">
             <LoadingIcon />
           </el-icon>
@@ -608,6 +608,11 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.traceability-card-title {
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .traceability-loading-icon {
