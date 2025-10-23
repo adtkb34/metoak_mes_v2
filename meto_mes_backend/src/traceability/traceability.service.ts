@@ -28,7 +28,7 @@ export interface TraceabilityFlow extends TraceabilitySerialNumber {
 }
 
 export interface TraceabilityResponse {
-  base:
+  base: Option[]
   materials: 
   flow: TraceabilityFlow;
 }
