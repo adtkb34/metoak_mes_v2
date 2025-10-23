@@ -1,7 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { SerialNumberAaBaseInfo, SerialNumberDataService } from 'src/serial-number-data/serial-number-data.service';
+import { PrismaClient } from '@prisma/client';
+import {
+  SerialNumberAaBaseInfo,
+  SerialNumberDataService,
+} from 'src/serial-number-data/serial-number-data.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SnType } from 'src/utils/sn';
+import { ProductOrigin } from 'src/common/enums/product-origin.enum';
 
 export interface TraceabilitySerialNumber {
   serialNumber: string;
@@ -28,6 +33,20 @@ export interface TraceabilityResponse {
   flows: TraceabilityFlow[];
 }
 
+interface WorkOrderContext {
+  workOrderCode: string;
+  client: PrismaClient;
+}
+
+interface FlowContext {
+  flowCode: string;
+  client: PrismaClient;
+}
+
+type ProcessFlowWithStage = Awaited<
+  ReturnType<PrismaClient['mo_process_flow']['findMany']>
+>;
+
 @Injectable()
 export class TraceabilityService {
   constructor(
@@ -35,17 +54,24 @@ export class TraceabilityService {
     private readonly serialNumberDataService: SerialNumberDataService,
   ) {}
 
-  async getTraceability(serialNumber: string): Promise<TraceabilityResponse> {
+  async getTraceability(
+    serialNumber: string,
+    processCode?: string,
+  ): Promise<TraceabilityResponse> {
     const normalizedSerialNumber = serialNumber?.trim();
     if (!normalizedSerialNumber) {
       throw new BadRequestException('serialNumber is required');
     }
 
+    const normalizedProcessCode = processCode?.trim() || undefined;
+
     const serialNumbers = await this.resolveSerialNumbers(normalizedSerialNumber);
 
     const flows: TraceabilityFlow[] = [];
     for (const entry of serialNumbers) {
-      flows.push(await this.buildFlowForSerialNumber(entry));
+      flows.push(
+        await this.buildFlowForSerialNumber(entry, normalizedProcessCode),
+      );
     }
 
     return {
@@ -57,22 +83,41 @@ export class TraceabilityService {
 
   private async buildFlowForSerialNumber(
     entry: TraceabilitySerialNumber,
+    providedFlowCode?: string,
   ): Promise<TraceabilityFlow> {
-    const workOrderCode = await this.getWorkOrderCode(entry.serialNumber, entry.type);
-    if (!workOrderCode) {
-      return { ...entry, workOrderCode: null, flowCode: null, steps: [] };
+    const workOrderContext = await this.getWorkOrderContext(
+      entry.serialNumber,
+      entry.type,
+    );
+
+    const workOrderCode = workOrderContext?.workOrderCode ?? null;
+    let flowCode = providedFlowCode ?? null;
+    let preferredClient: PrismaClient | null = workOrderContext?.client ?? null;
+
+    if (!flowCode && workOrderContext) {
+      const flowContext = await this.getFlowCode(
+        workOrderContext.workOrderCode,
+        preferredClient,
+      );
+      if (flowContext) {
+        flowCode = flowContext.flowCode;
+        preferredClient = flowContext.client;
+      }
     }
 
-    const flowCode = await this.getFlowCode(workOrderCode);
     if (!flowCode) {
       return { ...entry, workOrderCode, flowCode: null, steps: [] };
     }
 
-    const processSteps = await this.prisma.mo_process_flow.findMany({
-      where: { process_code: flowCode },
-      include: { mo_workstage: true },
-      orderBy: { id: 'asc' },
-    });
+    const processStepsContext = await this.findProcessSteps(
+      flowCode,
+      preferredClient,
+    );
+
+    const processSteps = processStepsContext?.steps ?? [];
+    if (processSteps.length === 0) {
+      return { ...entry, workOrderCode, flowCode, steps: [] };
+    }
 
     const steps: TraceabilityProcessStep[] = [];
     for (const processStep of processSteps) {
@@ -81,10 +126,11 @@ export class TraceabilityService {
         continue;
       }
 
-      const data = await this.serialNumberDataService.getProcessDataBySerialNumber(
-        entry.serialNumber,
-        stepTypeNo,
-      );
+      const data =
+        await this.serialNumberDataService.getProcessDataBySerialNumber(
+          entry.serialNumber,
+          stepTypeNo,
+        );
 
       steps.push({
         stageCode: processStep.stage_code,
@@ -112,47 +158,147 @@ export class TraceabilityService {
       entries.push({ serialNumber: value, type });
     };
 
-    const beamInfo = await this.prisma.mo_beam_info.findFirst({
-      where: { beam_sn: serialNumber },
-    });
+    const beamContext = await this.findFirstAcrossClients((client) =>
+      client.mo_beam_info.findFirst({
+        where: { beam_sn: serialNumber },
+      }),
+    );
 
-    if (beamInfo) {
+    if (beamContext?.record) {
       pushUnique(serialNumber, SnType.BEAM);
-      const related = await this.prisma.mo_tag_shell_info.findFirst({
-        where: { camera_sn: serialNumber },
-        orderBy: { id: 'desc' },
-      });
-      pushUnique(related?.shell_sn, SnType.SHELL);
+      const related = await this.findFirstAcrossClients((client) =>
+        client.mo_tag_shell_info.findFirst({
+          where: { camera_sn: serialNumber },
+          orderBy: { id: 'desc' },
+        }),
+      );
+      pushUnique(related?.record?.shell_sn, SnType.SHELL);
     } else {
       pushUnique(serialNumber, SnType.SHELL);
-      const related = await this.prisma.mo_tag_shell_info.findFirst({
-        where: { shell_sn: serialNumber },
-        orderBy: { id: 'desc' },
-      });
-      pushUnique(related?.camera_sn, SnType.BEAM);
+      const related = await this.findFirstAcrossClients((client) =>
+        client.mo_tag_shell_info.findFirst({
+          where: { shell_sn: serialNumber },
+          orderBy: { id: 'desc' },
+        }),
+      );
+      pushUnique(related?.record?.camera_sn, SnType.BEAM);
     }
 
     return entries;
   }
 
-  private async getWorkOrderCode(serialNumber: string, type: SnType): Promise<string | null> {
+  private async getWorkOrderContext(
+    serialNumber: string,
+    type: SnType,
+  ): Promise<WorkOrderContext | null> {
     if (type === SnType.BEAM) {
-      const beamInfo = await this.prisma.mo_beam_info.findFirst({
-        where: { beam_sn: serialNumber },
-      });
-      return beamInfo?.work_order_code ?? null;
+      const beamContext = await this.findFirstAcrossClients((client) =>
+        client.mo_beam_info.findFirst({
+          where: { beam_sn: serialNumber },
+        }),
+      );
+
+      if (beamContext?.record?.work_order_code) {
+        return {
+          workOrderCode: beamContext.record.work_order_code,
+          client: beamContext.client,
+        };
+      }
+
+      return null;
     }
 
-    const tagInfo = await this.prisma.mo_tag_info.findFirst({
-      where: { tag_sn: serialNumber },
-    });
-    return tagInfo?.work_order_code ?? null;
+    const tagContext = await this.findFirstAcrossClients((client) =>
+      client.mo_tag_info.findFirst({
+        where: { tag_sn: serialNumber },
+      }),
+    );
+
+    if (tagContext?.record?.work_order_code) {
+      return {
+        workOrderCode: tagContext.record.work_order_code,
+        client: tagContext.client,
+      };
+    }
+
+    return null;
   }
 
-  private async getFlowCode(workOrderCode: string): Promise<string | null> {
-    const order = await this.prisma.mo_produce_order.findFirst({
-      where: { work_order_code: workOrderCode },
-    });
-    return order?.flow_code ?? null;
+  private async getFlowCode(
+    workOrderCode: string,
+    preferredClient?: PrismaClient | null,
+  ): Promise<FlowContext | null> {
+    const orderContext = await this.findFirstAcrossClients(
+      (client) =>
+        client.mo_produce_order.findFirst({
+          where: { work_order_code: workOrderCode },
+        }),
+      preferredClient,
+    );
+
+    if (orderContext?.record?.flow_code) {
+      return {
+        flowCode: orderContext.record.flow_code,
+        client: orderContext.client,
+      };
+    }
+
+    return null;
+  }
+
+  private async findProcessSteps(
+    flowCode: string,
+    preferredClient?: PrismaClient | null,
+  ): Promise<{ client: PrismaClient; steps: ProcessFlowWithStage } | null> {
+    for (const client of this.getPrismaClients(preferredClient)) {
+      const steps = await client.mo_process_flow.findMany({
+        where: { process_code: flowCode },
+        include: { mo_workstage: true },
+        orderBy: { id: 'asc' },
+      });
+
+      if (steps.length > 0) {
+        return { client, steps };
+      }
+    }
+
+    return null;
+  }
+
+  private async findFirstAcrossClients<T>(
+    finder: (client: PrismaClient) => Promise<T | null | undefined>,
+    preferredClient?: PrismaClient | null,
+  ): Promise<{ client: PrismaClient; record: T } | null> {
+    for (const client of this.getPrismaClients(preferredClient)) {
+      const record = await finder(client);
+      if (record != null) {
+        return { client, record };
+      }
+    }
+
+    return null;
+  }
+
+  private getPrismaClients(
+    preferredClient?: PrismaClient | null,
+  ): PrismaClient[] {
+    const clients: PrismaClient[] = [];
+    const pushUnique = (client: PrismaClient | null | undefined) => {
+      if (!client) {
+        return;
+      }
+      if (!clients.includes(client)) {
+        clients.push(client);
+      }
+    };
+
+    pushUnique(preferredClient ?? null);
+    pushUnique(this.prisma);
+
+    for (const origin of [ProductOrigin.SUZHOU, ProductOrigin.MIANYANG]) {
+      pushUnique(this.prisma.getClientByOrigin(origin));
+    }
+
+    return clients;
   }
 }
