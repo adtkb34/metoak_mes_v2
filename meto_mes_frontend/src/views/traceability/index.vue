@@ -148,8 +148,8 @@ function deriveRecordColumns(
     // process: "工序",
     timestamp: "时间",
     result: "结果",
-    operator: "操作人员",
     error_code: "错误码",
+    operator: "操作人员",
     status: "状态",
     check_result: "判定结果",
     start_time: "开始时间",
@@ -328,7 +328,6 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
           <el-empty v-else description="请先查询" />
         </el-col>
         <el-col :xs="24" :md="12" class="traceability-base-block">
-          <h4 class="traceability-block-title">物料信息</h4>
           <el-table
             v-if="materials.length"
             :data="materials"
