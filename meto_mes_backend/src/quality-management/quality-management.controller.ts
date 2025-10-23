@@ -8,8 +8,8 @@ import { STEP_NO } from 'src/utils/stepNo';
 export class QualityManagementController {
   constructor(
     private qualityService: QualityManagementService,
-    private prisma: PrismaService
-  ) { }
+    private prisma: PrismaService,
+  ) {}
 
   @Get('/quality-analysis')
   getQualityAnalysis(@Query('start') start: string, @Query('end') end: string) {
@@ -27,25 +27,29 @@ export class QualityManagementController {
     // return this.qualityService.getQualityData(start, end);
   }
 
-
   @Get('/measure-distance')
   async getMeasureDistance(
     @Query('startDate') start: string,
     @Query('endDate') endTime_: string,
     @Query('distance') distance: string,
-    @Query('precisions') precisions: string
+    @Query('precisions') precisions: string,
   ) {
-    let endTime
+    let endTime;
     if (!endTime_) {
-      endTime = `${endTime_} 23:59:59`
+      endTime = `${endTime_} 23:59:59`;
     }
     // if (!start || !end || !precisions) {
     //   throw new BadRequestException('缺少必要参数 start / end / precisions');
     // }
 
-    const precisionList = precisions.split(',').map(p => Number(p.trim()));
+    const precisionList = precisions.split(',').map((p) => Number(p.trim()));
 
-    return await this.qualityService.getMeasureDistanceData(start, endTime, distance, precisionList);
+    return await this.qualityService.getMeasureDistanceData(
+      start,
+      endTime,
+      distance,
+      precisionList,
+    );
   }
 
   @Get('/stereo-calibration')
@@ -68,7 +72,6 @@ export class QualityManagementController {
       pageSize: pageSize ? Number(pageSize) : undefined, // 新增
     });
   }
-
 
   @Get('/others')
   async getOthers(
@@ -109,9 +112,7 @@ export class QualityManagementController {
   }
 
   @Get('/flow')
-  async getFlow(
-    @Query('material_code') material_code: string,
-  ) {
+  async getFlow(@Query('material_code') material_code: string) {
     if (!material_code) {
       return mo_fail();
     }
@@ -130,24 +131,23 @@ export class QualityManagementController {
     if (!flow_code) {
       return mo_fail();
     }
-    let endTime
+    let endTime;
     if (!endTime_) {
-      endTime = `${endTime_} 23:59:59`
+      endTime = `${endTime_} 23:59:59`;
     }
     const steps = await this.qualityService.getSteps(flow_code);
     // console.log(steps)
     // 判断工序有效性
-    const hasValidStep = steps.some(item => item?.step_no);
+    const hasValidStep = steps.some((item) => item?.step_no);
     if (!hasValidStep) {
       return mo_fail('当前工艺无可用工序');
     }
 
-
     // 并行获取所有错误码
     const data = await Promise.all(
       steps
-        .filter(item => item?.step_no)
-        .map(async item => {
+        .filter((item) => item?.step_no)
+        .map(async (item) => {
           if (!item?.step_no) {
             return;
           }
@@ -158,23 +158,28 @@ export class QualityManagementController {
               stepNo: item.step_no,
               startTime,
               endTime,
-            })  
-          } else if(item.step_no === STEP_NO.FQC) {
-            res = await this.qualityService.getFQCErrorCodes({material_code, stepNo: item.step_no, startTime, endTime})  
+            });
+          } else if (item.step_no === STEP_NO.S315FQC) {
+            res = await this.qualityService.getFQCErrorCodes({
+              material_code,
+              stepNo: item.step_no,
+              startTime,
+              endTime,
+            });
           } else {
             res = await this.qualityService.getErrorCodes({
               material_code: material_code,
               stepNo: item.step_no,
               startTime,
               endTime,
-            })
+            });
           }
-          
+
           return {
             id: item.id,
             step: item.stage_name,
-            data: res
-          }
+            data: res,
+          };
         }),
     );
 
@@ -199,4 +204,3 @@ function convertBigInt(obj: any): any {
   }
   return obj;
 }
-

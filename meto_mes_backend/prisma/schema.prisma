@@ -817,7 +817,6 @@ model mo_final_result {
   error_code         Int?
   image_path         String?   @db.VarChar(256)
   tool_version       String?   @db.VarChar(16)
-  is_deleted         Boolean?  @default(false)
   return_repair_date DateTime? @db.Date
 
   @@unique([camera_sn, taskid], map: "ak_unique")

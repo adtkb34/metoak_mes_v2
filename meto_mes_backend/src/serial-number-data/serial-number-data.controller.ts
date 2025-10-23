@@ -1,12 +1,23 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { SerialNumberDataService, SerialNumberProcessData } from './serial-number-data.service';
+import { Controller, Get, Query } from '@nestjs/common';
+import {
+  SerialNumberDataService,
+  SerialNumberAaBaseInfo,
+} from './serial-number-data.service';
 
 @Controller('serial-number-data')
 export class SerialNumberDataController {
-  constructor(private readonly serialNumberDataService: SerialNumberDataService) {}
+  constructor(
+    private readonly serialNumberDataService: SerialNumberDataService,
+  ) {}
 
-  @Get(':serialNumber')
-  getProcessData(@Param('serialNumber') serialNumber: string): Promise<SerialNumberProcessData> {
-    return this.serialNumberDataService.getProcessDataBySerialNumber(serialNumber);
+  @Get()
+  getProcessData(
+    @Query('serialNumber') serialNumber: string,
+    @Query('stepTypeNo') stepTypeNo: string,
+  ): Promise<SerialNumberAaBaseInfo[]> {
+    return this.serialNumberDataService.getProcessDataBySerialNumber(
+      serialNumber,
+      stepTypeNo,
+    );
   }
 }

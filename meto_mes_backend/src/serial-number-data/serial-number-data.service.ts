@@ -39,58 +39,128 @@ export class SerialNumberDataService {
   async getProcessDataBySerialNumber(
     serialNumber: string,
     stepTypeNo: string,
-  ): Promise<SerialNumberProcessData> {
-    switch (stepTypeNo) {
-      case STEP_NO.AUTO_ADJUST:
-        await this.getSuzhouShunyuAaBaseInfo(serialNumber, () => '');
-        await this.getSuzhouGuanghaojieAaBaseInfo(
+  ): Promise<SerialNumberAaBaseInfo[]> {
+    const processes: SerialNumberAaBaseInfo[] = [];
+    if (stepTypeNo == STEP_NO.AUTO_ADJUST) {
+      processes.push(
+        ...(await this.getSuzhouShunyuAaBaseInfo(serialNumber, () => null)),
+      );
+      processes.push(
+        ...(await this.getSuzhouGuanghaojieAaBaseInfo(
           serialNumber,
-          update_ng_reason_4_guanghaojie,
-        );
-        await this.getMianyangAiweishiAaBaseInfo(
+          // update_ng_reason_4_guanghaojie,
+          () => null,
+        )),
+      );
+      processes.push(
+        ...(await this.getMianyangAiweishiAaBaseInfo(
           serialNumber,
-          update_ng_reason_4_aiweishi,
+          // update_ng_reason_4_aiweishi,
+          () => null,
+        )),
+      );
+    } else if (
+      [
+        STEP_NO.DIRTY_CHECKING,
+        STEP_NO.UV_DISPENSING,
+        STEP_NO.PLASMA,
+        STEP_NO.MATERIAL_BINDING,
+        STEP_NO.BEAM_APPEARANCE_INSPECTION,
+        STEP_NO.LASER_MARKING_INSPECTION,
+        STEP_NO.BEAM_SEALANT_COATING,
+        STEP_NO.CMOS_APPEARANCE_INSPECTION,
+        STEP_NO.FILM_REMOVAL_CLEANING,
+        STEP_NO.SCREW_TIGHTENING_INSPECTION,
+        STEP_NO.HIGH_TEMP_CURING_RECORD,
+        STEP_NO.AFTER_AA_FINAL_COMPREHENSIVE_INSPECTION,
+        STEP_NO.AFTER_AA_COATING_PROCESS_RECORD,
+      ].includes(stepTypeNo as STEP_NO)
+    ) {
+      for (const productOrigin of [
+        ProductOrigin.SUZHOU,
+        ProductOrigin.MIANYANG,
+      ]) {
+        processes.push(
+          ...(await this.getAaRelatedStepBaseInfo(
+            serialNumber,
+            () => null,
+            stepTypeNo,
+            productOrigin,
+          )),
         );
-        break;
-      case 'production':
-        console.log('Running in production mode');
-        break;
-      default:
-        console.log('Unknown mode');
+      }
+    } else if (stepTypeNo == STEP_NO.CALIB) {
+      for (const productOrigin of [
+        ProductOrigin.SUZHOU,
+        ProductOrigin.MIANYANG,
+      ]) {
+        processes.push(
+          ...(await this.getCalibBaseInfo(
+            serialNumber,
+            () => null,
+            productOrigin,
+          )),
+        );
+      }
+    } else if (stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
+      for (const productOrigin of [
+        ProductOrigin.SUZHOU,
+        ProductOrigin.MIANYANG,
+      ]) {
+        processes.push(
+          ...(await this.getAssemblePCBABaseInfo(serialNumber, productOrigin)),
+        );
+      }
+    } else if (stepTypeNo == STEP_NO.S315FQC) {
+      for (const productOrigin of [
+        ProductOrigin.SUZHOU,
+        ProductOrigin.MIANYANG,
+      ]) {
+        processes.push(
+          ...(await this.get315FinalCheckBaseInfo(
+            serialNumber,
+            () => null,
+            productOrigin,
+          )),
+        );
+      }
     }
-    return {
-      serialNumber,
-      processes: [],
-    };
+    return processes;
   }
 
   async getSuzhouShunyuAaBaseInfo(
     serialNumber: string,
     parseResult: ResultParser,
-  ): Promise<SerialNumberAaBaseInfo> {
+  ): Promise<SerialNumberAaBaseInfo[]> {
     const client = this.prisma.getClientByOrigin(ProductOrigin.SUZHOU);
 
-    const record = await client.mo_auto_adjust_st08.findFirst({
-      where: { beam_sn: serialNumber },
-      orderBy: [{ add_time: 'desc' }, { id: 'desc' }],
+    // 查询所有匹配的记录（按时间倒序）
+    const records = await client.mo_process_step_production_result.findMany({
+      where: { product_sn: serialNumber, step_type_no: STEP_NO.AUTO_ADJUST },
+      orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
     });
 
-    return {
+    if (!records || records.length === 0) {
+      return []; // ✅ 没数据时返回空数组，避免 undefined
+    }
+
+    // ✅ 遍历转换成 SerialNumberAaBaseInfo[]
+    return records.map((record) => ({
       serialNumber,
       process: '苏州舜宇AA',
-      timestamp: this.formatTimestamp(record?.add_time),
-      result: this.parseResultValue(parseResult, record?.error_code),
+      timestamp: this.formatTimestamp(record.start_time),
+      result: this.parseResultValue(parseResult, record.error_code),
       operator: this.extractOperator(record),
-    };
+    }));
   }
 
   async getSuzhouGuanghaojieAaBaseInfo(
     serialNumber: string,
     parseResult: ResultParser,
-  ): Promise<SerialNumberAaBaseInfo> {
+  ): Promise<SerialNumberAaBaseInfo[]> {
     const client = this.prisma.getClientByOrigin(ProductOrigin.SUZHOU);
 
-    const record = await client.mo_auto_adjust_info.findFirst({
+    const records = await client.mo_auto_adjust_info.findMany({
       where: { beam_sn: serialNumber },
       orderBy: [
         { operation_time: 'desc' },
@@ -99,33 +169,146 @@ export class SerialNumberDataService {
       ],
     });
 
-    return {
+    if (!records || records.length === 0) return [];
+
+    return records.map((record) => ({
       serialNumber,
       process: '苏州广浩捷AA',
       timestamp: this.pickInfoTimestamp(record),
-      result: this.parseResultValue(parseResult, record?.operation_result),
+      result: this.parseResultValue(parseResult, record.operation_result),
       operator: this.extractOperator(record),
-    };
+    }));
   }
 
   async getMianyangAiweishiAaBaseInfo(
     serialNumber: string,
     parseResult: ResultParser,
-  ): Promise<SerialNumberAaBaseInfo> {
+  ): Promise<SerialNumberAaBaseInfo[]> {
     const client = this.prisma.getClientByOrigin(ProductOrigin.MIANYANG);
 
-    const record = await client.mo_auto_adjust_st08.findFirst({
-      where: { beam_sn: serialNumber },
-      orderBy: [{ add_time: 'desc' }, { id: 'desc' }],
+    const records = await client.mo_process_step_production_result.findMany({
+      where: { product_sn: serialNumber, step_type_no: STEP_NO.AUTO_ADJUST },
+      orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
     });
 
-    return {
+    if (!records || records.length === 0) return [];
+
+    return records.map((record) => ({
       serialNumber,
-      process: '绵阳艾为视AA',
-      timestamp: this.formatTimestamp(record?.add_time),
-      result: this.parseResultValue(parseResult, record?.error_code),
+      process: '绵阳艾薇视AA',
+      timestamp: this.formatTimestamp(record.start_time),
+      result: record.error_code
+        ? (this.parseResultValue(parseResult, record.ng_reason) ?? '')
+        : (record.ng_reason ?? ''),
       operator: this.extractOperator(record),
-    };
+    }));
+  }
+
+  async getAaRelatedStepBaseInfo(
+    serialNumber: string,
+    parseResult: ResultParser,
+    stepTypeNo: String,
+    productOrigin: ProductOrigin,
+  ): Promise<SerialNumberAaBaseInfo[]> {
+    const client = this.prisma.getClientByOrigin(productOrigin);
+
+    const records = await client.mo_process_step_production_result.findMany({
+      where: { product_sn: serialNumber, step_type_no: String(stepTypeNo) },
+      orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
+    });
+
+    const workstage = await client.mo_workstage.findFirst({
+      where: { sys_step_type_no: String(stepTypeNo) },
+    });
+
+    if (!records || records.length === 0) return [];
+
+    return records.map((record) => ({
+      serialNumber,
+      process:
+        workstage?.stage_name ||
+        record.step_type ||
+        `未找到对应的工序名: ${stepTypeNo}`,
+      timestamp: this.formatTimestamp(record.start_time),
+      result: record.error_code
+        ? (this.parseResultValue(parseResult, record.ng_reason) ?? '')
+        : (record.ng_reason ?? ''),
+      operator: this.extractOperator(record),
+    }));
+  }
+
+  async getCalibBaseInfo(
+    serialNumber: string,
+    parseResult: ResultParser,
+    productOrigin: ProductOrigin,
+  ): Promise<SerialNumberAaBaseInfo[]> {
+    const client = this.prisma.getClientByOrigin(productOrigin);
+
+    const records = await client.mo_calibration.findMany({
+      where: { camera_sn: serialNumber },
+      orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!records || records.length === 0) return [];
+
+    return records.map((record) => ({
+      serialNumber,
+      process: '双目标定',
+      timestamp: this.formatTimestamp(record.start_time),
+      result:
+        record.error_code == 0
+          ? 'SUCCESS'
+          : this.parseResultValue(parseResult, record.error_code),
+      operator: this.extractOperator(record),
+    }));
+  }
+
+  async getAssemblePCBABaseInfo(
+    serialNumber: string,
+    productOrigin: ProductOrigin,
+  ): Promise<SerialNumberAaBaseInfo[]> {
+    const client = this.prisma.getClientByOrigin(productOrigin);
+
+    const records = await client.mo_assemble_info.findMany({
+      where: { camera_sn: serialNumber },
+      orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!records || records.length === 0) return [];
+
+    return records.map((record) => ({
+      serialNumber,
+      process: '组装PCBA',
+      timestamp: this.formatTimestamp(record.start_time),
+      result: 'SUCCESS',
+      operator: this.extractOperator(record),
+    }));
+  }
+
+  async get315FinalCheckBaseInfo(
+    serialNumber: string,
+    parseResult: ResultParser,
+    productOrigin: ProductOrigin,
+  ): Promise<SerialNumberAaBaseInfo[]> {
+    const client = this.prisma.getClientByOrigin(productOrigin);
+
+    const records = await client.mo_final_result.findMany({
+      where: { camera_sn: serialNumber },
+      orderBy: [{ check_time: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!records || records.length === 0) return [];
+
+    return records.map((record) => ({
+      serialNumber,
+      process: '终检',
+      timestamp: this.formatTimestamp(record.check_time),
+      result:
+        record.error_code == 0
+          ? 'SUCCESS'
+          : this.parseResultValue(parseResult, record.error_code),
+      operator: this.extractOperator(record),
+    }));
   }
 
   private formatTimestamp(value?: Date | null): string | null {
@@ -154,13 +337,13 @@ export class SerialNumberDataService {
 
   private parseResultValue(parser: ResultParser, raw: unknown): string {
     if (typeof parser !== 'function') {
-      return '';
+      return `${raw}`;
     }
 
     try {
       const parsed = parser(raw);
       if (parsed === null || parsed === undefined) {
-        return '';
+        return `${raw}`;
       }
       if (typeof parsed === 'string') {
         return parsed;
@@ -173,7 +356,7 @@ export class SerialNumberDataService {
       const message =
         error instanceof Error ? error.message : JSON.stringify(error);
       this.logger.warn(`Failed to parse AA result: ${message}`);
-      return '';
+      return `${raw}`;
     }
   }
 
