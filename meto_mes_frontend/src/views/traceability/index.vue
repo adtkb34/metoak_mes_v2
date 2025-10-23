@@ -1,16 +1,27 @@
 <script setup lang="ts">
 import { computed, reactive, ref, onMounted } from "vue";
 import {
-  getTraceability,
+  getTraceabilityBase,
+  getTraceabilityMaterials,
+  getTraceabilityProcess,
+  type TraceabilityBaseOption,
+  type TraceabilityFlowSummary,
+  type TraceabilityMaterialInfo,
   type TraceabilityProcessRecord,
-  type TraceabilityProcessStep,
-  type TraceabilityResponse
+  type TraceabilityProcessStepSummary
 } from "@/api/traceability";
 import { useProcessStore } from "@/store/modules/processFlow";
 import { message } from "@/utils/message";
 import { formatToUTC8 } from "@/utils/date";
 
 defineOptions({ name: "Traceability" });
+
+type StatusTagType = "" | "success" | "danger";
+
+interface TraceabilityStatusTag {
+  text: string;
+  type: StatusTagType;
+}
 
 interface TraceabilityTreeRow extends TraceabilityProcessRecord {
   id: string;
@@ -20,12 +31,18 @@ interface TraceabilityTreeRow extends TraceabilityProcessRecord {
   stepTypeNo: string;
   children?: TraceabilityTreeRow[];
   __isLatest?: boolean;
+  __statusTag?: TraceabilityStatusTag;
+  __statusText?: string;
 }
 
 interface TraceabilityColumn {
   prop: string;
   label: string;
 }
+
+type TraceabilityProcessStepWithData = TraceabilityProcessStepSummary & {
+  data: TraceabilityProcessRecord[];
+};
 
 const processStore = useProcessStore();
 
@@ -36,14 +53,25 @@ const query = reactive({
 
 const loading = ref(false);
 const hasSearched = ref(false);
-const traceability = ref<TraceabilityResponse | null>(null);
+const baseInfoItems = ref<TraceabilityBaseOption[]>([]);
+const materialItems = ref<TraceabilityMaterialInfo[]>([]);
+const flowSummary = ref<TraceabilityFlowSummary | null>(null);
+const stepDataMap = ref<Record<string, TraceabilityProcessRecord[]>>({});
 
 const processOptions = computed(() => processStore.processFlow.list ?? []);
-const baseInfo = computed(() => traceability.value?.base ?? []);
-const materials = computed(() => traceability.value?.materials ?? []);
-const flowSteps = computed(() => traceability.value?.flow?.steps ?? []);
+const baseInfo = computed(() => baseInfoItems.value);
+const materials = computed(() => materialItems.value);
+const flowSteps = computed(() => flowSummary.value?.steps ?? []);
 
-const tableData = computed(() => buildTreeData(flowSteps.value));
+const tableData = computed(() => {
+  const steps: TraceabilityProcessStepWithData[] = flowSteps.value.map(
+    step => ({
+      ...step,
+      data: stepDataMap.value[step.stepTypeNo] ?? []
+    })
+  );
+  return buildTreeData(steps);
+});
 const recordColumns = computed(() => deriveRecordColumns(tableData.value));
 
 const stageColumns: TraceabilityColumn[] = [
@@ -65,13 +93,93 @@ async function handleSearch() {
 
   loading.value = true;
   hasSearched.value = true;
+  baseInfoItems.value = [];
+  materialItems.value = [];
+  flowSummary.value = null;
+  stepDataMap.value = {};
 
   try {
-    const response = await getTraceability({
-      serialNumber,
-      processCode: processCode || undefined
-    });
-    traceability.value = response;
+    const [baseResponse, materialsResponse] = await Promise.all([
+      getTraceabilityBase({
+        serialNumber,
+        processCode: processCode || undefined
+      }),
+      getTraceabilityMaterials({ serialNumber })
+    ]);
+
+    baseInfoItems.value = baseResponse.base ?? [];
+    materialItems.value = Array.isArray(materialsResponse)
+      ? materialsResponse
+      : [];
+    flowSummary.value = baseResponse.flow ?? null;
+
+    const steps = baseResponse.flow?.steps ?? [];
+    if (steps.length > 0) {
+      const nextStepData: Record<string, TraceabilityProcessRecord[]> = {};
+      const effectiveSerialNumber =
+        baseResponse.flow?.serialNumber ?? serialNumber;
+      const effectiveProcessCode =
+        baseResponse.flow?.flowCode ?? (processCode || undefined);
+      const normalizedProcessCodeValue =
+        typeof effectiveProcessCode === "string"
+          ? effectiveProcessCode.trim()
+          : undefined;
+      const normalizedProcessCode =
+        normalizedProcessCodeValue && normalizedProcessCodeValue.length > 0
+          ? normalizedProcessCodeValue
+          : undefined;
+
+      const requests: Array<{
+        stepTypeNo: string;
+        request: ReturnType<typeof getTraceabilityProcess>;
+      }> = [];
+
+      steps.forEach(step => {
+        const normalizedStepTypeNo = step.stepTypeNo?.trim?.() ?? step.stepTypeNo;
+        if (!normalizedStepTypeNo) {
+          return;
+        }
+
+        const params: {
+          serialNumber: string;
+          stepTypeNo: string;
+          processCode?: string;
+        } = {
+          serialNumber: effectiveSerialNumber,
+          stepTypeNo: normalizedStepTypeNo
+        };
+
+        if (normalizedProcessCode) {
+          params.processCode = normalizedProcessCode;
+        }
+
+        requests.push({
+          stepTypeNo: normalizedStepTypeNo,
+          request: getTraceabilityProcess(params)
+        });
+      });
+
+      const results = await Promise.allSettled(
+        requests.map(item => item.request)
+      );
+
+      results.forEach((result, index) => {
+        const stepTypeNo = requests[index]?.stepTypeNo;
+        if (!stepTypeNo) return;
+
+        if (result.status === "fulfilled") {
+          const data = Array.isArray(result.value.data)
+            ? result.value.data
+            : [];
+          nextStepData[stepTypeNo] = data;
+        } else {
+          console.error(result.reason);
+          nextStepData[stepTypeNo] = [];
+        }
+      });
+
+      stepDataMap.value = nextStepData;
+    }
   } catch (error) {
     console.error(error);
     message("查询失败，请稍后重试", { type: "error" });
@@ -83,12 +191,15 @@ async function handleSearch() {
 function handleReset() {
   query.serialNumber = "";
   query.processCode = "";
-  traceability.value = null;
+  baseInfoItems.value = [];
+  materialItems.value = [];
+  flowSummary.value = null;
+  stepDataMap.value = {};
   hasSearched.value = false;
 }
 
 function buildTreeData(
-  steps: TraceabilityProcessStep[]
+  steps: TraceabilityProcessStepWithData[]
 ): TraceabilityTreeRow[] {
   const rows: TraceabilityTreeRow[] = [];
 
@@ -103,7 +214,7 @@ function buildTreeData(
         stageName: step.stageName,
         stepTypeNo: step.stepTypeNo,
         __isLatest: true,
-        status: "暂无数据",
+        __statusText: "暂无数据",
         children: []
       });
       return;
@@ -132,10 +243,14 @@ function deriveRecordColumns(
     "id",
     "children",
     "__isLatest",
+    "__statusTag",
+    "__statusText",
     "stageCode",
     "processName",
     "stageName",
-    "stepTypeNo"
+    "stepTypeNo",
+    "process",
+    "status"
   ]);
   const keys = new Set<string>();
 
@@ -188,12 +303,13 @@ function formatColumnLabel(prop: string): string {
 
 function createTreeRow(
   record: TraceabilityProcessRecord,
-  step: TraceabilityProcessStep,
+  step: TraceabilityProcessStepWithData,
   stepIndex: number,
   recordIndex: number,
   isLatest: boolean
 ): TraceabilityTreeRow {
   const formatted = formatRecord(record);
+  const statusTag = resolveStatusTag(record);
   return {
     id: `${step.stepTypeNo || stepIndex}-${recordIndex}`,
     stageCode: step.stageCode,
@@ -201,6 +317,8 @@ function createTreeRow(
     stageName: step.stageName,
     stepTypeNo: step.stepTypeNo,
     __isLatest: isLatest,
+    __statusTag: statusTag ?? undefined,
+    __statusText: statusTag?.text ?? "-",
     ...formatted
   };
 }
@@ -210,6 +328,9 @@ function formatRecord(
 ): TraceabilityProcessRecord {
   const formatted: TraceabilityProcessRecord = {};
   Object.entries(record || {}).forEach(([key, value]) => {
+    if (key === "process") {
+      return;
+    }
     if (value === null || value === undefined) {
       formatted[key] = "";
       return;
@@ -231,6 +352,33 @@ function formatRecord(
     formatted[key] = String(value);
   });
   return formatted;
+}
+
+function resolveStatusTag(
+  record: TraceabilityProcessRecord
+): TraceabilityStatusTag | null {
+  const source = record || {};
+  const rawErrorCode =
+    (source as Record<string, unknown>).error_code ??
+    (source as Record<string, unknown>).errorCode;
+
+  if (rawErrorCode === null || rawErrorCode === undefined) {
+    return null;
+  }
+
+  const normalized = String(rawErrorCode).trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const numericValue = Number(normalized);
+  const isNumeric = !Number.isNaN(numericValue);
+  const isSuccess = normalized === "0" || (isNumeric && numericValue === 0);
+
+  return {
+    text: isSuccess ? "通过" : "失败",
+    type: isSuccess ? "success" : "danger"
+  };
 }
 
 function getComparableTime(record: TraceabilityProcessRecord): number {
@@ -293,11 +441,15 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :xs="24" :sm="24" :md="8" class="traceability-filter-actions">
-            <el-button type="primary" @click="handleSearch" :loading="loading"
-              >查询</el-button
-            >
-            <el-button @click="handleReset" :disabled="loading">重置</el-button>
+          <el-col :xs="24" :sm="24" :md="8">
+            <el-form-item label=" " class="traceability-filter-actions">
+              <el-button type="primary" @click="handleSearch" :loading="loading"
+                >查询</el-button
+              >
+              <el-button @click="handleReset" :disabled="loading"
+                >重置</el-button
+              >
+            </el-form-item>
           </el-col>
         </el-row>
       </el-form>
@@ -383,6 +535,18 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
             min-width="140"
             show-overflow-tooltip
           />
+          <el-table-column label="状态" min-width="120" align="center">
+            <template #default="{ row }">
+              <el-tag
+                v-if="row.__statusTag"
+                :type="row.__statusTag.type"
+                effect="light"
+              >
+                {{ row.__statusTag.text }}
+              </el-tag>
+              <span v-else>{{ row.__statusText ?? "-" }}</span>
+            </template>
+          </el-table-column>
           <el-table-column
             v-for="column in recordColumns"
             :key="column.prop"
@@ -419,12 +583,20 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
   }
 
   .traceability-filter-actions {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
+    margin-bottom: 0;
 
-    .el-button {
-      min-width: 80px;
+    :deep(.el-form-item__label) {
+      visibility: hidden;
+    }
+
+    :deep(.el-form-item__content) {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .el-button {
+        min-width: 80px;
+      }
     }
   }
 }
