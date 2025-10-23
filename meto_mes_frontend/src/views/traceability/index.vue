@@ -140,7 +140,8 @@ async function handleSearch() {
       }> = [];
 
       steps.forEach(step => {
-        const normalizedStepTypeNo = step.stepTypeNo?.trim?.() ?? step.stepTypeNo;
+        const normalizedStepTypeNo =
+          step.stepTypeNo?.trim?.() ?? step.stepTypeNo;
         if (!normalizedStepTypeNo) {
           return;
         }
@@ -169,9 +170,7 @@ async function handleSearch() {
         const stepPromises = requests.map(({ stepTypeNo, request }) =>
           request
             .then(response => {
-              const data = Array.isArray(response?.data)
-                ? response.data
-                : [];
+              const data = Array.isArray(response?.data) ? response.data : [];
               updateStepData(stepTypeNo, data);
             })
             .catch(error => {
@@ -209,10 +208,7 @@ function handleReset() {
   processLoading.value = false;
 }
 
-function updateStepData(
-  stepTypeNo: string,
-  data: TraceabilityProcessRecord[]
-) {
+function updateStepData(stepTypeNo: string, data: TraceabilityProcessRecord[]) {
   if (!stepTypeNo) return;
   stepDataMap.value = {
     ...stepDataMap.value,
@@ -477,6 +473,65 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
       </el-form>
     </el-card>
 
+    <el-card class="traceability-card">
+      <template #header>
+        <div class="traceability-card-header">
+          <span class="traceability-card-title">工序追溯</span>
+          <el-icon
+            v-if="processLoading"
+            class="is-loading traceability-loading-icon"
+          >
+            <LoadingIcon />
+          </el-icon>
+        </div>
+      </template>
+      <div class="traceability-table-wrapper">
+        <el-table
+          v-if="tableData.length"
+          :data="tableData"
+          border
+          row-key="id"
+          :tree-props="{ children: 'children' }"
+          :row-class-name="rowClassName"
+          class="traceability-table"
+        >
+          <el-table-column type="index" label="#" width="60" />
+          <el-table-column
+            v-for="column in stageColumns"
+            :key="column.prop"
+            :prop="column.prop"
+            :label="column.label"
+            min-width="140"
+            show-overflow-tooltip
+          />
+          <el-table-column label="状态" min-width="120" align="center">
+            <template #default="{ row }">
+              <el-tag
+                v-if="row.__statusTag"
+                :type="row.__statusTag.type"
+                effect="light"
+              >
+                {{ row.__statusTag.text }}
+              </el-tag>
+              <span v-else>{{ row.__statusText ?? "-" }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-for="column in recordColumns"
+            :key="column.prop"
+            :prop="column.prop"
+            :label="column.label"
+            min-width="160"
+            show-overflow-tooltip
+          />
+        </el-table>
+        <el-empty
+          v-else-if="hasSearched && !loading"
+          description="暂无工序数据"
+        />
+        <el-empty v-else description="请先查询" />
+      </div>
+    </el-card>
     <el-card class="traceability-card" v-loading="baseLoading">
       <template #header>
         <span class="traceability-card-title">基本信息</span>
@@ -532,63 +587,6 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
           <el-empty v-else description="请先查询" />
         </el-col>
       </el-row>
-    </el-card>
-
-    <el-card class="traceability-card">
-      <template #header>
-        <div class="traceability-card-header">
-          <span class="traceability-card-title">工序追溯</span>
-          <el-icon v-if="processLoading" class="is-loading traceability-loading-icon">
-            <LoadingIcon />
-          </el-icon>
-        </div>
-      </template>
-      <div class="traceability-table-wrapper">
-        <el-table
-          v-if="tableData.length"
-          :data="tableData"
-          border
-          row-key="id"
-          :tree-props="{ children: 'children' }"
-          :row-class-name="rowClassName"
-          class="traceability-table"
-        >
-          <el-table-column type="index" label="#" width="60" />
-          <el-table-column
-            v-for="column in stageColumns"
-            :key="column.prop"
-            :prop="column.prop"
-            :label="column.label"
-            min-width="140"
-            show-overflow-tooltip
-          />
-          <el-table-column label="状态" min-width="120" align="center">
-            <template #default="{ row }">
-              <el-tag
-                v-if="row.__statusTag"
-                :type="row.__statusTag.type"
-                effect="light"
-              >
-                {{ row.__statusTag.text }}
-              </el-tag>
-              <span v-else>{{ row.__statusText ?? "-" }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column
-            v-for="column in recordColumns"
-            :key="column.prop"
-            :prop="column.prop"
-            :label="column.label"
-            min-width="160"
-            show-overflow-tooltip
-          />
-        </el-table>
-        <el-empty
-          v-else-if="hasSearched && !loading"
-          description="暂无工序数据"
-        />
-        <el-empty v-else description="请先查询" />
-      </div>
     </el-card>
   </div>
 </template>
