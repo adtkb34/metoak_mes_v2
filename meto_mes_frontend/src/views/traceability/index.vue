@@ -658,6 +658,12 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
 .traceability-descriptions {
   max-height: 260px;
   overflow-y: auto;
+
+  :deep(.el-descriptions__label),
+  :deep(.el-descriptions__content) {
+    font-size: 14px;
+    font-weight: 600;
+  }
 }
 
 .traceability-table-wrapper {
@@ -666,6 +672,16 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
 
 .traceability-table {
   width: 100%;
+}
+
+.traceability-base-block :deep(.el-table__cell) {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.traceability-table :deep(.el-table__cell) {
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .traceability-table :deep(.is-latest > td) {
