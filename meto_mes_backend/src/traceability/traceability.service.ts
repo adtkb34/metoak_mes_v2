@@ -91,12 +91,7 @@ export class TraceabilityService {
 
     const flow = this.selectPrimaryFlow(flows);
 
-    const base = this.buildBaseInformation({
-      querySerialNumber: normalizedSerialNumber,
-      serialNumbers,
-      flow,
-      processCode: normalizedProcessCode,
-    });
+    const base = this.buildBaseInformation(flow);
 
     const materials =
       await this.serialNumberDataService.getMaterialsBySerialNumber(
@@ -191,52 +186,13 @@ export class TraceabilityService {
     return flows[0] ?? null;
   }
 
-  private buildBaseInformation({
-    querySerialNumber,
-    serialNumbers,
-    flow,
-    processCode,
-  }: {
-    querySerialNumber: string;
-    serialNumbers: TraceabilitySerialNumber[];
-    flow: TraceabilityFlow | null;
-    processCode?: string;
-  }): TraceabilityBaseOption[] {
-    const entries: TraceabilityBaseOption[] = [];
-    const seenKeys = new Set<string>();
-
-    const push = (label: string, value?: string | null) => {
-      const normalizedValue = this.normalizeBaseValue(value);
-      const key = `${label}|${normalizedValue ?? ''}`;
-      if (seenKeys.has(key)) {
-        return;
-      }
-      seenKeys.add(key);
-      entries.push({ label, value: normalizedValue });
-    };
-
-    push('查询序列号', querySerialNumber);
-
-    for (const entry of serialNumbers) {
-      const label = this.getSnLabel(entry.type);
-      const value = this.normalizeBaseValue(entry.serialNumber);
-      if (!label || value == null) {
-        continue;
-      }
-      push(label, value);
-    }
-
-    if (processCode) {
-      push('指定流程', processCode);
-    }
-
-    push('工单号', flow?.workOrderCode ?? null);
-
-    if (flow?.flowCode) {
-      push('流程编码', flow.flowCode);
-    }
-
-    return entries;
+  private buildBaseInformation(flow: TraceabilityFlow | null): TraceabilityBaseOption[] {
+    return [
+      {
+        label: '工单号',
+        value: this.normalizeBaseValue(flow?.workOrderCode ?? null),
+      },
+    ];
   }
 
   private normalizeBaseValue(value?: string | null): string | null {
@@ -246,17 +202,6 @@ export class TraceabilityService {
 
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : null;
-  }
-
-  private getSnLabel(type: SnType): string {
-    switch (type) {
-      case SnType.BEAM:
-        return '模组序列号';
-      case SnType.SHELL:
-        return '外壳序列号';
-      default:
-        return '序列号';
-    }
   }
 
   private async resolveSerialNumbers(
