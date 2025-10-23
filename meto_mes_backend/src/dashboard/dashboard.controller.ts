@@ -13,6 +13,7 @@ import {
   type ProductOption,
   type EquipmentOption,
   type DashboardSummaryResult,
+  type ProcessMetricsResult,
 } from './dashboard.service';
 
 @Controller('dashboard')
@@ -102,6 +103,34 @@ export class DashboardController {
     return { success: true, data };
   }
 
+  @Post('process-metrics')
+  async getProcessMetrics(
+    @Body()
+    body: {
+      origin?: string | number | null;
+      product?: string | null;
+      processIds?: string[] | string | null;
+      startDate?: string;
+      endDate?: string;
+      equipmentIds?: string[] | string | null;
+      stationIds?: string[] | string | null;
+    },
+  ): Promise<{ success: true; data: ProcessMetricsResult }> {
+    const origin = this.parseOrigin(body?.origin);
+
+    const data = await this.dashboardService.getProcessMetrics({
+      origin,
+      product: body?.product ?? null,
+      processIds: this.normalizeStringArray(body?.processIds),
+      startDate: body?.startDate,
+      endDate: body?.endDate,
+      equipmentIds: this.normalizeStringArray(body?.equipmentIds),
+      stationIds: this.normalizeStringArray(body?.stationIds),
+    });
+
+    return { success: true, data };
+  }
+
   @Get('equipment-options')
   async getEquipmentOptions(
     @Query('stepTypeNo') stepTypeNo?: string,
@@ -144,5 +173,21 @@ export class DashboardController {
     return allowedOrigins.includes(numeric as ProductOrigin)
       ? (numeric as ProductOrigin)
       : undefined;
+  }
+
+  private normalizeStringArray(
+    value?: string[] | string | null,
+  ): string[] | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    const arrayValue = Array.isArray(value) ? value : [value];
+
+    const normalized = arrayValue
+      .map((item) => item?.trim())
+      .filter((item): item is string => !!item);
+
+    return normalized.length ? normalized : undefined;
   }
 }

@@ -80,6 +80,33 @@ interface ProcessDetailParams extends DashboardSummaryParams {
   equipmentIds?: string[];
 }
 
+interface ProcessMetricsParams extends DashboardSummaryParams {
+  processIds?: string[];
+  equipmentIds?: string[];
+  stationIds?: string[];
+}
+
+export interface ProcessMetricsItem {
+  processId: string;
+  processName: string;
+  output: number;
+  firstPassYield: number;
+  productYield: number;
+  productionYield: number;
+}
+
+export interface ProcessMetricsResult {
+  filters: {
+    origin?: ProductOrigin;
+    product?: string | null;
+    startDate?: string;
+    endDate?: string;
+    equipmentIds?: string[];
+    stationIds?: string[];
+  };
+  metrics: ProcessMetricsItem[];
+}
+
 export interface ProcessDetailRow {
   id: string;
   product: string;
@@ -297,6 +324,37 @@ export class DashboardService {
       equipmentOptions,
       stationOptions: [],
       rows,
+    };
+  }
+
+  async getProcessMetrics(
+    params: ProcessMetricsParams,
+  ): Promise<ProcessMetricsResult> {
+    const processIds = params.processIds
+      ?.map((id) => id?.trim())
+      .filter((id): id is string => !!id);
+
+    const identifiers = processIds?.length ? processIds : [''];
+
+    const metrics = identifiers.map((processId) => ({
+      processId,
+      processName: processId ? `工序 ${processId}` : '工序',
+      output: 0,
+      firstPassYield: 0,
+      productYield: 0,
+      productionYield: 0,
+    }));
+
+    return {
+      filters: {
+        origin: params.origin,
+        product: params.product ?? null,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        equipmentIds: params.equipmentIds,
+        stationIds: params.stationIds,
+      },
+      metrics,
     };
   }
 
