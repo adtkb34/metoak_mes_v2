@@ -7,5 +7,6 @@ import { SerialNumberDataService } from './serial-number-data.service';
   imports: [PrismaModule],
   controllers: [SerialNumberDataController],
   providers: [SerialNumberDataService],
+  exports: [SerialNumberDataService],
 })
 export class SerialNumberDataModule {}
