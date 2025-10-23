@@ -13,26 +13,29 @@ export interface TraceabilityMaterialInfo {
 
 export type TraceabilityProcessRecord = Record<string, any>;
 
-export interface TraceabilityProcessStep {
+export interface TraceabilityProcessStepSummary {
   stageCode: string;
   processName: string | null;
   stageName: string | null;
   stepTypeNo: string;
-  data: TraceabilityProcessRecord[];
 }
 
-export interface TraceabilityFlow {
+export interface TraceabilityFlowSummary {
   serialNumber: string;
   type: string;
   workOrderCode: string | null;
   flowCode: string | null;
-  steps: TraceabilityProcessStep[];
+  steps: TraceabilityProcessStepSummary[];
 }
 
-export interface TraceabilityResponse {
+export interface TraceabilityBaseResponse {
   base: TraceabilityBaseOption[];
-  materials: TraceabilityMaterialInfo[];
-  flow: TraceabilityFlow | null;
+  flow: TraceabilityFlowSummary | null;
+}
+
+export interface TraceabilityProcessStepDataResponse {
+  stepTypeNo: string;
+  data: TraceabilityProcessRecord[];
 }
 
 export interface TraceabilityQuery {
@@ -40,8 +43,28 @@ export interface TraceabilityQuery {
   processCode?: string;
 }
 
-export function getTraceability(params: TraceabilityQuery) {
-  return http.request<TraceabilityResponse>("get", "/traceability", {
+export interface TraceabilityProcessQuery extends TraceabilityQuery {
+  stepTypeNo: string;
+}
+
+export function getTraceabilityBase(params: TraceabilityQuery) {
+  return http.request<TraceabilityBaseResponse>("get", "/traceability/base", {
     params
   });
+}
+
+export function getTraceabilityMaterials(params: { serialNumber: string }) {
+  return http.request<TraceabilityMaterialInfo[]>(
+    "get",
+    "/traceability/materials",
+    { params }
+  );
+}
+
+export function getTraceabilityProcess(params: TraceabilityProcessQuery) {
+  return http.request<TraceabilityProcessStepDataResponse>(
+    "get",
+    "/traceability/process",
+    { params }
+  );
 }

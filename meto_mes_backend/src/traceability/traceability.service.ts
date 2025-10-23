@@ -14,29 +14,32 @@ export interface TraceabilitySerialNumber {
   type: SnType;
 }
 
-export interface TraceabilityProcessStep {
-  stageCode: string;
-  processName: string | null;
-  stageName: string | null;
-  stepTypeNo: string;
-  data: SerialNumberAaBaseInfo[];
-}
-
-export interface TraceabilityFlow extends TraceabilitySerialNumber {
-  workOrderCode: string | null;
-  flowCode: string | null;
-  steps: TraceabilityProcessStep[];
-}
-
 export interface TraceabilityBaseOption {
   label: string;
   value: string | null;
 }
 
-export interface TraceabilityResponse {
+export interface TraceabilityProcessStepSummary {
+  stageCode: string;
+  processName: string | null;
+  stageName: string | null;
+  stepTypeNo: string;
+}
+
+export interface TraceabilityFlowSummary extends TraceabilitySerialNumber {
+  workOrderCode: string | null;
+  flowCode: string | null;
+  steps: TraceabilityProcessStepSummary[];
+}
+
+export interface TraceabilityBaseResponse {
   base: TraceabilityBaseOption[];
-  materials: SerialNumberMaterialInfo[];
-  flow: TraceabilityFlow | null;
+  flow: TraceabilityFlowSummary | null;
+}
+
+export interface TraceabilityProcessStepData {
+  stepTypeNo: string;
+  data: SerialNumberAaBaseInfo[];
 }
 
 interface WorkOrderContext {
@@ -62,6 +65,13 @@ type ProcessFlowWithStage = Array<
   }
 >;
 
+interface TraceabilityFlowContext extends TraceabilitySerialNumber {
+  workOrderCode: string | null;
+  flowCode: string | null;
+  client: PrismaClient | null;
+  steps: ProcessFlowWithStage;
+}
+
 @Injectable()
 export class TraceabilityService {
   constructor(
@@ -69,10 +79,10 @@ export class TraceabilityService {
     private readonly serialNumberDataService: SerialNumberDataService,
   ) {}
 
-  async getTraceability(
+  async getBaseInformation(
     serialNumber: string,
     processCode?: string,
-  ): Promise<TraceabilityResponse> {
+  ): Promise<TraceabilityBaseResponse> {
     const normalizedSerialNumber = serialNumber?.trim();
     if (!normalizedSerialNumber) {
       throw new BadRequestException('serialNumber is required');
@@ -80,35 +90,99 @@ export class TraceabilityService {
 
     const normalizedProcessCode = processCode?.trim() || undefined;
 
-    const serialNumbers = await this.resolveSerialNumbers(normalizedSerialNumber);
+    const serialNumbers = await this.resolveSerialNumbers(
+      normalizedSerialNumber,
+    );
 
-    const flows: TraceabilityFlow[] = [];
+    const contexts: TraceabilityFlowContext[] = [];
     for (const entry of serialNumbers) {
-      flows.push(
-        await this.buildFlowForSerialNumber(entry, normalizedProcessCode),
+      contexts.push(
+        await this.resolveFlowContext(entry, normalizedProcessCode),
       );
     }
 
-    const flow = this.selectPrimaryFlow(flows);
-
-    const base = this.buildBaseInformation(flow);
-
-    const materials =
-      await this.serialNumberDataService.getMaterialsBySerialNumber(
-        normalizedSerialNumber,
-      );
+    const flowContext = this.selectPrimaryFlowContext(contexts);
 
     return {
-      base,
-      materials,
-      flow,
+      base: this.buildBaseInformation(flowContext),
+      flow: this.createFlowSummary(flowContext),
     };
   }
 
-  private async buildFlowForSerialNumber(
+  async getMaterials(
+    serialNumber: string,
+  ): Promise<SerialNumberMaterialInfo[]> {
+    const normalizedSerialNumber = serialNumber?.trim();
+    if (!normalizedSerialNumber) {
+      throw new BadRequestException('serialNumber is required');
+    }
+
+    return this.serialNumberDataService.getMaterialsBySerialNumber(
+      normalizedSerialNumber,
+    );
+  }
+
+  async getProcessData(
+    serialNumber: string,
+    stepTypeNo: string,
+    processCode?: string,
+  ): Promise<TraceabilityProcessStepData> {
+    const normalizedSerialNumber = serialNumber?.trim();
+    if (!normalizedSerialNumber) {
+      throw new BadRequestException('serialNumber is required');
+    }
+
+    const normalizedStepTypeNo = stepTypeNo?.trim();
+    if (!normalizedStepTypeNo) {
+      throw new BadRequestException('stepTypeNo is required');
+    }
+
+    const normalizedProcessCode = processCode?.trim() || undefined;
+
+    const serialNumbers = await this.resolveSerialNumbers(
+      normalizedSerialNumber,
+    );
+    const contexts: TraceabilityFlowContext[] = [];
+    for (const entry of serialNumbers) {
+      contexts.push(
+        await this.resolveFlowContext(entry, normalizedProcessCode),
+      );
+    }
+
+    const flowContext = this.selectPrimaryFlowContext(contexts);
+    if (!flowContext) {
+      return { stepTypeNo: normalizedStepTypeNo, data: [] };
+    }
+
+    const matchingStep = flowContext.steps.find((candidate) => {
+      const candidateStepTypeNo =
+        candidate.mo_workstage?.step_type_no?.trim() ?? '';
+      return candidateStepTypeNo === normalizedStepTypeNo;
+    });
+
+    if (!matchingStep) {
+      return { stepTypeNo: normalizedStepTypeNo, data: [] };
+    }
+
+    const resolvedStepTypeNo =
+      matchingStep.mo_workstage?.step_type_no?.trim() ?? normalizedStepTypeNo;
+
+    const data =
+      await this.serialNumberDataService.getProcessDataBySerialNumber(
+        flowContext.serialNumber,
+        resolvedStepTypeNo,
+      );
+
+    return {
+      stepTypeNo: resolvedStepTypeNo,
+      data,
+    };
+  }
+
+  private async resolveFlowContext(
     entry: TraceabilitySerialNumber,
     providedFlowCode?: string,
-  ): Promise<TraceabilityFlow> {
+  ): Promise<TraceabilityFlowContext> {
     const workOrderContext = await this.getWorkOrderContext(
       entry.serialNumber,
       entry.type,
@@ -130,7 +204,13 @@ export class TraceabilityService {
     }
 
     if (!flowCode) {
-      return { ...entry, workOrderCode, flowCode: null, steps: [] };
+      return {
+        ...entry,
+        workOrderCode,
+        flowCode: null,
+        client: preferredClient,
+        steps: [],
+      };
     }
 
     const processStepsContext = await this.findProcessSteps(
@@ -138,61 +218,66 @@ export class TraceabilityService {
       preferredClient,
     );
 
-    const processSteps = processStepsContext?.steps ?? [];
-    if (processSteps.length === 0) {
-      return { ...entry, workOrderCode, flowCode, steps: [] };
-    }
+    const steps = processStepsContext?.steps ?? [];
+    const client = processStepsContext?.client ?? preferredClient ?? null;
 
-    const steps: TraceabilityProcessStep[] = [];
-    for (const processStep of processSteps) {
-      const stepTypeNo = processStep.mo_workstage?.step_type_no;
-      if (!stepTypeNo) {
-        continue;
-      }
-
-      const data =
-        await this.serialNumberDataService.getProcessDataBySerialNumber(
-          entry.serialNumber,
-          stepTypeNo,
-        );
-
-      steps.push({
-        stageCode: processStep.stage_code,
-        processName: processStep.process_name ?? null,
-        stageName: processStep.mo_workstage?.stage_name ?? null,
-        stepTypeNo,
-        data,
-      });
-    }
-
-    return { ...entry, workOrderCode, flowCode, steps };
+    return { ...entry, workOrderCode, flowCode, client, steps };
   }
 
-  private selectPrimaryFlow(flows: TraceabilityFlow[]): TraceabilityFlow | null {
-    if (!flows || flows.length === 0) {
+  private selectPrimaryFlowContext(
+    contexts: TraceabilityFlowContext[],
+  ): TraceabilityFlowContext | null {
+    if (!contexts || contexts.length === 0) {
       return null;
     }
 
-    const withSteps = flows.find((candidate) => candidate.steps.length > 0);
+    const withSteps = contexts.find((candidate) => candidate.steps.length > 0);
     if (withSteps) {
       return withSteps;
     }
 
-    const withFlowCode = flows.find((candidate) => candidate.flowCode);
+    const withFlowCode = contexts.find((candidate) => candidate.flowCode);
     if (withFlowCode) {
       return withFlowCode;
     }
 
-    return flows[0] ?? null;
+    return contexts[0] ?? null;
   }
 
-  private buildBaseInformation(flow: TraceabilityFlow | null): TraceabilityBaseOption[] {
+  private buildBaseInformation(
+    flow: TraceabilityFlowContext | null,
+  ): TraceabilityBaseOption[] {
     return [
       {
         label: '工单号',
         value: this.normalizeBaseValue(flow?.workOrderCode ?? null),
       },
     ];
+  }
+
+  private createFlowSummary(
+    context: TraceabilityFlowContext | null,
+  ): TraceabilityFlowSummary | null {
+    if (!context) {
+      return null;
+    }
+
+    const steps: TraceabilityProcessStepSummary[] = context.steps
+      .map((step) => ({
+        stageCode: step.stage_code,
+        processName: step.process_name ?? null,
+        stageName: step.mo_workstage?.stage_name ?? null,
+        stepTypeNo: step.mo_workstage?.step_type_no?.trim() ?? '',
+      }))
+      .filter((step) => step.stepTypeNo);
+
+    return {
+      serialNumber: context.serialNumber,
+      type: context.type,
+      workOrderCode: context.workOrderCode,
+      flowCode: context.flowCode,
+      steps,
+    };
   }
 
   private normalizeBaseValue(value?: string | null): string | null {
