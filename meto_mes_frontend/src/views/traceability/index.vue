@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, onMounted } from "vue";
+import { Loading as LoadingIcon } from "@element-plus/icons-vue";
 import {
   getTraceabilityBase,
   getTraceabilityMaterials,
@@ -52,6 +53,8 @@ const query = reactive({
 });
 
 const loading = ref(false);
+const baseLoading = ref(false);
+const processLoading = ref(false);
 const hasSearched = ref(false);
 const baseInfoItems = ref<TraceabilityBaseOption[]>([]);
 const materialItems = ref<TraceabilityMaterialInfo[]>([]);
@@ -92,6 +95,8 @@ async function handleSearch() {
   }
 
   loading.value = true;
+  baseLoading.value = true;
+  processLoading.value = false;
   hasSearched.value = true;
   baseInfoItems.value = [];
   materialItems.value = [];
@@ -112,10 +117,10 @@ async function handleSearch() {
       ? materialsResponse
       : [];
     flowSummary.value = baseResponse.flow ?? null;
+    baseLoading.value = false;
 
     const steps = baseResponse.flow?.steps ?? [];
     if (steps.length > 0) {
-      const nextStepData: Record<string, TraceabilityProcessRecord[]> = {};
       const effectiveSerialNumber =
         baseResponse.flow?.serialNumber ?? serialNumber;
       const effectiveProcessCode =
@@ -159,32 +164,35 @@ async function handleSearch() {
         });
       });
 
-      const results = await Promise.allSettled(
-        requests.map(item => item.request)
-      );
+      if (requests.length > 0) {
+        processLoading.value = true;
+        const stepPromises = requests.map(({ stepTypeNo, request }) =>
+          request
+            .then(response => {
+              const data = Array.isArray(response?.data)
+                ? response.data
+                : [];
+              updateStepData(stepTypeNo, data);
+            })
+            .catch(error => {
+              console.error(error);
+              updateStepData(stepTypeNo, []);
+            })
+        );
 
-      results.forEach((result, index) => {
-        const stepTypeNo = requests[index]?.stepTypeNo;
-        if (!stepTypeNo) return;
-
-        if (result.status === "fulfilled") {
-          const data = Array.isArray(result.value.data)
-            ? result.value.data
-            : [];
-          nextStepData[stepTypeNo] = data;
-        } else {
-          console.error(result.reason);
-          nextStepData[stepTypeNo] = [];
-        }
-      });
-
-      stepDataMap.value = nextStepData;
+        await Promise.allSettled(stepPromises);
+      }
+      processLoading.value = false;
+    } else {
+      processLoading.value = false;
     }
   } catch (error) {
     console.error(error);
     message("查询失败，请稍后重试", { type: "error" });
   } finally {
     loading.value = false;
+    baseLoading.value = false;
+    processLoading.value = false;
   }
 }
 
@@ -196,6 +204,20 @@ function handleReset() {
   flowSummary.value = null;
   stepDataMap.value = {};
   hasSearched.value = false;
+  loading.value = false;
+  baseLoading.value = false;
+  processLoading.value = false;
+}
+
+function updateStepData(
+  stepTypeNo: string,
+  data: TraceabilityProcessRecord[]
+) {
+  if (!stepTypeNo) return;
+  stepDataMap.value = {
+    ...stepDataMap.value,
+    [stepTypeNo]: Array.isArray(data) ? data : []
+  };
 }
 
 function buildTreeData(
@@ -455,7 +477,7 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
       </el-form>
     </el-card>
 
-    <el-card class="traceability-card" v-loading="loading">
+    <el-card class="traceability-card" v-loading="baseLoading">
       <template #header>
         <span>基本信息</span>
       </template>
@@ -512,9 +534,14 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
       </el-row>
     </el-card>
 
-    <el-card class="traceability-card" v-loading="loading">
+    <el-card class="traceability-card">
       <template #header>
-        <span>工序追溯</span>
+        <div class="traceability-card-header">
+          <span>工序追溯</span>
+          <el-icon v-if="processLoading" class="is-loading traceability-loading-icon">
+            <LoadingIcon />
+          </el-icon>
+        </div>
       </template>
       <div class="traceability-table-wrapper">
         <el-table
@@ -575,6 +602,16 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
 
 .traceability-card {
   width: 100%;
+}
+
+.traceability-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.traceability-loading-icon {
+  color: var(--el-color-primary);
 }
 
 .traceability-card--filters {
