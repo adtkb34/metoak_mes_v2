@@ -28,9 +28,9 @@ export interface TraceabilityFlow extends TraceabilitySerialNumber {
 }
 
 export interface TraceabilityResponse {
-  serialNumber: string;
-  relatedSerialNumbers: TraceabilitySerialNumber[];
-  flows: TraceabilityFlow[];
+  base:
+  materials: 
+  flow: TraceabilityFlow;
 }
 
 interface WorkOrderContext {
