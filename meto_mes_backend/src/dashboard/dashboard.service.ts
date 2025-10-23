@@ -91,8 +91,8 @@ export interface ProcessMetricsItem {
   processName: string;
   output: number;
   firstPassYield: number;
+  finalYield: number;
   productYield: number;
-  productionYield: number;
 }
 
 export interface ProcessMetricsResult {
@@ -105,6 +105,13 @@ export interface ProcessMetricsResult {
     stationIds?: string[];
   };
   metrics: ProcessMetricsItem[];
+}
+
+interface AggregatedProcessMetric {
+  output: number;
+  firstPassYield: number;
+  finalYield: number;
+  productYield: number;
 }
 
 export interface ProcessDetailRow {
@@ -341,9 +348,42 @@ export class DashboardService {
       processName: processId ? `工序 ${processId}` : '工序',
       output: 0,
       firstPassYield: 0,
+      finalYield: 0,
       productYield: 0,
-      productionYield: 0,
     }));
+
+    if (params.origin !== undefined && processIds?.length) {
+      const { start, end } = this.normalizeDateRange(
+        params.startDate,
+        params.endDate,
+      );
+
+      try {
+        const client = this.prisma.getClientByOrigin(params.origin);
+        const aggregated = await this.loadProcessProductionMetrics({
+          client,
+          processIds,
+          range: { start, end },
+        });
+
+        for (const metric of metrics) {
+          const data = aggregated.get(metric.processId);
+          if (!data) {
+            continue;
+          }
+
+          metric.output = data.output;
+          metric.firstPassYield = data.firstPassYield;
+          metric.finalYield = data.finalYield;
+          metric.productYield = data.productYield;
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to load process metrics from mo_process_production_result: ${error.message}`,
+          error.stack,
+        );
+      }
+    }
 
     return {
       filters: {
@@ -438,6 +478,351 @@ export class DashboardService {
       );
       throw error;
     }
+  }
+
+  private async loadProcessProductionMetrics(params: {
+    client: PrismaClient;
+    processIds: string[];
+    range: DateRange;
+  }): Promise<Map<string, AggregatedProcessMetric>> {
+    const { client, processIds, range } = params;
+
+    if (!processIds.length) {
+      return new Map();
+    }
+
+    let columns: string[] = [];
+    try {
+      const columnInfo = await client.$queryRaw<{ Field: string }[]>(
+        Prisma.sql`SHOW COLUMNS FROM mo_process_production_result;`,
+      );
+      columns = columnInfo.map((item) => item.Field);
+    } catch (error) {
+      this.logger.warn(
+        `无法获取 mo_process_production_result 的列信息: ${error.message}`,
+      );
+      return new Map();
+    }
+
+    const stepColumn = this.detectColumn(columns, [
+      'step_type_no',
+      'step_no',
+      'process_no',
+      /step.*no$/,
+      /process.*no$/,
+    ]);
+
+    if (!stepColumn) {
+      this.logger.warn('mo_process_production_result 表缺少工序编号字段');
+      return new Map();
+    }
+
+    const timeColumn = this.detectColumn(columns, [
+      'stat_date',
+      'add_time',
+      'start_time',
+      'end_time',
+      'date',
+      /_time$/,
+      /_date$/,
+    ]);
+
+    const outputColumn = this.detectColumn(columns, [
+      'output_qty',
+      'output_count',
+      'total_output',
+      'output',
+      'production_qty',
+      'production_count',
+      'produce_qty',
+      'produce_count',
+      'product_count',
+      /output/,
+    ]);
+
+    const firstPassColumn = this.detectColumn(columns, [
+      'first_pass_yield',
+      'first_pass_rate',
+      'first_pass_ratio',
+      /first.*yield/,
+      /first.*rate/,
+    ]);
+
+    const finalYieldColumn = this.detectColumn(columns, [
+      'final_yield',
+      'final_pass_rate',
+      'final_pass_yield',
+      'production_yield',
+      /final.*yield/,
+      /final.*rate/,
+      /production.*yield/,
+    ]);
+
+    const productYieldColumn = this.detectColumn(columns, [
+      'product_yield',
+      'product_pass_rate',
+      'product_pass_yield',
+      /product.*yield/,
+      /product.*rate/,
+    ]);
+
+    const selectFields: Prisma.Sql[] = [
+      Prisma.sql`${Prisma.raw(stepColumn)} AS step`,
+    ];
+
+    if (outputColumn) {
+      selectFields.push(
+        Prisma.sql`${Prisma.raw(outputColumn)} AS output`,
+      );
+    }
+
+    if (firstPassColumn) {
+      selectFields.push(
+        Prisma.sql`${Prisma.raw(firstPassColumn)} AS firstPass`,
+      );
+    }
+
+    if (finalYieldColumn) {
+      selectFields.push(
+        Prisma.sql`${Prisma.raw(finalYieldColumn)} AS finalYield`,
+      );
+    }
+
+    if (productYieldColumn) {
+      selectFields.push(
+        Prisma.sql`${Prisma.raw(productYieldColumn)} AS productYield`,
+      );
+    }
+
+    const processConditions: Prisma.Sql[] = [];
+    const processIdList = Prisma.join(
+      processIds.map((id) => Prisma.sql`${id}`),
+      Prisma.sql`, `,
+    );
+    processConditions.push(
+      Prisma.sql`${Prisma.raw(stepColumn)} IN (${processIdList})`,
+    );
+
+    if (timeColumn) {
+      if (range.start) {
+        processConditions.push(
+          Prisma.sql`${Prisma.raw(timeColumn)} >= ${range.start}`,
+        );
+      }
+
+      if (range.end) {
+        processConditions.push(
+          Prisma.sql`${Prisma.raw(timeColumn)} <= ${range.end}`,
+        );
+      }
+    } else if (range.start || range.end) {
+      this.logger.warn(
+        'mo_process_production_result 表缺少时间字段，已忽略时间筛选条件',
+      );
+    }
+
+    const whereClause = processConditions.length
+      ? Prisma.sql`WHERE ${Prisma.join(processConditions, ' AND ')}`
+      : Prisma.sql``;
+
+    type RawRow = {
+      step: string | null;
+      output?: unknown;
+      firstPass?: unknown;
+      finalYield?: unknown;
+      productYield?: unknown;
+    };
+
+    const rows = await client.$queryRaw<RawRow[]>(
+      Prisma.sql`
+        SELECT ${Prisma.join(selectFields, Prisma.sql`, `)}
+        FROM mo_process_production_result
+        ${whereClause}
+      `,
+    );
+
+    interface AggregationState {
+      output: number;
+      firstPassWeighted: number;
+      finalWeighted: number;
+      productWeighted: number;
+      weight: number;
+    }
+
+    const aggregated = new Map<string, AggregationState>();
+
+    for (const row of rows) {
+      const step = row.step?.trim();
+      if (!step) {
+        continue;
+      }
+
+      const state =
+        aggregated.get(step) ?? {
+          output: 0,
+          firstPassWeighted: 0,
+          finalWeighted: 0,
+          productWeighted: 0,
+          weight: 0,
+        };
+
+      const outputValue = outputColumn
+        ? this.parseNumericValue(row.output)
+        : 0;
+      const weightBase = outputColumn ? Math.max(outputValue, 0) : 1;
+      const effectiveWeight = weightBase > 0 ? weightBase : 1;
+
+      if (outputColumn) {
+        state.output += outputValue;
+      }
+
+      if (firstPassColumn) {
+        const rate = this.parseRate(row.firstPass);
+        state.firstPassWeighted += rate * effectiveWeight;
+      }
+
+      if (finalYieldColumn) {
+        const rate = this.parseRate(row.finalYield);
+        state.finalWeighted += rate * effectiveWeight;
+      }
+
+      if (productYieldColumn) {
+        const rate = this.parseRate(row.productYield);
+        state.productWeighted += rate * effectiveWeight;
+      }
+
+      state.weight += effectiveWeight;
+      aggregated.set(step, state);
+    }
+
+    const result = new Map<string, AggregatedProcessMetric>();
+
+    for (const [step, state] of aggregated.entries()) {
+      const weight = state.weight || 0;
+      result.set(step, {
+        output: state.output,
+        firstPassYield: weight
+          ? this.clampRate(state.firstPassWeighted / weight)
+          : 0,
+        finalYield: weight
+          ? this.clampRate(state.finalWeighted / weight)
+          : 0,
+        productYield: weight
+          ? this.clampRate(state.productWeighted / weight)
+          : 0,
+      });
+    }
+
+    return result;
+  }
+
+  private detectColumn(
+    columns: string[],
+    patterns: Array<string | RegExp>,
+  ): string | undefined {
+    const normalized = columns.map((item) => item.toLowerCase());
+
+    for (const pattern of patterns) {
+      if (typeof pattern === 'string') {
+        const index = normalized.indexOf(pattern.toLowerCase());
+        if (index !== -1) {
+          return columns[index];
+        }
+        continue;
+      }
+
+      const foundIndex = normalized.findIndex((column) =>
+        pattern.test(column),
+      );
+      if (foundIndex !== -1) {
+        return columns[foundIndex];
+      }
+    }
+
+    return undefined;
+  }
+
+  private parseNumericValue(value: unknown): number {
+    if (value === null || value === undefined) {
+      return 0;
+    }
+
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    if (typeof value === 'bigint') {
+      return Number(value);
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return 0;
+      }
+      const normalized = trimmed.replace(/,/g, '');
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      const maybeDecimal = value as { toNumber?: () => number };
+      if (typeof maybeDecimal.toNumber === 'function') {
+        const parsed = Number(maybeDecimal.toNumber());
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+    }
+
+    return 0;
+  }
+
+  private parseRate(value: unknown): number {
+    if (value === null || value === undefined) {
+      return 0;
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return 0;
+      }
+      if (trimmed.endsWith('%')) {
+        const numeric = Number(trimmed.slice(0, -1));
+        if (!Number.isFinite(numeric)) {
+          return 0;
+        }
+        return this.clampRate(numeric / 100);
+      }
+      const normalized = trimmed.replace(/,/g, '');
+      const parsed = Number(normalized);
+      if (!Number.isFinite(parsed)) {
+        return 0;
+      }
+      return this.clampRate(parsed > 1 ? parsed / 100 : parsed);
+    }
+
+    const numeric = this.parseNumericValue(value);
+    if (!Number.isFinite(numeric)) {
+      return 0;
+    }
+
+    return this.clampRate(numeric > 1 ? numeric / 100 : numeric);
+  }
+
+  private clampRate(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+
+    if (value < 0) {
+      return 0;
+    }
+
+    if (value > 1) {
+      return 1;
+    }
+
+    return value;
   }
 
   private normalizeDate(
