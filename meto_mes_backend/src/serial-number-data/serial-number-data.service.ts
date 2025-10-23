@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProductOrigin } from '../common/enums/product-origin.enum';
+import { STEP_NO } from 'src/utils/stepNo';
 
 export interface SerialNumberProcessData {
   serialNumber: string;
@@ -37,7 +38,26 @@ export class SerialNumberDataService {
    */
   async getProcessDataBySerialNumber(
     serialNumber: string,
+    stepTypeNo: string,
   ): Promise<SerialNumberProcessData> {
+    switch (stepTypeNo) {
+      case STEP_NO.AUTO_ADJUST:
+        await this.getSuzhouShunyuAaBaseInfo(serialNumber, () => '');
+        await this.getSuzhouGuanghaojieAaBaseInfo(
+          serialNumber,
+          update_ng_reason_4_guanghaojie,
+        );
+        await this.getMianyangAiweishiAaBaseInfo(
+          serialNumber,
+          update_ng_reason_4_aiweishi,
+        );
+        break;
+      case 'production':
+        console.log('Running in production mode');
+        break;
+      default:
+        console.log('Unknown mode');
+    }
     return {
       serialNumber,
       processes: [],
@@ -52,10 +72,7 @@ export class SerialNumberDataService {
 
     const record = await client.mo_auto_adjust_st08.findFirst({
       where: { beam_sn: serialNumber },
-      orderBy: [
-        { add_time: 'desc' },
-        { id: 'desc' },
-      ],
+      orderBy: [{ add_time: 'desc' }, { id: 'desc' }],
     });
 
     return {
@@ -99,10 +116,7 @@ export class SerialNumberDataService {
 
     const record = await client.mo_auto_adjust_st08.findFirst({
       where: { beam_sn: serialNumber },
-      orderBy: [
-        { add_time: 'desc' },
-        { id: 'desc' },
-      ],
+      orderBy: [{ add_time: 'desc' }, { id: 'desc' }],
     });
 
     return {
@@ -174,5 +188,9 @@ export class SerialNumberDataService {
     }
 
     return '';
+  }
+
+  async update_ng_reason_4_guanghaojie(stepNo: String, ng_reason: String) {
+    // ng_reason 去 mo_error_desc 获取 description.where stage = AA and error_code = ng_reason, 如果不存在就返回ng_reason
   }
 }
