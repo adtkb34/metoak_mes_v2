@@ -1,7 +1,7 @@
 export default {
   path: "/trace",
-  name: "Trace",
-  component: () => import("@/views/trace/index.vue"),
+  name: "Traceability",
+  component: () => import("@/views/traceability/index.vue"),
   meta: {
     icon: "oui:apm-trace",
     title: "产品追溯",
