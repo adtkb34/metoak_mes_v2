@@ -72,36 +72,6 @@ export class SerialNumberDataService {
           () => null,
         )),
       );
-    } else if (
-      [
-        STEP_NO.DIRTY_CHECKING,
-        STEP_NO.UV_DISPENSING,
-        STEP_NO.PLASMA,
-        STEP_NO.MATERIAL_BINDING,
-        STEP_NO.BEAM_APPEARANCE_INSPECTION,
-        STEP_NO.LASER_MARKING_INSPECTION,
-        STEP_NO.BEAM_SEALANT_COATING,
-        STEP_NO.CMOS_APPEARANCE_INSPECTION,
-        STEP_NO.FILM_REMOVAL_CLEANING,
-        STEP_NO.SCREW_TIGHTENING_INSPECTION,
-        STEP_NO.HIGH_TEMP_CURING_RECORD,
-        STEP_NO.AFTER_AA_FINAL_COMPREHENSIVE_INSPECTION,
-        STEP_NO.AFTER_AA_COATING_PROCESS_RECORD,
-      ].includes(stepTypeNo as STEP_NO)
-    ) {
-      for (const productOrigin of [
-        ProductOrigin.SUZHOU,
-        ProductOrigin.MIANYANG,
-      ]) {
-        processes.push(
-          ...(await this.getAaRelatedStepBaseInfo(
-            serialNumber,
-            () => null,
-            stepTypeNo,
-            productOrigin,
-          )),
-        );
-      }
     } else if (stepTypeNo == STEP_NO.CALIB) {
       for (const productOrigin of [
         ProductOrigin.SUZHOU,
@@ -133,6 +103,20 @@ export class SerialNumberDataService {
           ...(await this.get315FinalCheckBaseInfo(
             serialNumber,
             () => null,
+            productOrigin,
+          )),
+        );
+      }
+    } else {
+      for (const productOrigin of [
+        ProductOrigin.SUZHOU,
+        ProductOrigin.MIANYANG,
+      ]) {
+        processes.push(
+          ...(await this.getAaRelatedStepBaseInfo(
+            serialNumber,
+            () => null,
+            stepTypeNo,
             productOrigin,
           )),
         );
@@ -231,16 +215,14 @@ export class SerialNumberDataService {
           continue;
         }
 
-        const bindings =
-          (await client.mo_material_binding.findMany({
-            where: { camera_sn: cameraSn },
-            orderBy: [{ create_time: 'desc' }, { id: 'desc' }],
-          })) as mo_material_binding[];
-        const assembleRecords =
-          (await client.mo_assemble_info.findMany({
-            where: { camera_sn: cameraSn },
-            orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
-          })) as mo_assemble_info[];
+        const bindings = (await client.mo_material_binding.findMany({
+          where: { camera_sn: cameraSn },
+          orderBy: [{ create_time: 'desc' }, { id: 'desc' }],
+        })) as mo_material_binding[];
+        const assembleRecords = (await client.mo_assemble_info.findMany({
+          where: { camera_sn: cameraSn },
+          orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
+        })) as mo_assemble_info[];
 
         for (const binding of bindings) {
           const materialName =
@@ -264,9 +246,7 @@ export class SerialNumberDataService {
 
         for (const record of assembleRecords) {
           const pcbaCode =
-            typeof record.pcba_code === 'string'
-              ? record.pcba_code.trim()
-              : '';
+            typeof record.pcba_code === 'string' ? record.pcba_code.trim() : '';
           if (!pcbaCode) {
             continue;
           }

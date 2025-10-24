@@ -384,7 +384,7 @@ export class DashboardService {
         );
       } catch (error) {
         this.logger.error(
-          `Failed to load process metrics from mo_process_production_result: ${error.message}`,
+          `Failed to load process metrics from mo_process_step_production_result: ${error.message}`,
           error.stack,
         );
       }
@@ -500,12 +500,12 @@ export class DashboardService {
     let columns: string[] = [];
     try {
       const columnInfo = await client.$queryRaw<{ Field: string }[]>(
-        Prisma.sql`SHOW COLUMNS FROM mo_process_production_result;`,
+        Prisma.sql`SHOW COLUMNS FROM mo_process_step_production_result;`,
       );
       columns = columnInfo.map((item) => item.Field);
     } catch (error) {
       this.logger.warn(
-        `无法获取 mo_process_production_result 的列信息: ${error.message}`,
+        `无法获取 mo_process_step_production_result 的列信息: ${error.message}`,
       );
       return undefined;
     }
@@ -519,7 +519,7 @@ export class DashboardService {
     ]);
 
     if (!stepColumn) {
-      this.logger.warn('mo_process_production_result 表缺少工序编号字段');
+      this.logger.warn('mo_process_step_production_result 表缺少工序编号字段');
       return undefined;
     }
 
@@ -577,9 +577,7 @@ export class DashboardService {
     ];
 
     if (outputColumn) {
-      selectFields.push(
-        Prisma.sql`${Prisma.raw(outputColumn)} AS output`,
-      );
+      selectFields.push(Prisma.sql`${Prisma.raw(outputColumn)} AS output`);
     }
 
     if (firstPassColumn) {
@@ -618,7 +616,7 @@ export class DashboardService {
       }
     } else if (range.start || range.end) {
       this.logger.warn(
-        'mo_process_production_result 表缺少时间字段，已忽略时间筛选条件',
+        'mo_process_step_production_result 表缺少时间字段，已忽略时间筛选条件',
       );
     }
 
@@ -637,7 +635,7 @@ export class DashboardService {
     const rows = await client.$queryRaw<RawRow[]>(
       Prisma.sql`
         SELECT ${Prisma.join(selectFields, Prisma.sql`, `)}
-        FROM mo_process_production_result
+        FROM mo_process_step_production_result
         ${whereClause}
       `,
     );
@@ -668,9 +666,7 @@ export class DashboardService {
 
       hasRows = true;
 
-      const outputValue = outputColumn
-        ? this.parseNumericValue(row.output)
-        : 0;
+      const outputValue = outputColumn ? this.parseNumericValue(row.output) : 0;
       const weightBase = outputColumn ? Math.max(outputValue, 0) : 1;
       const effectiveWeight = weightBase > 0 ? weightBase : 1;
 
@@ -707,12 +703,8 @@ export class DashboardService {
       firstPassYield: weight
         ? this.clampRate(state.firstPassWeighted / weight)
         : 0,
-      finalYield: weight
-        ? this.clampRate(state.finalWeighted / weight)
-        : 0,
-      productYield: weight
-        ? this.clampRate(state.productWeighted / weight)
-        : 0,
+      finalYield: weight ? this.clampRate(state.finalWeighted / weight) : 0,
+      productYield: weight ? this.clampRate(state.productWeighted / weight) : 0,
     };
   }
 
@@ -731,9 +723,7 @@ export class DashboardService {
         continue;
       }
 
-      const foundIndex = normalized.findIndex((column) =>
-        pattern.test(column),
-      );
+      const foundIndex = normalized.findIndex((column) => pattern.test(column));
       if (foundIndex !== -1) {
         return columns[foundIndex];
       }
