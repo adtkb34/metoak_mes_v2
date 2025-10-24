@@ -109,11 +109,11 @@ export class DashboardController {
     body: {
       origin?: string | number | null;
       product?: string | null;
-      processIds?: string[] | string | null;
+      stepTypeNo?: string | null;
       startDate?: string;
       endDate?: string;
-      equipmentIds?: string[] | string | null;
-      stationIds?: string[] | string | null;
+      deviceNos?: string[] | string | null;
+      stations?: string[] | string | null;
     },
   ): Promise<{ success: true; data: ProcessMetricsResult }> {
     const origin = this.parseOrigin(body?.origin);
@@ -121,11 +121,11 @@ export class DashboardController {
     const data = await this.dashboardService.getProcessMetrics({
       origin,
       product: body?.product ?? null,
-      processIds: this.normalizeStringArray(body?.processIds),
+      stepTypeNo: body?.stepTypeNo?.trim(),
       startDate: body?.startDate,
       endDate: body?.endDate,
-      equipmentIds: this.normalizeStringArray(body?.equipmentIds),
-      stationIds: this.normalizeStringArray(body?.stationIds),
+      deviceNos: this.normalizeStringArray(body?.deviceNos),
+      stations: this.normalizeStringArray(body?.stations),
     });
 
     return { success: true, data };

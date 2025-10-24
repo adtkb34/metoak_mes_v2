@@ -81,9 +81,8 @@ interface ProcessDetailParams extends DashboardSummaryParams {
 }
 
 interface ProcessMetricsParams extends DashboardSummaryParams {
-  processIds?: string[];
-  equipmentIds?: string[];
-  stationIds?: string[];
+  deviceNos?: string[];
+  stations?: string[];
 }
 
 export interface ProcessMetricsItem {
@@ -101,8 +100,8 @@ export interface ProcessMetricsResult {
     product?: string | null;
     startDate?: string;
     endDate?: string;
-    equipmentIds?: string[];
-    stationIds?: string[];
+    deviceNos?: string[];
+    stations?: string[];
   };
   metrics: ProcessMetricsItem[];
 }
@@ -337,22 +336,21 @@ export class DashboardService {
   async getProcessMetrics(
     params: ProcessMetricsParams,
   ): Promise<ProcessMetricsResult> {
-    const processIds = params.processIds
-      ?.map((id) => id?.trim())
-      .filter((id): id is string => !!id);
+    const normalizedStepTypeNo = params.stepTypeNo?.trim();
+    const processId = normalizedStepTypeNo ?? '';
 
-    const identifiers = processIds?.length ? processIds : [''];
+    const metrics: ProcessMetricsItem[] = [
+      {
+        processId,
+        processName: processId ? `工序 ${processId}` : '工序',
+        output: 0,
+        firstPassYield: 0,
+        finalYield: 0,
+        productYield: 0,
+      },
+    ];
 
-    const metrics = identifiers.map((processId) => ({
-      processId,
-      processName: processId ? `工序 ${processId}` : '工序',
-      output: 0,
-      firstPassYield: 0,
-      finalYield: 0,
-      productYield: 0,
-    }));
-
-    if (params.origin !== undefined && processIds?.length) {
+    if (params.origin !== undefined && normalizedStepTypeNo) {
       const { start, end } = this.normalizeDateRange(
         params.startDate,
         params.endDate,
@@ -360,28 +358,19 @@ export class DashboardService {
 
       try {
         const client = this.prisma.getClientByOrigin(params.origin);
-        await Promise.all(
-          metrics.map(async (metric) => {
-            if (!metric.processId?.trim()) {
-              return;
-            }
+        const data = await this.loadProcessProductionMetrics({
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
 
-            const data = await this.loadProcessProductionMetrics({
-              client,
-              stepTypeNo: metric.processId,
-              range: { start, end },
-            });
-
-            if (!data) {
-              return;
-            }
-
-            metric.output = data.output;
-            metric.firstPassYield = data.firstPassYield;
-            metric.finalYield = data.finalYield;
-            metric.productYield = data.productYield;
-          }),
-        );
+        if (data) {
+          const metric = metrics[0];
+          metric.output = data.output;
+          metric.firstPassYield = data.firstPassYield;
+          metric.finalYield = data.finalYield;
+          metric.productYield = data.productYield;
+        }
       } catch (error) {
         this.logger.error(
           `Failed to load process metrics from mo_process_step_production_result: ${error.message}`,
@@ -396,8 +385,8 @@ export class DashboardService {
         product: params.product ?? null,
         startDate: params.startDate,
         endDate: params.endDate,
-        equipmentIds: params.equipmentIds,
-        stationIds: params.stationIds,
+        deviceNos: params.deviceNos,
+        stations: params.stations,
       },
       metrics,
     };
