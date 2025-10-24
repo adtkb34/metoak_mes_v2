@@ -13,7 +13,7 @@ import {
   type ProductOption,
   type EquipmentOption,
   type DashboardSummaryResult,
-  type ProcessMetricsResult,
+  type ProcessMetricsSummary,
 } from './dashboard.service';
 
 @Controller('dashboard')
@@ -115,7 +115,7 @@ export class DashboardController {
       deviceNos?: string[] | string | null;
       stations?: string[] | string | null;
     },
-  ): Promise<{ success: true; data: ProcessMetricsResult }> {
+  ): Promise<{ success: true; data: ProcessMetricsSummary }> {
     const origin = this.parseOrigin(query?.origin);
 
     const data = await this.dashboardService.getProcessMetrics({
@@ -128,7 +128,13 @@ export class DashboardController {
       stations: this.normalizeStringArray(query?.stations),
     });
 
-    return { success: true, data };
+    const summary = data.metrics[0]?.summary ?? {
+      数量: { 良品: 0, 执行: 0 },
+      良率: { 一次良率: 0, 最终良率: 0, 产品良率: 0 },
+      良品用时: { mean: 0, min: 0, max: 0 },
+    } satisfies ProcessMetricsSummary;
+
+    return { success: true, data: summary };
   }
 
   @Get('equipment-options')
