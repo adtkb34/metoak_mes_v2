@@ -56,16 +56,16 @@ interface DashboardSummaryParams {
   product?: string | null;
 }
 
-interface ProcessMetricRow {
-  id: string;
-  name: string;
-  output: number;
-  firstPassYield: number;
-  finalYield: number;
-  wip: number;
-  trend: number;
-  targetOutput: number;
-}
+// interface ProcessMetricRow {
+//   id: string;
+//   name: string;
+//   output: number;
+//   firstPassYield: number;
+//   finalYield: number;
+//   wip: number;
+//   trend: number;
+//   targetOutput: number;
+// }
 
 export interface DashboardSummaryResult {
   filters: {
@@ -161,10 +161,10 @@ interface ProcessMetricLoaderParams {
 }
 
 interface ProcessMetricRow {
-  product_sn: string | null;
-  error_code: number | string | null;
-  start_time: Date | string | null;
-  end_time: Date | string | null;
+  product_sn?: string | null;
+  error_code?: number | string | null;
+  start_time?: Date | string | null;
+  end_time?: Date | string | null;
 }
 
 interface NormalizedRecord {
@@ -251,14 +251,10 @@ export class DashboardService {
     statistics?: StatisticsResult,
   ): ProcessMetricRow {
     return {
-      id: stepTypeNo,
-      name: this.getStageDisplayName(stage, stepTypeNo),
-      output: statistics?.totalOutput ?? 0,
-      firstPassYield: statistics?.firstPassRate ?? 0,
-      finalYield: statistics?.finalPassRate ?? 0,
-      wip: 0,
-      trend: 0,
-      targetOutput: 0,
+      product_sn: '',
+      error_code: '',
+      start_time: '',
+      end_time: '',
     };
   }
 
@@ -664,9 +660,7 @@ export class DashboardService {
       tableAlias,
     )}.add_time, ${Prisma.raw(tableAlias)}.start_time)`;
     if (range.start) {
-      filterConditions.push(
-        Prisma.sql`${timestampExpr} >= ${range.start}`,
-      );
+      filterConditions.push(Prisma.sql`${timestampExpr} >= ${range.start}`);
     }
 
     if (range.end) {
@@ -675,10 +669,7 @@ export class DashboardService {
 
     const filterClause =
       filterConditions.length > 0
-        ? Prisma.sql`AND ${Prisma.join(
-            filterConditions,
-            Prisma.sql` AND `,
-          )}`
+        ? Prisma.sql`AND ${Prisma.join(filterConditions, ' AND ')}`
         : Prisma.empty;
 
     const beamRows = await this.queryBeamInfoProducts(

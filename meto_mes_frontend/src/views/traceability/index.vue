@@ -424,7 +424,7 @@ function rowClassName({ row }: { row: TraceabilityTreeRow }) {
   <div class="traceability-page">
     <el-card class="traceability-card traceability-card--filters">
       <template #header>
-        <span>查询条件</span>
+        <span class="traceability-card-title">查询条件</span>
       </template>
       <el-form
         :model="query"
