@@ -82,6 +82,7 @@ interface ProcessDetailParams extends DashboardSummaryParams {
 }
 
 interface ProcessMetricsParams extends DashboardSummaryParams {
+  product: string;
   deviceNos?: string[];
   stations?: string[];
 }
@@ -144,6 +145,7 @@ interface DateRange {
 }
 
 interface ProcessMetricLoaderParams {
+  product: string;
   client: PrismaClient;
   stepTypeNo: string;
   range: DateRange;
@@ -372,7 +374,6 @@ export class DashboardService {
         productYield: 0,
       },
     ];
-
     if (params.origin !== undefined && normalizedStepTypeNo) {
       const { start, end } = this.normalizeDateRange(
         params.startDate,
@@ -381,38 +382,40 @@ export class DashboardService {
 
       try {
         const client = this.prisma.getClientByOrigin(params.origin);
+        const product = params.product;
         let data: AggregatedProcessMetric | undefined;
 
-        if (normalizedStepTypeNo === STEP_NO.AUTO_ADJUST) {
-          data = await this.loadAutoAdjustMetrics({
-            origin: params.origin,
-            range: { start, end },
-          });
-        } else if (normalizedStepTypeNo === STEP_NO.CALIB) {
-          data = await this.loadCalibMetrics({
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else if (normalizedStepTypeNo === STEP_NO.ASSEMBLE_PCBA) {
-          data = await this.loadAssemblePcbaMetrics({
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else if (normalizedStepTypeNo === STEP_NO.S315FQC) {
-          data = await this.loadS315FqcMetrics({
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else {
-          data = await this.loadProcessProductionMetrics({
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        }
+        // if (normalizedStepTypeNo === STEP_NO.AUTO_ADJUST) {
+        //   data = await this.loadAutoAdjustMetrics({
+        //     origin: params.origin,
+        //     range: { start, end },
+        //   });
+        // } else if (normalizedStepTypeNo === STEP_NO.CALIB) {
+        //   data = await this.loadCalibMetrics({
+        //     client,
+        //     stepTypeNo: normalizedStepTypeNo,
+        //     range: { start, end },
+        //   });
+        // } else if (normalizedStepTypeNo === STEP_NO.ASSEMBLE_PCBA) {
+        //   data = await this.loadAssemblePcbaMetrics({
+        //     client,
+        //     stepTypeNo: normalizedStepTypeNo,
+        //     range: { start, end },
+        //   });
+        // } else if (normalizedStepTypeNo === STEP_NO.S315FQC) {
+        //   data = await this.loadS315FqcMetrics({
+        //     client,
+        //     stepTypeNo: normalizedStepTypeNo,
+        //     range: { start, end },
+        //   });
+        // } else {
+        data = await this.loadProcessProductionMetrics({
+          product,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
+        // }
 
         if (data) {
           const metric = metrics[0];
@@ -596,170 +599,87 @@ export class DashboardService {
     return this.aggregateProcessMetricData(data);
   }
 
+  private async queryBeamInfoProducts(
+    client: PrismaClient,
+    baseSql: Prisma.Sql, // 基础查询片段，如 SELECT ... FROM ...
+    alias: string, // 表别名，例如 "mbi"
+    materialCode: string, // 物料编号
+    filterClause?: Prisma.Sql | null, // 可选额外筛选条件
+  ): Promise<{ product_sn: string }[]> {
+    const query = Prisma.sql`
+    ${baseSql}
+    INNER JOIN mo_beam_info AS mbi
+      ON mbi.beam_sn = ${Prisma.raw(alias)}.product_sn
+    INNER JOIN mo_produce_order AS mpo
+      ON mpo.work_order_code = mbi.work_order_code
+    WHERE mpo.material_code = ${materialCode}
+    ${filterClause ? Prisma.sql`AND ${filterClause}` : Prisma.empty}
+  `;
+
+    const rows = await client.$queryRaw<{ product_sn: string }[]>(query);
+    return rows;
+  }
+
+  /**
+   * 获取通过 mo_tag_info 关联的查询 SQL
+   */
+  private async queryTagInfoProducts(
+    client: PrismaClient,
+    baseSql: Prisma.Sql, // 原始 SQL 片段
+    alias: string, // 别名（例如 'mti'）
+    materialCode: string, // 物料号
+    filterClause?: Prisma.Sql | null, // 可选额外筛选条件
+  ): Promise<{ product_sn: string }[]> {
+    const query = Prisma.sql`
+    ${baseSql}
+    INNER JOIN mo_tag_info AS mti
+      ON mti.tag_sn = ${Prisma.raw(alias)}.product_sn
+    INNER JOIN mo_produce_order AS mpo
+      ON mpo.work_order_code = mti.work_order_code
+    WHERE mpo.material_code = ${materialCode}
+    ${filterClause ? Prisma.sql`AND ${filterClause}` : Prisma.empty}
+  `;
+
+    // 直接执行并返回结果
+    const rows = await client.$queryRaw<{ product_sn: string }[]>(query);
+    return rows;
+  }
+
   private async fetchGenericProcessMetricData(
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricQueryData | undefined> {
-    const { client, stepTypeNo, range } = params;
+    const { product, client, stepTypeNo, range } = params;
+    const tableAlias = 'mpspr';
+    const baseSql = Prisma.sql`
+      SELECT ${Prisma.raw(tableAlias)}.product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.start_time, ${Prisma.raw(tableAlias)}.end_time
+      FROM mo_process_step_production_result AS ${Prisma.raw(tableAlias)}
+    `;
 
-    const normalizedStep = stepTypeNo?.trim();
-    if (!normalizedStep) {
-      return undefined;
-    }
-
-    let columns: string[] = [];
-    try {
-      const columnInfo = await client.$queryRaw<{ Field: string }[]>(
-        Prisma.sql`SHOW COLUMNS FROM mo_process_step_production_result;`,
-      );
-      columns = columnInfo.map((item) => item.Field);
-    } catch (error) {
-      this.logger.warn(
-        `无法获取 mo_process_step_production_result 的列信息: ${error.message}`,
-      );
-      return undefined;
-    }
-
-    const stepColumn = this.detectColumn(columns, [
-      'step_type_no',
-      'step_no',
-      'process_no',
-      /step.*no$/,
-      /process.*no$/,
-    ]);
-
-    if (!stepColumn) {
-      this.logger.warn('mo_process_step_production_result 表缺少工序编号字段');
-      return undefined;
-    }
-
-    const timeColumn = this.detectColumn(columns, [
-      'stat_date',
-      'add_time',
-      'start_time',
-      'end_time',
-      'date',
-      /_time$/,
-      /_date$/,
-    ]);
-
-    const outputColumn = this.detectColumn(columns, [
-      'output_qty',
-      'output_count',
-      'total_output',
-      'output',
-      'production_qty',
-      'production_count',
-      'produce_qty',
-      'produce_count',
-      'product_count',
-      /output/,
-    ]);
-
-    const firstPassColumn = this.detectColumn(columns, [
-      'first_pass_yield',
-      'first_pass_rate',
-      'first_pass_ratio',
-      /first.*yield/,
-      /first.*rate/,
-    ]);
-
-    const finalYieldColumn = this.detectColumn(columns, [
-      'final_yield',
-      'final_pass_rate',
-      'final_pass_yield',
-      'production_yield',
-      /final.*yield/,
-      /final.*rate/,
-      /production.*yield/,
-    ]);
-
-    const productYieldColumn = this.detectColumn(columns, [
-      'product_yield',
-      'product_pass_rate',
-      'product_pass_yield',
-      /product.*yield/,
-      /product.*rate/,
-    ]);
-
-    const selectFields: Prisma.Sql[] = [
-      Prisma.sql`${Prisma.raw(stepColumn)} AS step`,
-    ];
-
-    if (outputColumn) {
-      selectFields.push(Prisma.sql`${Prisma.raw(outputColumn)} AS output`);
-    }
-
-    if (firstPassColumn) {
-      selectFields.push(
-        Prisma.sql`${Prisma.raw(firstPassColumn)} AS firstPass`,
-      );
-    }
-
-    if (finalYieldColumn) {
-      selectFields.push(
-        Prisma.sql`${Prisma.raw(finalYieldColumn)} AS finalYield`,
-      );
-    }
-
-    if (productYieldColumn) {
-      selectFields.push(
-        Prisma.sql`${Prisma.raw(productYieldColumn)} AS productYield`,
-      );
-    }
-
-    const processConditions: Prisma.Sql[] = [
-      Prisma.sql`${Prisma.raw(stepColumn)} = ${normalizedStep}`,
-    ];
-
-    if (timeColumn) {
-      if (range.start) {
-        processConditions.push(
-          Prisma.sql`${Prisma.raw(timeColumn)} >= ${range.start}`,
-        );
-      }
-
-      if (range.end) {
-        processConditions.push(
-          Prisma.sql`${Prisma.raw(timeColumn)} <= ${range.end}`,
-        );
-      }
-    } else if (range.start || range.end) {
-      this.logger.warn(
-        'mo_process_step_production_result 表缺少时间字段，已忽略时间筛选条件',
-      );
-    }
-
-    const whereClause = processConditions.length
-      ? Prisma.sql`WHERE ${Prisma.join(processConditions, ' AND ')}`
-      : Prisma.sql``;
-
-    const rows = await client.$queryRaw<GenericProcessMetricRow[]>(
-      Prisma.sql`
-        SELECT ${Prisma.join(selectFields, ', ')}
-        FROM mo_process_step_production_result
-        ${whereClause}
-      `,
+    const filterClause = Prisma.sql`${Prisma.raw(tableAlias)}.step_type_no = ${stepTypeNo} AND ${Prisma.raw(tableAlias)}.add_time > ${range[0]} AND ${Prisma.raw(tableAlias)}.add_time < ${range[1]}`;
+    let rows = await this.queryBeamInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
     );
-
-    return {
-      rows,
-      hasOutput: Boolean(outputColumn),
-      hasFirstPass: Boolean(firstPassColumn),
-      hasFinalYield: Boolean(finalYieldColumn),
-      hasProductYield: Boolean(productYieldColumn),
-    };
+    rows.push(
+      ...(await this.queryTagInfoProducts(
+        client,
+        baseSql,
+        tableAlias,
+        product,
+        filterClause,
+      )),
+    );
+    return undefined;
   }
 
   private aggregateProcessMetricData(
-    data: ProcessMetricQueryData,
+    rows: ,
   ): AggregatedProcessMetric | undefined {
-    const {
-      rows,
-      hasOutput,
-      hasFirstPass,
-      hasFinalYield,
-      hasProductYield,
-    } = data;
+    const { rows, hasOutput, hasFirstPass, hasFinalYield, hasProductYield } =
+      data;
 
     interface AggregationState {
       output: number;

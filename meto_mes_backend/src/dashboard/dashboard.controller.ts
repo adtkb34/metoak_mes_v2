@@ -103,12 +103,12 @@ export class DashboardController {
     return { success: true, data };
   }
 
-  @Post('process-metrics')
+  @Get('process-metrics')
   async getProcessMetrics(
-    @Body()
-    body: {
+    @Query()
+    query: {
       origin?: string | number | null;
-      product?: string | null;
+      product: string;
       stepTypeNo?: string | null;
       startDate?: string;
       endDate?: string;
@@ -116,16 +116,16 @@ export class DashboardController {
       stations?: string[] | string | null;
     },
   ): Promise<{ success: true; data: ProcessMetricsResult }> {
-    const origin = this.parseOrigin(body?.origin);
+    const origin = this.parseOrigin(query?.origin);
 
     const data = await this.dashboardService.getProcessMetrics({
       origin,
-      product: body?.product ?? null,
-      stepTypeNo: body?.stepTypeNo?.trim(),
-      startDate: body?.startDate,
-      endDate: body?.endDate,
-      deviceNos: this.normalizeStringArray(body?.deviceNos),
-      stations: this.normalizeStringArray(body?.stations),
+      product: query.product,
+      stepTypeNo: query?.stepTypeNo?.trim(),
+      startDate: query?.startDate,
+      endDate: query?.endDate,
+      deviceNos: this.normalizeStringArray(query?.deviceNos),
+      stations: this.normalizeStringArray(query?.stations),
     });
 
     return { success: true, data };
