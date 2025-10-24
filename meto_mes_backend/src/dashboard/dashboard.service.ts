@@ -149,6 +149,22 @@ interface ProcessMetricLoaderParams {
   range: DateRange;
 }
 
+interface GenericProcessMetricRow {
+  step: string | null;
+  output?: unknown;
+  firstPass?: unknown;
+  finalYield?: unknown;
+  productYield?: unknown;
+}
+
+interface ProcessMetricQueryData {
+  rows: GenericProcessMetricRow[];
+  hasOutput: boolean;
+  hasFirstPass: boolean;
+  hasFinalYield: boolean;
+  hasProductYield: boolean;
+}
+
 interface NormalizedRecord {
   beamSn: string;
   timestamp: Date;
@@ -543,30 +559,46 @@ export class DashboardService {
   private async loadCalibMetrics(
     params: ProcessMetricLoaderParams,
   ): Promise<AggregatedProcessMetric | undefined> {
-    return this.loadGenericProcessMetrics(params);
+    const data = await this.fetchGenericProcessMetricData(params);
+    if (!data) {
+      return undefined;
+    }
+    return this.aggregateProcessMetricData(data);
   }
 
   private async loadAssemblePcbaMetrics(
     params: ProcessMetricLoaderParams,
   ): Promise<AggregatedProcessMetric | undefined> {
-    return this.loadGenericProcessMetrics(params);
+    const data = await this.fetchGenericProcessMetricData(params);
+    if (!data) {
+      return undefined;
+    }
+    return this.aggregateProcessMetricData(data);
   }
 
   private async loadS315FqcMetrics(
     params: ProcessMetricLoaderParams,
   ): Promise<AggregatedProcessMetric | undefined> {
-    return this.loadGenericProcessMetrics(params);
+    const data = await this.fetchGenericProcessMetricData(params);
+    if (!data) {
+      return undefined;
+    }
+    return this.aggregateProcessMetricData(data);
   }
 
   private async loadProcessProductionMetrics(
     params: ProcessMetricLoaderParams,
   ): Promise<AggregatedProcessMetric | undefined> {
-    return this.loadGenericProcessMetrics(params);
+    const data = await this.fetchGenericProcessMetricData(params);
+    if (!data) {
+      return undefined;
+    }
+    return this.aggregateProcessMetricData(data);
   }
 
-  private async loadGenericProcessMetrics(
+  private async fetchGenericProcessMetricData(
     params: ProcessMetricLoaderParams,
-  ): Promise<AggregatedProcessMetric | undefined> {
+  ): Promise<ProcessMetricQueryData | undefined> {
     const { client, stepTypeNo, range } = params;
 
     const normalizedStep = stepTypeNo?.trim();
@@ -701,21 +733,33 @@ export class DashboardService {
       ? Prisma.sql`WHERE ${Prisma.join(processConditions, ' AND ')}`
       : Prisma.sql``;
 
-    type RawRow = {
-      step: string | null;
-      output?: unknown;
-      firstPass?: unknown;
-      finalYield?: unknown;
-      productYield?: unknown;
-    };
-
-    const rows = await client.$queryRaw<RawRow[]>(
+    const rows = await client.$queryRaw<GenericProcessMetricRow[]>(
       Prisma.sql`
-        SELECT ${Prisma.join(selectFields, Prisma.sql`, `)}
+        SELECT ${Prisma.join(selectFields, ', ')}
         FROM mo_process_step_production_result
         ${whereClause}
       `,
     );
+
+    return {
+      rows,
+      hasOutput: Boolean(outputColumn),
+      hasFirstPass: Boolean(firstPassColumn),
+      hasFinalYield: Boolean(finalYieldColumn),
+      hasProductYield: Boolean(productYieldColumn),
+    };
+  }
+
+  private aggregateProcessMetricData(
+    data: ProcessMetricQueryData,
+  ): AggregatedProcessMetric | undefined {
+    const {
+      rows,
+      hasOutput,
+      hasFirstPass,
+      hasFinalYield,
+      hasProductYield,
+    } = data;
 
     interface AggregationState {
       output: number;
@@ -743,25 +787,25 @@ export class DashboardService {
 
       hasRows = true;
 
-      const outputValue = outputColumn ? this.parseNumericValue(row.output) : 0;
-      const weightBase = outputColumn ? Math.max(outputValue, 0) : 1;
+      const outputValue = hasOutput ? this.parseNumericValue(row.output) : 0;
+      const weightBase = hasOutput ? Math.max(outputValue, 0) : 1;
       const effectiveWeight = weightBase > 0 ? weightBase : 1;
 
-      if (outputColumn) {
+      if (hasOutput) {
         state.output += outputValue;
       }
 
-      if (firstPassColumn) {
+      if (hasFirstPass) {
         const rate = this.parseRate(row.firstPass);
         state.firstPassWeighted += rate * effectiveWeight;
       }
 
-      if (finalYieldColumn) {
+      if (hasFinalYield) {
         const rate = this.parseRate(row.finalYield);
         state.finalWeighted += rate * effectiveWeight;
       }
 
-      if (productYieldColumn) {
+      if (hasProductYield) {
         const rate = this.parseRate(row.productYield);
         state.productWeighted += rate * effectiveWeight;
       }
@@ -777,11 +821,18 @@ export class DashboardService {
 
     return {
       output: state.output,
-      firstPassYield: weight
-        ? this.clampRate(state.firstPassWeighted / weight)
-        : 0,
-      finalYield: weight ? this.clampRate(state.finalWeighted / weight) : 0,
-      productYield: weight ? this.clampRate(state.productWeighted / weight) : 0,
+      firstPassYield:
+        hasFirstPass && weight
+          ? this.clampRate(state.firstPassWeighted / weight)
+          : 0,
+      finalYield:
+        hasFinalYield && weight
+          ? this.clampRate(state.finalWeighted / weight)
+          : 0,
+      productYield:
+        hasProductYield && weight
+          ? this.clampRate(state.productWeighted / weight)
+          : 0,
     };
   }
 
