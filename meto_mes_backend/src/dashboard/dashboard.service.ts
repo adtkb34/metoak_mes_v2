@@ -5,6 +5,7 @@ import {
   ProductOrigin,
   PRODUCT_ORIGIN_OPTIONS,
 } from '../common/enums/product-origin.enum';
+import { STEP_NO } from 'src/utils/stepNo';
 
 export interface ProductOption {
   label: string;
@@ -140,6 +141,12 @@ export interface ProcessDetailData {
 interface DateRange {
   start?: Date;
   end?: Date;
+}
+
+interface ProcessMetricLoaderParams {
+  client: PrismaClient;
+  stepTypeNo: string;
+  range: DateRange;
 }
 
 interface NormalizedRecord {
@@ -358,11 +365,38 @@ export class DashboardService {
 
       try {
         const client = this.prisma.getClientByOrigin(params.origin);
-        const data = await this.loadProcessProductionMetrics({
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
+        let data: AggregatedProcessMetric | undefined;
+
+        if (normalizedStepTypeNo === STEP_NO.AUTO_ADJUST) {
+          data = await this.loadAutoAdjustMetrics({
+            origin: params.origin,
+            range: { start, end },
+          });
+        } else if (normalizedStepTypeNo === STEP_NO.CALIB) {
+          data = await this.loadCalibMetrics({
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        } else if (normalizedStepTypeNo === STEP_NO.ASSEMBLE_PCBA) {
+          data = await this.loadAssemblePcbaMetrics({
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        } else if (normalizedStepTypeNo === STEP_NO.S315FQC) {
+          data = await this.loadS315FqcMetrics({
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        } else {
+          data = await this.loadProcessProductionMetrics({
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        }
 
         if (data) {
           const metric = metrics[0];
@@ -474,11 +508,65 @@ export class DashboardService {
     }
   }
 
-  private async loadProcessProductionMetrics(params: {
-    client: PrismaClient;
-    stepTypeNo: string;
+  private async loadAutoAdjustMetrics(params: {
+    origin: ProductOrigin;
     range: DateRange;
   }): Promise<AggregatedProcessMetric | undefined> {
+    const definitions = this.getEquipmentDefinitions(
+      STEP_NO.AUTO_ADJUST,
+      params.origin,
+    );
+
+    if (!definitions.length) {
+      return undefined;
+    }
+
+    const statistics = await this.calculateStepStatistics({
+      origin: params.origin,
+      stepTypeNo: STEP_NO.AUTO_ADJUST,
+      range: params.range,
+      equipment: definitions,
+    });
+
+    if (!statistics.totalOutput) {
+      return undefined;
+    }
+
+    return {
+      output: statistics.totalOutput,
+      firstPassYield: this.clampRate(statistics.firstPassRate),
+      finalYield: this.clampRate(statistics.finalPassRate),
+      productYield: this.clampRate(statistics.finalPassRate),
+    };
+  }
+
+  private async loadCalibMetrics(
+    params: ProcessMetricLoaderParams,
+  ): Promise<AggregatedProcessMetric | undefined> {
+    return this.loadGenericProcessMetrics(params);
+  }
+
+  private async loadAssemblePcbaMetrics(
+    params: ProcessMetricLoaderParams,
+  ): Promise<AggregatedProcessMetric | undefined> {
+    return this.loadGenericProcessMetrics(params);
+  }
+
+  private async loadS315FqcMetrics(
+    params: ProcessMetricLoaderParams,
+  ): Promise<AggregatedProcessMetric | undefined> {
+    return this.loadGenericProcessMetrics(params);
+  }
+
+  private async loadProcessProductionMetrics(
+    params: ProcessMetricLoaderParams,
+  ): Promise<AggregatedProcessMetric | undefined> {
+    return this.loadGenericProcessMetrics(params);
+  }
+
+  private async loadGenericProcessMetrics(
+    params: ProcessMetricLoaderParams,
+  ): Promise<AggregatedProcessMetric | undefined> {
     const { client, stepTypeNo, range } = params;
 
     const normalizedStep = stepTypeNo?.trim();
