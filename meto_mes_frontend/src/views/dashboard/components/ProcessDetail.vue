@@ -141,12 +141,12 @@
                 {{ formatNumber(row.output) }}
               </template>
             </el-table-column>
-            <el-table-column label="一次良率" width="120">
+            <el-table-column label="一次" width="120">
               <template #default="{ row }">
                 {{ formatPercent(row.firstPassRate) }}
               </template>
             </el-table-column>
-            <el-table-column label="最终良率" width="120">
+            <el-table-column label="最终" width="120">
               <template #default="{ row }">
                 {{ formatPercent(row.finalPassRate) }}
               </template>
@@ -221,9 +221,9 @@ const quantityMetricItems = [
 ] as const;
 
 const yieldMetricItems = [
-  { key: "一次", label: "一次良率" },
-  { key: "最终", label: "最终良率" },
-  { key: "总体", label: "总体良率" }
+  { key: "一次", label: "一次" },
+  { key: "最终", label: "最终" },
+  { key: "总体", label: "总体" }
 ] as const;
 
 const props = defineProps<{

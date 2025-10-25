@@ -139,9 +139,10 @@ const processOptions = computed<SelectOption[]>(() => {
   if (!Array.isArray(list)) return [];
   return list.map(flow => {
     const name = flow.process_name?.trim?.();
-    const label = name && name.length > 0
-      ? `${flow.process_code} (${name})`
-      : flow.process_code;
+    const label =
+      name && name.length > 0
+        ? `${flow.process_code} (${name})`
+        : flow.process_code;
     return {
       label,
       value: flow.process_code
@@ -289,8 +290,10 @@ const selectedProcessMetrics = computed<ProcessMetricsSummary>(() => {
     return metricsFromDetail;
   }
 
-  return processMetricsMap.value[selectedProcessId.value] ??
-    createEmptyProcessMetricsSummary();
+  return (
+    processMetricsMap.value[selectedProcessId.value] ??
+    createEmptyProcessMetricsSummary()
+  );
 });
 
 let productOptionsRequestToken = 0;
@@ -486,6 +489,7 @@ const fetchSummary = async () => {
       : Promise.resolve([]);
 
     const result = await fetchDashboardSummary(params);
+    console.log(2, result);
     const productOptionPayload = shouldFetchProducts
       ? await productOptionsPromise
       : [];

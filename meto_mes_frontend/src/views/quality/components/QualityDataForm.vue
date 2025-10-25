@@ -40,7 +40,7 @@ const mergedList = computed<WithTitle[]>(() => {
           {{ (scope.row.passRate * 100).toFixed(1) + "%" }}
         </template>
       </el-table-column>
-      <el-table-column prop="qualificationRate" label="一次良率">
+      <el-table-column prop="qualificationRate" label="一次">
         <template #default="scope">
           {{ (scope.row.qualificationRate * 100).toFixed(1) + "%" }}
         </template>

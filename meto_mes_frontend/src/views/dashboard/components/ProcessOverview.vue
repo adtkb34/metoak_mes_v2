@@ -79,20 +79,20 @@ const METRIC_GROUPS = [
     key: "良率",
     label: "良率",
     items: [
-      { key: "一次", label: "一次良率" },
-      { key: "最终", label: "最终良率" },
-      { key: "总体", label: "总体良率" }
-    ]
-  },
-  {
-    key: "良品用时",
-    label: "良品用时 (秒)",
-    items: [
-      { key: "min", label: "最短" },
-      { key: "mean", label: "平均" },
-      { key: "max", label: "最长" }
+      { key: "一次", label: "一次" },
+      { key: "最终", label: "最终" },
+      { key: "总体", label: "总体" }
     ]
   }
+  // {
+  //   key: "良品用时",
+  //   label: "良品用时 (秒)",
+  //   items: [
+  //     { key: "min", label: "最短" },
+  //     { key: "mean", label: "平均" },
+  //     { key: "max", label: "最长" }
+  //   ]
+  // }
 ] as const;
 
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
