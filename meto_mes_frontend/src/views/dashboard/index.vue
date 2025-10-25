@@ -7,13 +7,13 @@
         :origin="filters.origin"
         :product-options="productOptions"
         :process-options="processOptions"
-        :process-steps="filters.steps"
+        :process-codes="filters.processCodes"
         :origin-options="originOptions"
         :loading="filtersLoading"
         @update:dateRange="value => (filters.dateRange = value)"
         @update:product="value => (filters.product = value)"
         @update:origin="value => (filters.origin = value)"
-        @update:processSteps="value => (filters.steps = value)"
+        @update:processCodes="value => (filters.processCodes = value)"
         @submit="handleFiltersSubmit"
         @reset="handleFiltersReset"
       />
@@ -102,19 +102,19 @@ import {
 } from "@/api/dashboard";
 import type { DashboardSummaryParams } from "@/api/dashboard";
 import { PRODUCT_ORIGIN_OPTIONS, ProductOrigin } from "@/enums/product-origin";
+import { STEP_NO } from "@/enums/step-no";
+import { useProcessStore } from "@/store/modules/processFlow";
+import type { ProcessFlow, ProcessFlowSteps } from "@/api/processFlow";
 
 const getDefaultDateRange = (): string[] => {
   const today = dayjs().format("YYYY-MM-DD");
   return [today, today];
 };
 
-const DEFAULT_PROCESS_STEPS = ["002", "020", "027"];
-
-const PROCESS_STEP_OPTIONS: SelectOption[] = [
-  { label: "AA 自动调校", value: "002" },
-  { label: "标定", value: "020" },
-  { label: "S315FQC", value: "027" },
-  { label: "PCBA 组装", value: "029" }
+const DEFAULT_STEP_TYPE_NOS: string[] = [
+  STEP_NO.AUTO_ADJUST,
+  STEP_NO.CALIB,
+  STEP_NO.S315FQC
 ];
 
 const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
@@ -127,16 +127,53 @@ const filters = reactive<FilterState>({
   dateRange: getDefaultDateRange(),
   product: null,
   origin: ProductOrigin.Suzhou,
-  steps: [...DEFAULT_PROCESS_STEPS]
+  processCodes: []
 });
 
+const processStore = useProcessStore();
+
 const productOptions = ref<SelectOption[]>([]);
-const processOptions = ref<SelectOption[]>(
-  PROCESS_STEP_OPTIONS.map(option => ({ ...option }))
-);
+const processOptions = computed<SelectOption[]>(() => {
+  const list = (processStore.processFlow.list ?? []) as ProcessFlow[];
+  if (!Array.isArray(list)) return [];
+  return list.map(flow => {
+    const name = flow.process_name?.trim?.();
+    const label = name && name.length > 0
+      ? `${flow.process_code} (${name})`
+      : flow.process_code;
+    return {
+      label,
+      value: flow.process_code
+    } as SelectOption;
+  });
+});
 const originOptions = ref<SelectOption[]>(
   PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }))
 );
+const processStages = computed<ProcessFlowSteps[]>(
+  () => (processStore.processStages.stages ?? []) as ProcessFlowSteps[]
+);
+const stageMapByCode = computed(() => {
+  const map = new Map<string, ProcessFlowSteps>();
+  processStages.value.forEach(stage => {
+    if (stage?.stage_code) {
+      map.set(stage.stage_code, stage);
+    }
+  });
+  return map;
+});
+const stepLabelMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {};
+  processStages.value.forEach(stage => {
+    const stepNo = stage?.step_type_no?.trim?.();
+    if (!stepNo) {
+      return;
+    }
+    const stageName = stage?.stage_name?.trim?.();
+    map[stepNo] = stageName && stageName.length > 0 ? stageName : stepNo;
+  });
+  return map;
+});
 const processMetricsMap = ref<Record<string, ProcessMetricsSummary>>({});
 const workOrders = ref<WorkOrderRow[]>([]);
 
@@ -149,8 +186,8 @@ const selectedProcessId = ref<string | null>(null);
 const processDetail = ref<ProcessDetailData | null>(null);
 
 const getProcessLabel = (step: string): string => {
-  const match = PROCESS_STEP_OPTIONS.find(option => option.value === step);
-  return match?.label ?? step;
+  const label = stepLabelMap.value[step];
+  return label ?? step;
 };
 
 const buildEmptyMetricsMap = (
@@ -178,9 +215,43 @@ const hasMeaningfulMetrics = (summary: ProcessMetricsSummary): boolean => {
   return values.some(value => typeof value === "number");
 };
 
-const activeProcessSteps = computed<string[]>(() =>
-  filters.steps.length ? [...filters.steps] : [...DEFAULT_PROCESS_STEPS]
-);
+const deriveStepTypeNosFromProcessCodes = (codes: string[]): string[] => {
+  if (!codes.length) {
+    return [];
+  }
+
+  const flows = (processStore.processFlow.list ?? []) as ProcessFlow[];
+  if (!Array.isArray(flows) || flows.length === 0) {
+    return [];
+  }
+
+  const stageMap = stageMapByCode.value;
+  const stepSet = new Set<string>();
+
+  codes.forEach(code => {
+    const flow = flows.find(item => item.process_code === code);
+    if (!flow) {
+      return;
+    }
+
+    const stageCodes = Array.isArray(flow.stage_codes) ? flow.stage_codes : [];
+    stageCodes.forEach(stageCode => {
+      const stage = stageMap.get(stageCode);
+      const stepNo = stage?.step_type_no?.trim?.();
+      if (stepNo) {
+        stepSet.add(stepNo);
+      }
+    });
+  });
+
+  return Array.from(stepSet);
+};
+
+const activeProcessSteps = computed<string[]>(() => {
+  const codes = filters.processCodes.filter(code => code && code.length > 0);
+  const derivedSteps = deriveStepTypeNosFromProcessCodes(codes);
+  return derivedSteps.length ? derivedSteps : [...DEFAULT_STEP_TYPE_NOS];
+});
 
 processMetricsMap.value = buildEmptyMetricsMap(activeProcessSteps.value);
 
@@ -281,32 +352,30 @@ watch(
 );
 
 watch(
-  () => filters.steps.slice(),
+  activeProcessSteps,
   steps => {
-    const activeSteps = steps.length ? [...steps] : [...DEFAULT_PROCESS_STEPS];
-    const nextMap = buildEmptyMetricsMap(activeSteps);
-    for (const step of activeSteps) {
+    const nextMap = buildEmptyMetricsMap(steps);
+    for (const step of steps) {
       if (processMetricsMap.value[step]) {
         nextMap[step] = processMetricsMap.value[step];
       }
     }
     processMetricsMap.value = nextMap;
 
-    if (
-      selectedProcessId.value &&
-      !activeSteps.includes(selectedProcessId.value)
-    ) {
+    if (selectedProcessId.value && !steps.includes(selectedProcessId.value)) {
       selectedProcessId.value = null;
       processDetail.value = null;
       detailError.value = null;
     }
-  }
+  },
+  { immediate: true }
 );
 
 watch(
   () => filters.product,
   value => {
     if (!value) {
+      filters.processCodes = [];
       processMetricsMap.value = buildEmptyMetricsMap(activeProcessSteps.value);
     }
   }
@@ -489,11 +558,15 @@ const handleFiltersReset = () => {
   filters.dateRange = getDefaultDateRange();
   filters.product = null;
   filters.origin = ProductOrigin.Suzhou;
-  filters.steps = [...DEFAULT_PROCESS_STEPS];
+  filters.processCodes = [];
   handleFiltersSubmit();
 };
 
-onMounted(() => {
+onMounted(async () => {
+  await Promise.all([
+    processStore.setProcessFlow(),
+    processStore.setProcessSteps()
+  ]);
   fetchSummary();
 });
 </script>
