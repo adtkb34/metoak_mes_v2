@@ -89,18 +89,19 @@ interface ProcessMetricsParams extends DashboardSummaryParams {
 
 export interface ProcessMetricsSummary {
   数量: {
-    良品: number;
-    执行: number;
+    良品: number | string;
+    产品: number | string;
+    执行: number | string;
   };
   良率: {
-    一次良率: number;
-    最终良率: number;
-    产品良率: number;
+    一次良率: number | string;
+    最终良率: number | string;
+    产品良率: number | string;
   };
   良品用时: {
-    mean: number;
-    min: number;
-    max: number;
+    mean: number | string;
+    min: number | string;
+    max: number | string;
   };
 }
 
@@ -354,13 +355,31 @@ export class DashboardService {
     try {
       const client = this.prisma.getClientByOrigin(params.origin);
       const product = params.product;
-
-      const data = await this.loadProcessProductionMetrics({
-        product,
-        client,
-        stepTypeNo: normalizedStepTypeNo,
-        range: { start, end },
-      });
+      let data;
+      if (params.stepTypeNo == STEP_NO.CALIB) {
+        data = await this.loadCalibMetrics({
+          product,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
+        console.log(data);
+      } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
+        data = await this.loadAssemblePcbaMetrics({
+          product,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
+        console.log(data);
+      } else {
+        data = await this.loadProcessProductionMetrics({
+          product,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
+      }
 
       return data ?? summary;
     } catch (error) {
@@ -493,20 +512,138 @@ export class DashboardService {
   private async loadCalibMetrics(
     params: ProcessMetricLoaderParams,
   ): Promise<AggregatedProcessMetric | undefined> {
-    const data = await this.fetchGenericProcessMetricData(params);
+    const { product, client, stepTypeNo, range } = params;
+    if (!product) {
+      return undefined;
+    }
+
+    const tableAlias = 'mpspr';
+    const baseSql = Prisma.sql`
+      SELECT ${Prisma.raw(tableAlias)}.camera_sn AS product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.start_time, ${Prisma.raw(tableAlias)}.end_time
+      FROM mo_calibration AS ${Prisma.raw(tableAlias)}
+    `;
+
+    const filterConditions: Prisma.Sql[] = [];
+
+    const timestampExpr = Prisma.sql`COALESCE(${Prisma.raw(tableAlias)}.start_time)`;
+    if (range.start) {
+      filterConditions.push(Prisma.sql`${timestampExpr} >= ${range.start}`);
+    }
+
+    if (range.end) {
+      filterConditions.push(Prisma.sql`${timestampExpr} <= ${range.end}`);
+    }
+
+    const filterClause =
+      filterConditions.length > 0
+        ? Prisma.sql`AND ${Prisma.join(filterConditions, ' AND ')}`
+        : Prisma.empty;
+
+    const beamRows = await this.queryBeamInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
+
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
+
+    const combined = [...beamRows, ...tagRows];
+    if (!combined.length) {
+      return undefined;
+    }
+
+    const unique = new Map<string, ProcessMetricRow>();
+    for (const row of combined) {
+      const key = this.buildProcessMetricRowKey(row);
+      if (!unique.has(key)) {
+        unique.set(key, row);
+      }
+    }
+
+    const data = [...unique.values()];
     if (!data) {
       return undefined;
     }
+    // console.log(data);
     return this.aggregateProcessMetricData(data);
   }
 
   private async loadAssemblePcbaMetrics(
     params: ProcessMetricLoaderParams,
   ): Promise<AggregatedProcessMetric | undefined> {
-    const data = await this.fetchGenericProcessMetricData(params);
+    const { product, client, stepTypeNo, range } = params;
+    if (!product) {
+      return undefined;
+    }
+
+    const tableAlias = 'mpspr';
+    const baseSql = Prisma.sql`
+      SELECT ${Prisma.raw(tableAlias)}.camera_sn AS product_sn, ${Prisma.raw(tableAlias)}.start_time, ${Prisma.raw(tableAlias)}.end_time
+      FROM mo_assemble_info AS ${Prisma.raw(tableAlias)}
+    `;
+
+    const filterConditions: Prisma.Sql[] = [];
+
+    const timestampExpr = Prisma.sql`COALESCE(${Prisma.raw(tableAlias)}.start_time)`;
+    if (range.start) {
+      filterConditions.push(Prisma.sql`${timestampExpr} >= ${range.start}`);
+    }
+
+    if (range.end) {
+      filterConditions.push(Prisma.sql`${timestampExpr} <= ${range.end}`);
+    }
+
+    const filterClause =
+      filterConditions.length > 0
+        ? Prisma.sql`AND ${Prisma.join(filterConditions, ' AND ')}`
+        : Prisma.empty;
+
+    const beamRows = await this.queryBeamInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
+
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
+
+    const combined = [...beamRows, ...tagRows];
+    if (!combined.length) {
+      return undefined;
+    }
+
+    const unique = new Map<string, ProcessMetricRow>();
+    for (const row of combined) {
+      const key = this.buildProcessMetricRowKey(row);
+      if (!unique.has(key)) {
+        unique.set(key, row);
+      }
+    }
+
+    const data = [...unique.values()];
     if (!data) {
       return undefined;
     }
+    // console.log(data);
     return this.aggregateProcessMetricData(data);
   }
 
@@ -536,11 +673,12 @@ export class DashboardService {
     alias: string, // 表别名，例如 "mbi"
     materialCode: string, // 物料编号
     filterClause?: Prisma.Sql | null, // 可选额外筛选条件
+    productSnName: string = 'product_sn',
   ): Promise<ProcessMetricRow[]> {
     const query = Prisma.sql`
     ${baseSql}
     INNER JOIN mo_beam_info AS mbi
-      ON mbi.beam_sn = ${Prisma.raw(alias)}.product_sn
+      ON mbi.beam_sn = ${Prisma.raw(alias)}.${Prisma.raw(productSnName)}
     INNER JOIN mo_produce_order AS mpo
       ON mpo.work_order_code = mbi.work_order_code
     WHERE mpo.material_code = ${materialCode}
@@ -548,6 +686,7 @@ export class DashboardService {
   `;
 
     const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
+
     return rows;
   }
 
@@ -560,11 +699,12 @@ export class DashboardService {
     alias: string, // 别名（例如 'mti'）
     materialCode: string, // 物料号
     filterClause?: Prisma.Sql | null, // 可选额外筛选条件
+    productSnName: string = 'product_sn',
   ): Promise<ProcessMetricRow[]> {
     const query = Prisma.sql`
     ${baseSql}
     INNER JOIN mo_tag_info AS mti
-      ON mti.tag_sn = ${Prisma.raw(alias)}.product_sn
+      ON mti.tag_sn = ${Prisma.raw(alias)}.${Prisma.raw(productSnName)}
     INNER JOIN mo_produce_order AS mpo
       ON mpo.work_order_code = mti.work_order_code
     WHERE mpo.material_code = ${materialCode}
@@ -667,7 +807,7 @@ export class DashboardService {
       return undefined;
     }
 
-    let finalGoodCount = 0;
+    let finalGoodCount = '-';
     let firstPassSuccess = 0;
     let finalPassSuccess = 0;
     let anySuccess = 0;
@@ -718,16 +858,21 @@ export class DashboardService {
     return {
       数量: {
         良品: finalGoodCount,
-        执行: productCount,
+        产品: productCount,
+        执行: rows.length,
       },
       良率: {
-        一次良率: this.clampRate(
-          productCount ? firstPassSuccess / productCount : 0,
-        ),
+        一次良率:
+  productCount && productCount !== '-'
+    ? this.clampRate(firstPassSuccess / Number(productCount))
+    : '-',
+,
         最终良率: this.clampRate(
-          productCount ? finalPassSuccess / productCount : 0,
+          productCount ? finalPassSuccess / productCount : '-',
         ),
-        产品良率: this.clampRate(productCount ? anySuccess / productCount : 0),
+        产品良率: this.clampRate(
+          productCount ? anySuccess / productCount : '-',
+        ),
       },
       良品用时: durationStats,
     };
@@ -736,18 +881,19 @@ export class DashboardService {
   private createEmptyProcessMetricsSummary(): ProcessMetricsSummary {
     return {
       数量: {
-        良品: 0,
-        执行: 0,
+        良品: '-',
+        产品: '-',
+        执行: '-',
       },
       良率: {
-        一次良率: 0,
-        最终良率: 0,
-        产品良率: 0,
+        一次良率: '-',
+        最终良率: '-',
+        产品良率: '-',
       },
       良品用时: {
-        mean: 0,
-        min: 0,
-        max: 0,
+        mean: '-',
+        min: '-',
+        max: '-',
       },
     };
   }

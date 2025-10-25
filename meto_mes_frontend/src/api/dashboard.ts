@@ -26,7 +26,7 @@ const PROCESS_DETAIL_URL = "/dashboard/process-detail";
 const DASHBOARD_PRODUCTS_URL = "/dashboard/products";
 
 const isMockEnabled = (() => {
-  const flag = false;
+  const flag = true;
   if (typeof flag === "boolean") return flag;
   return String(flag).toLowerCase() === "true";
 })();
