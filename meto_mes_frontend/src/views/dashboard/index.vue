@@ -96,7 +96,6 @@ import type {
   WorkOrderRow
 } from "./types";
 import {
-  fetchDashboardSummary,
   fetchProcessDetail,
   fetchDashboardProducts,
   fetchProcessMetrics
@@ -476,45 +475,34 @@ const fetchSummary = async () => {
     const shouldFetchProducts = Boolean(
       params.startDate && params.endDate && selectedOrigin !== undefined
     );
-    const productOptionsPromise = shouldFetchProducts
-      ? fetchDashboardProducts({
+    let productOptionPayload: SelectOption[] = [];
+    if (shouldFetchProducts) {
+      try {
+        const result = await fetchDashboardProducts({
           startDate: params.startDate,
           endDate: params.endDate,
           origin: selectedOrigin
-        }).catch((error: any) => {
-          const message = error?.message ?? "获取产品选项失败";
-          ElMessage.warning(message);
-          return [];
-        })
-      : Promise.resolve([]);
+        });
+        productOptionPayload = result.map(item => ({
+          label: item.label,
+          value: item.code
+        }));
+      } catch (error: any) {
+        const message = error?.message ?? "获取产品选项失败";
+        ElMessage.warning(message);
+      }
+    }
 
-    const result = await fetchDashboardSummary(params);
-    console.log(2, result);
-    const productOptionPayload = shouldFetchProducts
-      ? await productOptionsPromise
-      : [];
-
-    const nextProductOptions = shouldFetchProducts
-      ? productOptionPayload.length
-        ? productOptionPayload.map(item => ({
-            label: item.label,
-            value: item.code
-          }))
-        : result.filters.products
-      : [];
-
-    productOptions.value = nextProductOptions;
+    productOptions.value = productOptionPayload;
     const availableProductCodes = new Set(
-      nextProductOptions.map(item => item.value)
+      productOptionPayload.map(item => item.value)
     );
     if (filters.product && !availableProductCodes.has(filters.product)) {
       filters.product = null;
     }
 
-    originOptions.value = result.filters.origins.length
-      ? result.filters.origins
-      : PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }));
-    workOrders.value = result.workOrders;
+    originOptions.value = PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }));
+    workOrders.value = [];
 
     let metricsAvailable = false;
     if (params.product) {
@@ -523,7 +511,7 @@ const fetchSummary = async () => {
       processMetricsMap.value = buildEmptyMetricsMap(activeProcessSteps.value);
     }
 
-    if (!metricsAvailable && !result.workOrders.length && params.product) {
+    if (!metricsAvailable && !workOrders.value.length && params.product) {
       summaryError.value = "当前筛选条件没有匹配的数据";
     }
   } catch (error: any) {
