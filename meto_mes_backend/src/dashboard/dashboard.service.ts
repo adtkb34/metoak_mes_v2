@@ -77,6 +77,12 @@ export interface DashboardSummaryResult {
   workOrders: Array<Record<string, unknown>>;
 }
 
+export interface ProcessStageInfo {
+  stageCode: string | null;
+  stageName: string | null;
+  sysStepTypeNo: string | null;
+}
+
 interface ProcessDetailParams extends DashboardSummaryParams {
   processId: string;
   equipmentIds?: string[];
@@ -259,6 +265,30 @@ export class DashboardService {
     }
 
     return `工序 ${stepTypeNo}`;
+  }
+
+  async getProcessStages(
+    processCode: string,
+  ): Promise<ProcessStageInfo[]> {
+    const steps = await this.prisma.mo_process_flow.findMany({
+      where: { process_code: processCode },
+      orderBy: { id: 'asc' },
+      select: {
+        stage_code: true,
+        mo_workstage: {
+          select: {
+            stage_name: true,
+            sys_step_type_no: true,
+          },
+        },
+      },
+    });
+
+    return steps.map((step) => ({
+      stageCode: step.stage_code?.trim() ?? null,
+      stageName: step.mo_workstage?.stage_name?.trim() ?? null,
+      sysStepTypeNo: step.mo_workstage?.sys_step_type_no?.trim() ?? null,
+    }));
   }
 
   async getProcessDetail(
