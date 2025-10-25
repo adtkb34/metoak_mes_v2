@@ -17,6 +17,7 @@ import type {
   ProcessMetricsParams,
   ProcessMetricsSummary
 } from "./dashboard.types";
+import { fa } from "element-plus/es/locale/index.mjs";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -30,7 +31,7 @@ const DASHBOARD_PRODUCTS_URL = "/dashboard/products";
 const PROCESS_METRICS_URL = "/dashboard/process-metrics";
 
 const isMockEnabled = (() => {
-  const flag = true;
+  const flag = false;
   if (typeof flag === "boolean") return flag;
   return String(flag).toLowerCase() === "true";
 })();

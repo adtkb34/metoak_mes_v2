@@ -94,9 +94,9 @@ export interface ProcessMetricsSummary {
     执行: number | string;
   };
   良率: {
-    一次良率: number | string;
-    最终良率: number | string;
-    产品良率: number | string;
+    一次: number | string;
+    最终: number | string;
+    总体: number | string;
   };
   良品用时: {
     mean: number | string;
@@ -365,7 +365,6 @@ export class DashboardService {
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
-        console.log(data);
       } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
         data = await this.loadAssemblePcbaMetrics({
           product,
@@ -373,7 +372,6 @@ export class DashboardService {
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
-        console.log(data);
       } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
         data = await this.loadAutoAdjustMetrics({
           product,
@@ -381,7 +379,6 @@ export class DashboardService {
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
-        console.log(data);
       } else if (params.stepTypeNo == STEP_NO.S315FQC) {
         data = await this.loadS315FqcMetrics({
           product,
@@ -389,7 +386,6 @@ export class DashboardService {
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
-        console.log(data);
       } else {
         data = await this.loadProcessProductionMetrics({
           product,
@@ -399,6 +395,7 @@ export class DashboardService {
         });
       }
 
+      console.log(data);
       return data ?? summary;
     } catch (error) {
       this.logger.error(
@@ -479,7 +476,7 @@ export class DashboardService {
         const name = row.material_name?.trim();
         const code = row.material_code?.trim() ?? '';
         if (name && !unique.has(name))
-          unique.set(name, { label: `${name}${code}`, code: name });
+          unique.set(name, { label: `${name} (${code})`, code: code });
       }
       return [...unique.values()];
     } catch (error) {
@@ -556,7 +553,7 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    // console.log(data);
+    //
     return this.aggregateProcessMetricData(data);
   }
 
@@ -625,7 +622,7 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    // console.log(data);
+    //
     return this.aggregateProcessMetricData(data);
   }
 
@@ -694,7 +691,7 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    // console.log(data);
+    //
     return this.aggregateProcessMetricData(data);
   }
 
@@ -750,7 +747,6 @@ export class DashboardService {
     if (!combined.length) {
       return undefined;
     }
-    console.log(combined);
     const unique = new Map<string, ProcessMetricRow>();
     for (const row of combined) {
       const key = this.buildProcessMetricRowKey(row);
@@ -763,7 +759,7 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    // console.log(data);
+    //
     return this.aggregateProcessMetricData(data);
   }
 
@@ -972,17 +968,17 @@ export class DashboardService {
         执行: rows.length || DEFAULT_METRIC_VALUE,
       },
       良率: {
-        一次良率:
+        一次:
           productCount > 0 && firstPassSuccess > 0
             ? this.clampRate(firstPassSuccess / productCount)
             : DEFAULT_METRIC_VALUE,
-        最终良率:
+        总体:
+          rows.length > 0 && anySuccess > 0
+            ? this.clampRate(anySuccess / rows.length)
+            : DEFAULT_METRIC_VALUE,
+        最终:
           productCount > 0 && finalPassSuccess > 0
             ? this.clampRate(finalPassSuccess / productCount)
-            : DEFAULT_METRIC_VALUE,
-        产品良率:
-          productCount > 0 && anySuccess > 0
-            ? this.clampRate(anySuccess / productCount)
             : DEFAULT_METRIC_VALUE,
       },
       良品用时: durationStats,
@@ -997,9 +993,9 @@ export class DashboardService {
         执行: DEFAULT_METRIC_VALUE,
       },
       良率: {
-        一次良率: DEFAULT_METRIC_VALUE,
-        最终良率: DEFAULT_METRIC_VALUE,
-        产品良率: DEFAULT_METRIC_VALUE,
+        一次: DEFAULT_METRIC_VALUE,
+        最终: DEFAULT_METRIC_VALUE,
+        总体: DEFAULT_METRIC_VALUE,
       },
       良品用时: {
         mean: DEFAULT_METRIC_VALUE,
