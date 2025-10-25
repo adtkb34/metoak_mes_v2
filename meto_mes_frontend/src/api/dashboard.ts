@@ -15,7 +15,9 @@ import type {
   DashboardProductsParams,
   DashboardProductOption,
   ProcessMetricsParams,
-  ProcessMetricsSummary
+  ProcessMetricsSummary,
+  ProcessStageInfoParams,
+  ProcessStageInfo
 } from "./dashboard.types";
 import { fa } from "element-plus/es/locale/index.mjs";
 
@@ -29,6 +31,7 @@ const DASHBOARD_SUMMARY_URL = "/dashboard/summary";
 const PROCESS_DETAIL_URL = "/dashboard/process-detail";
 const DASHBOARD_PRODUCTS_URL = "/dashboard/products";
 const PROCESS_METRICS_URL = "/dashboard/process-metrics";
+const PROCESS_STAGE_INFO_URL = "/dashboard/process-stage-info";
 
 const isMockEnabled = (() => {
   const flag = false;
@@ -110,11 +113,28 @@ export async function fetchProcessMetrics(
   return unwrapResponse(response, "获取工序指标失败");
 }
 
+export async function fetchProcessStageInfo(
+  params: ProcessStageInfoParams
+): Promise<ProcessStageInfo[]> {
+  if (isMockEnabled) {
+    return Promise.resolve([]);
+  }
+
+  const response = await http.request<ApiResponse<ProcessStageInfo[]>>(
+    "get",
+    PROCESS_STAGE_INFO_URL,
+    { params }
+  );
+
+  return unwrapResponse(response, "获取工序信息失败");
+}
+
 export type {
   DashboardSummaryParams,
   ProcessDetailParams,
   DashboardProductsParams,
   DashboardProductOption,
   ProcessMetricsParams,
-  ProcessMetricsSummary
+  ProcessMetricsSummary,
+  ProcessStageInfo
 };
