@@ -54,6 +54,7 @@
       <process-detail
         v-if="isDetailVisible"
         :detail="processDetail"
+        :metrics="selectedProcessMetrics"
         :loading="detailLoading"
       />
       <process-overview
@@ -118,8 +119,8 @@ const DEFAULT_STEP_TYPE_NOS: string[] = [
 ];
 
 const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
-  数量: { 良品: "-", 产品: "-", 执行: "-" },
-  良率: { 一次良率: "-", 最终良率: "-", 产品良率: "-" },
+  数量: { 良品: "-", 产品: "-", 总体: "-" },
+  良率: { 一次: "-", 最终: "-", 总体: "-" },
   良品用时: { mean: "-", min: "-", max: "-" }
 });
 
@@ -203,10 +204,10 @@ const hasMeaningfulMetrics = (summary: ProcessMetricsSummary): boolean => {
   const values = [
     summary.数量.良品,
     summary.数量.产品,
-    summary.数量.执行,
-    summary.良率.一次良率,
-    summary.良率.最终良率,
-    summary.良率.产品良率,
+    summary.数量.总体,
+    summary.良率.一次,
+    summary.良率.最终,
+    summary.良率.总体,
     summary.良品用时.mean,
     summary.良品用时.min,
     summary.良品用时.max
@@ -277,6 +278,20 @@ const selectedProcessName = computed(() => {
 const headerTitle = computed(() =>
   isDetailVisible.value ? `${selectedProcessName.value} 工序详情` : "工序概览"
 );
+
+const selectedProcessMetrics = computed<ProcessMetricsSummary>(() => {
+  if (!selectedProcessId.value) {
+    return createEmptyProcessMetricsSummary();
+  }
+
+  const metricsFromDetail = processDetail.value?.summary;
+  if (metricsFromDetail) {
+    return metricsFromDetail;
+  }
+
+  return processMetricsMap.value[selectedProcessId.value] ??
+    createEmptyProcessMetricsSummary();
+});
 
 let productOptionsRequestToken = 0;
 

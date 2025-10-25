@@ -66,30 +66,35 @@
         </el-form>
 
         <div v-if="displayMode === 'statistics'" class="space-y-6">
-          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div class="grid gap-4 md:grid-cols-2">
             <div class="stat-card">
-              <div class="text-gray-400">产量</div>
-              <div class="mt-2 text-2xl font-semibold text-gray-700">
-                {{ formatNumber(summary.totalOutput) }}
+              <div class="text-sm font-medium text-gray-500">产量</div>
+              <div class="mt-4 grid grid-cols-3 gap-4 text-sm">
+                <div
+                  v-for="item in quantityMetricItems"
+                  :key="item.key"
+                  class="space-y-1"
+                >
+                  <div class="text-gray-400">{{ item.label }}</div>
+                  <div class="text-xl font-semibold text-gray-700">
+                    {{ formatQuantityMetric(metricsSummary.数量[item.key]) }}
+                  </div>
+                </div>
               </div>
             </div>
             <div class="stat-card">
-              <div class="text-gray-400">一次良率</div>
-              <div class="mt-2 text-2xl font-semibold text-emerald-600">
-                {{ formatPercent(summary.firstPassRate) }}
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="text-gray-400">最终良率</div>
-              <div class="mt-2 text-2xl font-semibold text-blue-600">
-                {{ formatPercent(summary.finalPassRate) }}
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="text-gray-400">返修 / 报废</div>
-              <div class="mt-2 text-lg font-semibold text-amber-600">
-                {{ formatNumber(summary.reworkCount) }} /
-                {{ formatNumber(summary.scrapCount) }}
+              <div class="text-sm font-medium text-gray-500">良率</div>
+              <div class="mt-4 grid grid-cols-3 gap-4 text-sm">
+                <div
+                  v-for="item in yieldMetricItems"
+                  :key="item.key"
+                  class="space-y-1"
+                >
+                  <div class="text-gray-400">{{ item.label }}</div>
+                  <div class="text-xl font-semibold text-emerald-600">
+                    {{ formatYieldMetric(metricsSummary.良率[item.key]) }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -189,7 +194,8 @@ import { getProductOriginLabel } from "@/enums/product-origin";
 import type {
   DefectBreakdown,
   ProcessDetailData,
-  ProcessDetailRow
+  ProcessDetailRow,
+  ProcessMetricsSummary
 } from "../types";
 
 use([
@@ -202,12 +208,29 @@ use([
   CanvasRenderer
 ]);
 
-interface Props {
+const EMPTY_METRICS_SUMMARY: ProcessMetricsSummary = {
+  数量: { 良品: "-", 产品: "-", 总体: "-" },
+  良率: { 一次: "-", 最终: "-", 总体: "-" },
+  良品用时: { mean: "-", min: "-", max: "-" }
+};
+
+const quantityMetricItems = [
+  { key: "良品", label: "良品" },
+  { key: "产品", label: "产品" },
+  { key: "总体", label: "总体" }
+] as const;
+
+const yieldMetricItems = [
+  { key: "一次", label: "一次良率" },
+  { key: "最终", label: "最终良率" },
+  { key: "总体", label: "总体良率" }
+] as const;
+
+const props = defineProps<{
   detail: ProcessDetailData | null;
   loading?: boolean;
-}
-
-const props = defineProps<Props>();
+  metrics?: ProcessMetricsSummary | null;
+}>();
 
 const displayMode = ref<"statistics" | "detail">("statistics");
 const selectedEquipment = ref<string[]>([]);
@@ -235,26 +258,16 @@ const filteredRows = computed<ProcessDetailRow[]>(() => {
   });
 });
 
-const summary = computed(() => {
-  const rows = filteredRows.value;
-  const totalOutput = rows.reduce((sum, row) => sum + row.output, 0);
-  const firstPass = rows.reduce(
-    (sum, row) => sum + row.output * row.firstPassRate,
-    0
-  );
-  const finalPass = rows.reduce(
-    (sum, row) => sum + row.output * row.finalPassRate,
-    0
-  );
-  const scrap = rows.reduce((sum, row) => sum + row.scrapCount, 0);
-  const rework = rows.reduce((sum, row) => sum + row.reworkCount, 0);
-  return {
-    totalOutput,
-    firstPassRate: totalOutput ? firstPass / totalOutput : 0,
-    finalPassRate: totalOutput ? finalPass / totalOutput : 0,
-    scrapCount: scrap,
-    reworkCount: rework
-  };
+const metricsSummary = computed<ProcessMetricsSummary>(() => {
+  if (props.detail?.summary) {
+    return props.detail.summary;
+  }
+
+  if (props.metrics) {
+    return props.metrics;
+  }
+
+  return EMPTY_METRICS_SUMMARY;
 });
 
 const buildPareto = (rows: ProcessDetailRow[]) => {
@@ -349,6 +362,20 @@ const numberFormatter = new Intl.NumberFormat("zh-CN", {
 
 const formatNumber = (value: number) => numberFormatter.format(value);
 const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
+
+const formatQuantityMetric = (value: number | string) => {
+  if (typeof value === "number") {
+    return numberFormatter.format(value);
+  }
+  return value ?? "-";
+};
+
+const formatYieldMetric = (value: number | string) => {
+  if (typeof value === "number") {
+    return `${(value * 100).toFixed(1)}%`;
+  }
+  return value ?? "-";
+};
 </script>
 
 <style scoped>

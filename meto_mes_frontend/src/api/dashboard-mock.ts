@@ -120,16 +120,16 @@ interface ProcessMetricsSummarySeed {
 }
 
 const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
-  数量: { 良品: "-", 产品: "-", 执行: "-" },
-  良率: { 一次良率: "-", 最终良率: "-", 产品良率: "-" },
+  数量: { 良品: "-", 产品: "-", 总体: "-" },
+  良率: { 一次: "-", 最终: "-", 总体: "-" },
   良品用时: { mean: "-", min: "-", max: "-" }
 });
 
 const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
   "002": {
     metrics: {
-      数量: { 良品: 320, 产品: 342, 执行: 360 },
-      良率: { 一次良率: 0.928, 最终良率: 0.974, 产品良率: 0.996 },
+      数量: { 良品: 320, 产品: 342, 总体: 360 },
+      良率: { 一次: 0.928, 最终: 0.974, 总体: 0.996 },
       良品用时: { mean: 185, min: 120, max: 264 }
     },
     products: ["XT-1", "XT-2", "XT-Pro"],
@@ -138,8 +138,8 @@ const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
   },
   "020": {
     metrics: {
-      数量: { 良品: 298, 产品: 315, 执行: 332 },
-      良率: { 一次良率: 0.912, 最终良率: 0.968, 产品良率: 0.982 },
+      数量: { 良品: 298, 产品: 315, 总体: 332 },
+      良率: { 一次: 0.912, 最终: 0.968, 总体: 0.982 },
       良品用时: { mean: 210, min: 150, max: 305 }
     },
     products: ["XT-1", "XT-Pro"],
@@ -148,8 +148,8 @@ const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
   },
   "027": {
     metrics: {
-      数量: { 良品: 276, 产品: 289, 执行: 301 },
-      良率: { 一次良率: 0.958, 最终良率: 0.989, 产品良率: 0.995 },
+      数量: { 良品: 276, 产品: 289, 总体: 301 },
+      良率: { 一次: 0.958, 最终: 0.989, 总体: 0.995 },
       良品用时: { mean: 165, min: 110, max: 230 }
     },
     products: ["XT-1", "XT-2", "XT-Pro"],
@@ -158,8 +158,8 @@ const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
   },
   "029": {
     metrics: {
-      数量: { 良品: 360, 产品: 378, 执行: 396 },
-      良率: { 一次良率: 0.905, 最终良率: 0.965, 产品良率: 0.978 },
+      数量: { 良品: 360, 产品: 378, 总体: 396 },
+      良率: { 一次: 0.905, 最终: 0.965, 总体: 0.978 },
       良品用时: { mean: 240, min: 180, max: 320 }
     },
     products: ["XT-1", "XT-Lite"],
