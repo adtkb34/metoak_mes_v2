@@ -98,13 +98,14 @@ import type {
 import {
   fetchProcessDetail,
   fetchDashboardProducts,
-  fetchProcessMetrics
+  fetchProcessMetrics,
+  fetchProcessStageInfo
 } from "@/api/dashboard";
-import type { DashboardSummaryParams } from "@/api/dashboard";
+import type { DashboardSummaryParams, ProcessStageInfo } from "@/api/dashboard";
 import { PRODUCT_ORIGIN_OPTIONS, ProductOrigin } from "@/enums/product-origin";
 import { STEP_NO } from "@/enums/step-no";
 import { useProcessStore } from "@/store/modules/processFlow";
-import type { ProcessFlow, ProcessFlowSteps } from "@/api/processFlow";
+import type { ProcessFlow } from "@/api/processFlow";
 
 const getDefaultDateRange = (): string[] => {
   const today = dayjs().format("YYYY-MM-DD");
@@ -160,30 +161,8 @@ const processOptions = computed<SelectOption[]>(() => {
 const originOptions = ref<SelectOption[]>(
   PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }))
 );
-const processStages = computed<ProcessFlowSteps[]>(
-  () => (processStore.processStages.stages ?? []) as ProcessFlowSteps[]
-);
-const stageMapByCode = computed(() => {
-  const map = new Map<string, ProcessFlowSteps>();
-  processStages.value.forEach(stage => {
-    if (stage?.stage_code) {
-      map.set(stage.stage_code, stage);
-    }
-  });
-  return map;
-});
-const stepLabelMap = computed<Record<string, string>>(() => {
-  const map: Record<string, string> = {};
-  processStages.value.forEach(stage => {
-    const stepNo = stage?.step_type_no?.trim?.();
-    if (!stepNo) {
-      return;
-    }
-    const stageName = stage?.stage_name?.trim?.();
-    map[stepNo] = stageName && stageName.length > 0 ? stageName : stepNo;
-  });
-  return map;
-});
+const processStagesInfo = ref<ProcessStageInfo[]>([]);
+let processStageRequestToken = 0;
 const processMetricsMap = ref<Record<string, ProcessMetricsSummary>>({});
 const workOrders = ref<WorkOrderRow[]>([]);
 
@@ -195,25 +174,18 @@ const detailError = ref<string | null>(null);
 const selectedProcessId = ref<string | null>(null);
 const processDetail = ref<ProcessDetailData | null>(null);
 
-const getProcessLabel = (step: string): string => {
-  const label = stepLabelMap.value[step];
-  return label ?? step;
-};
-
 const getStepDisplayLabel = (step: ProcessStepInfo): string => {
   const explicitLabel = step.label?.trim?.();
   if (explicitLabel) {
     return explicitLabel;
   }
 
-  if (step.code) {
-    const label = getProcessLabel(step.code);
-    if (label) {
-      return label;
-    }
+  const normalizedCode = step.code?.trim?.();
+  if (normalizedCode) {
+    return normalizedCode;
   }
 
-  return getProcessLabel(step.id);
+  return step.id;
 };
 
 const buildEmptyMetricsMap = (
@@ -246,43 +218,32 @@ const deriveStepsFromProcessCode = (code: string | null): ProcessStepInfo[] => {
     return [];
   }
 
-  const flows = (processStore.processFlow.list ?? []) as ProcessFlow[];
-  if (!Array.isArray(flows) || flows.length === 0) {
+  const stages = Array.isArray(processStagesInfo.value)
+    ? processStagesInfo.value
+    : [];
+
+  if (!stages.length) {
     return [];
   }
 
-  const flow = flows.find(item => item.process_code === code);
-  if (!flow) {
-    return [];
-  }
-
-  const stageCodes = Array.isArray(flow.stage_codes) ? flow.stage_codes : [];
-  if (!stageCodes.length) {
-    return [];
-  }
-
-  const stageMap = stageMapByCode.value;
   const usedIds = new Set<string>();
-  const steps: ProcessStepInfo[] = [];
 
-  stageCodes.forEach((stageCode, index) => {
-    const stage = stageMap.get(stageCode);
-    const rawCode = stage?.step_type_no?.trim?.();
-    const normalizedCode = rawCode && rawCode.length > 0 ? rawCode : null;
-    const rawLabel = stage?.stage_name?.trim?.();
+  return stages.map((stage, index) => {
+    const rawStageCode = stage?.stageCode?.trim?.();
+    const normalizedStageCode =
+      rawStageCode && rawStageCode.length > 0 ? rawStageCode : null;
+    const rawStepCode = stage?.sysStepTypeNo?.trim?.();
+    const normalizedStepCode =
+      rawStepCode && rawStepCode.length > 0 ? rawStepCode : null;
+    const rawLabel = stage?.stageName?.trim?.();
     const fallbackLabel =
       rawLabel && rawLabel.length > 0
         ? rawLabel
-        : normalizedCode ?? stageCode ?? `${code}-${index + 1}`;
-    const preferredId = stageCode?.trim?.();
-    let stepId =
-      preferredId && preferredId.length > 0
-        ? preferredId
-        : normalizedCode ?? `${code}-${index + 1}`;
+        : (normalizedStepCode ?? normalizedStageCode ?? `${code}-${index + 1}`);
 
-    if (!stepId) {
-      stepId = `${code}-${index + 1}`;
-    }
+    const baseId =
+      normalizedStageCode ?? normalizedStepCode ?? `${code}-${index + 1}`;
+    let stepId = baseId || `${code}-${index + 1}`;
 
     let uniqueId = stepId;
     let suffix = 1;
@@ -291,14 +252,13 @@ const deriveStepsFromProcessCode = (code: string | null): ProcessStepInfo[] => {
     }
 
     usedIds.add(uniqueId);
-    steps.push({
-      id: uniqueId,
-      code: normalizedCode,
-      label: fallbackLabel
-    });
-  });
 
-  return steps;
+    return {
+      id: uniqueId,
+      code: normalizedStepCode,
+      label: fallbackLabel
+    };
+  });
 };
 
 const activeProcessSteps = ref<ProcessStepInfo[]>(buildDefaultActiveSteps());
@@ -320,13 +280,39 @@ const setActiveProcessSteps = (
 };
 
 const syncProcessStepsWithSelection = () => {
-  if (!filters.processCode) {
+  const requestToken = ++processStageRequestToken;
+  const processCode = filters.processCode?.trim?.() ?? null;
+
+  if (!processCode) {
+    processStagesInfo.value = [];
     setActiveProcessSteps([], { fallbackToDefault: true });
     return;
   }
 
-  const derived = deriveStepsFromProcessCode(filters.processCode);
-  setActiveProcessSteps(derived, { fallbackToDefault: false });
+  fetchProcessStageInfo({ processCode })
+    .then(result => {
+      if (requestToken !== processStageRequestToken) {
+        return;
+      }
+
+      const stages = Array.isArray(result) ? result : [];
+      processStagesInfo.value = stages;
+      const derived = deriveStepsFromProcessCode(processCode);
+      setActiveProcessSteps(derived, {
+        fallbackToDefault: stages.length === 0
+      });
+    })
+    .catch((error: any) => {
+      if (requestToken !== processStageRequestToken) {
+        return;
+      }
+
+      processStagesInfo.value = [];
+      setActiveProcessSteps([], { fallbackToDefault: true });
+
+      const message = error?.message ?? "获取工序信息失败";
+      ElMessage.warning(message);
+    });
 };
 
 processMetricsMap.value = {
@@ -365,7 +351,7 @@ const selectedProcessName = computed(() => {
   if (step) {
     return getStepDisplayLabel(step);
   }
-  return getProcessLabel(selectedProcessId.value);
+  return selectedProcessId.value;
 });
 
 const headerTitle = computed(() =>
@@ -708,10 +694,7 @@ const handleFiltersReset = () => {
 };
 
 onMounted(async () => {
-  await Promise.all([
-    processStore.setProcessFlow(),
-    processStore.setProcessSteps()
-  ]);
+  await processStore.setProcessFlow();
   syncProcessStepsWithSelection();
   fetchSummary();
 });

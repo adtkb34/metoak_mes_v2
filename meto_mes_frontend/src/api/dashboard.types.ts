@@ -51,3 +51,13 @@ export interface DashboardProductOption {
   label: string;
   code: string;
 }
+
+export interface ProcessStageInfoParams {
+  processCode: string;
+}
+
+export interface ProcessStageInfo {
+  stageCode: string | null;
+  stageName: string | null;
+  sysStepTypeNo: string | null;
+}
