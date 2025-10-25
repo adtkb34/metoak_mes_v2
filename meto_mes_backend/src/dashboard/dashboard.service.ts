@@ -807,7 +807,7 @@ export class DashboardService {
       return undefined;
     }
 
-    let finalGoodCount = '-';
+    let finalGoodCount = 0;
     let firstPassSuccess = 0;
     let finalPassSuccess = 0;
     let anySuccess = 0;
@@ -863,10 +863,10 @@ export class DashboardService {
       },
       良率: {
         一次良率:
-  productCount && productCount !== '-'
-    ? this.clampRate(firstPassSuccess / Number(productCount))
-    : '-',
-,
+          productCount && productCount !== '-'
+            ? this.clampRate(firstPassSuccess / Number(productCount))
+            : '-',
+        ,
         最终良率: this.clampRate(
           productCount ? finalPassSuccess / productCount : '-',
         ),
