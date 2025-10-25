@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, PrismaClient, mo_workstage } from '@prisma/client';
+import dayjs from 'dayjs';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ProductOrigin,
@@ -420,63 +421,79 @@ export class DashboardService {
     const { startDate, endDate, origin } = params;
     const prismaClient = this.prisma.getClientByOrigin(origin);
 
-    // 🧠 检查表字段
-    const hasAddTime = await prismaClient.$queryRaw<{ Field: string }[]>`
-    SHOW COLUMNS FROM mo_process_step_production_result LIKE 'add_time';
-  `;
-
-    // 如果没有 add_time，就用 start_time
-    const timeField =
-      hasAddTime.length > 0 ? Prisma.sql`add_time` : Prisma.sql`start_time`;
-
     const normalizedStart = this.normalizeDate('start', startDate);
     const normalizedEnd = this.normalizeDate('end', endDate);
 
-    const conditions: Prisma.Sql[] = [Prisma.sql`product_sn IS NOT NULL`];
-    if (normalizedStart)
-      conditions.push(Prisma.sql`${timeField} >= ${normalizedStart}`);
-    if (normalizedEnd)
-      conditions.push(Prisma.sql`${timeField} <= ${normalizedEnd}`);
+    const now = dayjs();
+    const fallbackStartDate = now.subtract(1, 'year').startOf('day');
+    const fallbackEndDate = now.endOf('day');
+    const fallbackStart = fallbackStartDate.format('YYYY-MM-DD HH:mm:ss');
+    const fallbackEnd = fallbackEndDate.format('YYYY-MM-DD HH:mm:ss');
+
+    let startBoundary = fallbackStart;
+    if (normalizedStart) {
+      const parsedStart = dayjs(normalizedStart);
+      if (parsedStart.isValid() && parsedStart.isAfter(fallbackStartDate)) {
+        startBoundary = normalizedStart;
+      }
+    }
+
+    let endBoundary = normalizedEnd ?? fallbackEnd;
+    let parsedEnd = dayjs(endBoundary);
+    if (!parsedEnd.isValid()) {
+      endBoundary = fallbackEnd;
+      parsedEnd = dayjs(endBoundary);
+    }
+
+    const parsedStart = dayjs(startBoundary);
+    if (parsedEnd.isBefore(parsedStart)) {
+      endBoundary = parsedStart
+        .endOf('day')
+        .format('YYYY-MM-DD HH:mm:ss');
+    }
+
+    const orderTimestampExpr = Prisma.sql`
+      COALESCE(
+        mpo.planned_starttime,
+        mpo.added_time,
+        CAST(mpo.order_date AS DATETIME)
+      )
+    `;
+
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`mpo.material_name IS NOT NULL`,
+      Prisma.sql`mpo.material_code IS NOT NULL`,
+      Prisma.sql`${orderTimestampExpr} IS NOT NULL`,
+      Prisma.sql`${orderTimestampExpr} >= ${startBoundary}`,
+    ];
+
+    if (endBoundary) {
+      conditions.push(Prisma.sql`${orderTimestampExpr} <= ${endBoundary}`);
+    }
+
     const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
 
     try {
       const rows = await prismaClient.$queryRaw<
         { material_name: string | null; material_code: string | null }[]
       >(Prisma.sql`
-      WITH filtered_sn AS (
-        SELECT DISTINCT product_sn
-        FROM mo_process_step_production_result
+        SELECT DISTINCT
+          mpo.material_name,
+          mpo.material_code
+        FROM mo_produce_order AS mpo
         ${whereClause}
-      ),
-      work_orders AS (
-        SELECT DISTINCT mbi.work_order_code
-        FROM filtered_sn fs
-        JOIN mo_beam_info mbi ON mbi.beam_sn = fs.product_sn
-        WHERE mbi.work_order_code IS NOT NULL
-        UNION
-        SELECT DISTINCT mti.work_order_code
-        FROM filtered_sn fs
-        JOIN mo_tag_info mti ON mti.tag_sn = fs.product_sn
-        WHERE mti.work_order_code IS NOT NULL
-      )
-      SELECT DISTINCT
-        mpo.work_order_code,
-        mpo.material_name,
-        mpo.material_code
-      FROM work_orders wo
-      JOIN mo_produce_order mpo ON mpo.work_order_code = wo.work_order_code
-      WHERE mpo.material_name IS NOT NULL
-        AND mpo.material_code IS NOT NULL
-      ORDER BY mpo.material_name, mpo.material_code;
-    `);
+        ORDER BY mpo.material_name, mpo.material_code;
+      `);
 
-      // 去重
       const unique = new Map<string, ProductOption>();
       for (const row of rows) {
         const name = row.material_name?.trim();
-        const code = row.material_code?.trim() ?? '';
-        if (name && !unique.has(name))
-          unique.set(name, { label: `${name} (${code})`, code: code });
+        const code = row.material_code?.trim();
+        if (!code || unique.has(code)) {
+          continue;
+        }
+        const label = name ? `${name} (${code})` : code;
+        unique.set(code, { label, code });
       }
       return [...unique.values()];
     } catch (error) {
