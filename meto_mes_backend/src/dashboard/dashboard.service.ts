@@ -107,6 +107,8 @@ export interface ProcessMetricsSummary {
 
 type AggregatedProcessMetric = ProcessMetricsSummary;
 
+const DEFAULT_METRIC_VALUE = 0;
+
 export interface ProcessDetailRow {
   id: string;
   product: string;
@@ -857,22 +859,23 @@ export class DashboardService {
 
     return {
       数量: {
-        良品: finalGoodCount,
-        产品: productCount,
-        执行: rows.length,
+        良品: finalGoodCount || DEFAULT_METRIC_VALUE,
+        产品: productCount || DEFAULT_METRIC_VALUE,
+        执行: rows.length || DEFAULT_METRIC_VALUE,
       },
       良率: {
         一次良率:
-          productCount && productCount !== '-'
-            ? this.clampRate(firstPassSuccess / Number(productCount))
-            : '-',
-        ,
-        最终良率: this.clampRate(
-          productCount ? finalPassSuccess / productCount : '-',
-        ),
-        产品良率: this.clampRate(
-          productCount ? anySuccess / productCount : '-',
-        ),
+          productCount > 0
+            ? this.clampRate(firstPassSuccess / productCount)
+            : DEFAULT_METRIC_VALUE,
+        最终良率:
+          productCount > 0
+            ? this.clampRate(finalPassSuccess / productCount)
+            : DEFAULT_METRIC_VALUE,
+        产品良率:
+          productCount > 0
+            ? this.clampRate(anySuccess / productCount)
+            : DEFAULT_METRIC_VALUE,
       },
       良品用时: durationStats,
     };
@@ -881,19 +884,19 @@ export class DashboardService {
   private createEmptyProcessMetricsSummary(): ProcessMetricsSummary {
     return {
       数量: {
-        良品: '-',
-        产品: '-',
-        执行: '-',
+        良品: DEFAULT_METRIC_VALUE,
+        产品: DEFAULT_METRIC_VALUE,
+        执行: DEFAULT_METRIC_VALUE,
       },
       良率: {
-        一次良率: '-',
-        最终良率: '-',
-        产品良率: '-',
+        一次良率: DEFAULT_METRIC_VALUE,
+        最终良率: DEFAULT_METRIC_VALUE,
+        产品良率: DEFAULT_METRIC_VALUE,
       },
       良品用时: {
-        mean: '-',
-        min: '-',
-        max: '-',
+        mean: DEFAULT_METRIC_VALUE,
+        min: DEFAULT_METRIC_VALUE,
+        max: DEFAULT_METRIC_VALUE,
       },
     };
   }
