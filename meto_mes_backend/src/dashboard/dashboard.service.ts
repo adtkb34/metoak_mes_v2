@@ -104,24 +104,6 @@ export interface ProcessMetricsSummary {
   };
 }
 
-export interface ProcessMetricsItem {
-  processId: string;
-  processName: string;
-  summary: ProcessMetricsSummary;
-}
-
-export interface ProcessMetricsResult {
-  filters: {
-    origin?: ProductOrigin;
-    product?: string | null;
-    startDate?: string;
-    endDate?: string;
-    deviceNos?: string[];
-    stations?: string[];
-  };
-  metrics: ProcessMetricsItem[];
-}
-
 type AggregatedProcessMetric = ProcessMetricsSummary;
 
 export interface ProcessDetailRow {
@@ -356,82 +338,38 @@ export class DashboardService {
 
   async getProcessMetrics(
     params: ProcessMetricsParams,
-  ): Promise<ProcessMetricsResult> {
+  ): Promise<ProcessMetricsSummary> {
+    const summary = this.createEmptyProcessMetricsSummary();
     const normalizedStepTypeNo = params.stepTypeNo?.trim();
-    const processId = normalizedStepTypeNo ?? '';
 
-    const metrics: ProcessMetricsItem[] = [
-      {
-        processId,
-        processName: processId ? `工序 ${processId}` : '工序',
-        summary: this.createEmptyProcessMetricsSummary(),
-      },
-    ];
-    if (params.origin !== undefined && normalizedStepTypeNo) {
-      const { start, end } = this.normalizeDateRange(
-        params.startDate,
-        params.endDate,
-      );
-
-      try {
-        const client = this.prisma.getClientByOrigin(params.origin);
-        const product = params.product;
-        let data: AggregatedProcessMetric | undefined;
-
-        // if (normalizedStepTypeNo === STEP_NO.AUTO_ADJUST) {
-        //   data = await this.loadAutoAdjustMetrics({
-        //     origin: params.origin,
-        //     range: { start, end },
-        //   });
-        // } else if (normalizedStepTypeNo === STEP_NO.CALIB) {
-        //   data = await this.loadCalibMetrics({
-        //     client,
-        //     stepTypeNo: normalizedStepTypeNo,
-        //     range: { start, end },
-        //   });
-        // } else if (normalizedStepTypeNo === STEP_NO.ASSEMBLE_PCBA) {
-        //   data = await this.loadAssemblePcbaMetrics({
-        //     client,
-        //     stepTypeNo: normalizedStepTypeNo,
-        //     range: { start, end },
-        //   });
-        // } else if (normalizedStepTypeNo === STEP_NO.S315FQC) {
-        //   data = await this.loadS315FqcMetrics({
-        //     client,
-        //     stepTypeNo: normalizedStepTypeNo,
-        //     range: { start, end },
-        //   });
-        // } else {
-        data = await this.loadProcessProductionMetrics({
-          product,
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
-        // }
-
-        if (data) {
-          metrics[0].summary = data;
-        }
-      } catch (error) {
-        this.logger.error(
-          `Failed to load process metrics from mo_process_step_production_result: ${error.message}`,
-          error.stack,
-        );
-      }
+    if (params.origin === undefined || !normalizedStepTypeNo) {
+      return summary;
     }
 
-    return {
-      filters: {
-        origin: params.origin,
-        product: params.product ?? null,
-        startDate: params.startDate,
-        endDate: params.endDate,
-        deviceNos: params.deviceNos,
-        stations: params.stations,
-      },
-      metrics,
-    };
+    const { start, end } = this.normalizeDateRange(
+      params.startDate,
+      params.endDate,
+    );
+
+    try {
+      const client = this.prisma.getClientByOrigin(params.origin);
+      const product = params.product;
+
+      const data = await this.loadProcessProductionMetrics({
+        product,
+        client,
+        stepTypeNo: normalizedStepTypeNo,
+        range: { start, end },
+      });
+
+      return data ?? summary;
+    } catch (error) {
+      this.logger.error(
+        `Failed to load process metrics from mo_process_step_production_result: ${error.message}`,
+        error.stack,
+      );
+      return summary;
+    }
   }
 
   async getEquipmentOptions(
