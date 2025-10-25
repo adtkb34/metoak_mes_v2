@@ -118,7 +118,7 @@ export class DashboardController {
   ): Promise<{ success: true; data: ProcessMetricsSummary }> {
     const origin = this.parseOrigin(query?.origin);
 
-    const data = await this.dashboardService.getProcessMetrics({
+    const summary = await this.dashboardService.getProcessMetrics({
       origin,
       product: query.product,
       stepTypeNo: query?.stepTypeNo?.trim(),
@@ -127,12 +127,6 @@ export class DashboardController {
       deviceNos: this.normalizeStringArray(query?.deviceNos),
       stations: this.normalizeStringArray(query?.stations),
     });
-
-    const summary = data.metrics[0]?.summary ?? {
-      数量: { 良品: 0, 执行: 0 },
-      良率: { 一次良率: 0, 最终良率: 0, 产品良率: 0 },
-      良品用时: { mean: 0, min: 0, max: 0 },
-    } satisfies ProcessMetricsSummary;
 
     return { success: true, data: summary };
   }
