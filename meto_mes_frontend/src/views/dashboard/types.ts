@@ -81,4 +81,5 @@ export interface ProcessDetailData {
   equipmentOptions: SelectOption[];
   stationOptions: SelectOption[];
   rows: ProcessDetailRow[];
+  summary?: ProcessMetricsSummary;
 }

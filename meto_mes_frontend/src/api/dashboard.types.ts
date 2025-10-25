@@ -27,12 +27,12 @@ export interface ProcessMetricsSummary {
   数量: {
     良品: number | string;
     产品: number | string;
-    执行: number | string;
+    总体: number | string;
   };
   良率: {
-    一次良率: number | string;
-    最终良率: number | string;
-    产品良率: number | string;
+    一次: number | string;
+    最终: number | string;
+    总体: number | string;
   };
   良品用时: {
     mean: number | string;

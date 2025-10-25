@@ -72,16 +72,16 @@ const METRIC_GROUPS = [
     items: [
       { key: "良品", label: "良品" },
       { key: "产品", label: "产品" },
-      { key: "执行", label: "执行" }
+      { key: "总体", label: "总体" }
     ]
   },
   {
     key: "良率",
     label: "良率",
     items: [
-      { key: "一次良率", label: "一次良率" },
-      { key: "最终良率", label: "最终良率" },
-      { key: "产品良率", label: "产品良率" }
+      { key: "一次", label: "一次良率" },
+      { key: "最终", label: "最终良率" },
+      { key: "总体", label: "总体良率" }
     ]
   },
   {
