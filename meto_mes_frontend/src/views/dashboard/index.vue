@@ -112,11 +112,7 @@ const getDefaultDateRange = (): string[] => {
   return [today, today];
 };
 
-const DEFAULT_STEP_TYPE_NOS: string[] = [
-  STEP_NO.AUTO_ADJUST,
-  STEP_NO.CALIB,
-  STEP_NO.S315FQC
-];
+const DEFAULT_STEP_TYPE_NOS: string[] = [];
 
 interface ProcessStepInfo {
   id: string;
@@ -294,7 +290,7 @@ const syncProcessStepsWithSelection = () => {
       if (requestToken !== processStageRequestToken) {
         return;
       }
-
+      console.log(result);
       const stages = Array.isArray(result) ? result : [];
       processStagesInfo.value = stages;
       const derived = deriveStepsFromProcessCode(processCode);

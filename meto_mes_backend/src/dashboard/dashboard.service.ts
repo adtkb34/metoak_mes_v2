@@ -267,27 +267,21 @@ export class DashboardService {
     return `工序 ${stepTypeNo}`;
   }
 
-  async getProcessStages(
-    processCode: string,
-  ): Promise<ProcessStageInfo[]> {
-    const steps = await this.prisma.mo_process_flow.findMany({
-      where: { process_code: processCode },
-      orderBy: { id: 'asc' },
-      select: {
-        stage_code: true,
-        mo_workstage: {
-          select: {
-            stage_name: true,
-            sys_step_type_no: true,
-          },
-        },
-      },
-    });
-
-    return steps.map((step) => ({
-      stageCode: step.stage_code?.trim() ?? null,
-      stageName: step.mo_workstage?.stage_name?.trim() ?? null,
-      sysStepTypeNo: step.mo_workstage?.sys_step_type_no?.trim() ?? null,
+  async getProcessStages(processCode: string): Promise<ProcessStageInfo[]> {
+    const rows = await this.prisma.$queryRawUnsafe<
+      { stageCode: string; stage_name: string; step_type_no: string }[]
+    >(`
+  SELECT mw.stage_code, mw.stage_name, mw.step_type_no
+  FROM mo_workstage mw
+  LEFT JOIN mo_process_flow mpf
+    ON mpf.stage_code = mw.stage_code
+  WHERE mpf.process_code = ${processCode}
+  ORDER BY mpf.id ASC
+`);
+    return rows.map((r) => ({
+      stageCode: r.stageCode?.trim() ?? null,
+      stageName: r.stage_name?.trim() ?? null,
+      sysStepTypeNo: r.step_type_no?.trim() ?? null,
     }));
   }
 

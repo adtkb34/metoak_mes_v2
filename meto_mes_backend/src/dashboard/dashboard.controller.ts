@@ -165,7 +165,7 @@ export class DashboardController {
     }
 
     const data = await this.dashboardService.getProcessStages(normalizedCode);
-
+    console.log(1, data);
     return { success: true, data };
   }
 
