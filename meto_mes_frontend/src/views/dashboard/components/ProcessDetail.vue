@@ -4,8 +4,12 @@
     <template v-else>
       <el-empty v-if="!detail || !detail.rows.length" description="暂无数据" />
       <template v-else>
-        <el-form :inline="true" label-width="80px" class="mb-4 flex flex-wrap items-center gap-4">
-          <el-form-item label="设备">
+        <el-form
+          :inline="true"
+          label-width="80px"
+          class="mb-4 flex flex-wrap items-center gap-4"
+        >
+          <!-- <el-form-item label="设备">
             <el-select
               class="w-56"
               multiple
@@ -15,7 +19,9 @@
               collapse-tags-tooltip
               placeholder="选择设备"
               :model-value="selectedEquipment"
-              @update:model-value="value => (selectedEquipment.value = value ?? [])"
+              @update:model-value="
+                value => (selectedEquipment.value = value ?? [])
+              "
             >
               <el-option
                 v-for="item in detail.equipmentOptions"
@@ -35,7 +41,9 @@
               collapse-tags-tooltip
               placeholder="选择工站"
               :model-value="selectedStations"
-              @update:model-value="value => (selectedStations.value = value ?? [])"
+              @update:model-value="
+                value => (selectedStations.value = value ?? [])
+              "
             >
               <el-option
                 v-for="item in detail.stationOptions"
@@ -44,8 +52,8 @@
                 :value="item.value"
               />
             </el-select>
-          </el-form-item>
-          <el-form-item label="视图">
+          </el-form-item> -->
+          <!-- <el-form-item label="视图">
             <el-switch
               v-model="displayMode"
               inline-prompt
@@ -54,7 +62,7 @@
               active-value="statistics"
               inactive-value="detail"
             />
-          </el-form-item>
+          </el-form-item> -->
         </el-form>
 
         <div v-if="displayMode === 'statistics'" class="space-y-6">
@@ -80,7 +88,8 @@
             <div class="stat-card">
               <div class="text-gray-400">返修 / 报废</div>
               <div class="mt-2 text-lg font-semibold text-amber-600">
-                {{ formatNumber(summary.reworkCount) }} / {{ formatNumber(summary.scrapCount) }}
+                {{ formatNumber(summary.reworkCount) }} /
+                {{ formatNumber(summary.scrapCount) }}
               </div>
             </div>
           </div>
@@ -88,17 +97,32 @@
           <div class="pareto-card">
             <div class="mb-3 flex items-center justify-between">
               <h3 class="text-base font-medium text-gray-700">柏拉图</h3>
-              <span class="text-xs text-gray-400">累计占比 80% 对应的缺陷集中度</span>
+              <span class="text-xs text-gray-400"
+                >累计占比 80% 对应的缺陷集中度</span
+              >
             </div>
-            <el-empty v-if="!paretoData.categories.length" description="暂无缺陷数据" />
-            <v-chart v-else class="h-[320px]" :option="chartOption" autoresize />
+            <el-empty
+              v-if="!paretoData.categories.length"
+              description="暂无缺陷数据"
+            />
+            <v-chart
+              v-else
+              class="h-[320px]"
+              :option="chartOption"
+              autoresize
+            />
           </div>
         </div>
 
         <div v-else>
           <el-table :data="filteredRows" stripe style="width: 100%">
             <el-table-column prop="date" label="日期" width="110" />
-            <el-table-column prop="batch" label="批次" width="160" show-overflow-tooltip />
+            <el-table-column
+              prop="batch"
+              label="批次"
+              width="160"
+              show-overflow-tooltip
+            />
             <el-table-column prop="product" label="产品" width="110" />
             <el-table-column label="产地" width="110">
               <template #default="{ row }">
@@ -124,13 +148,19 @@
             </el-table-column>
             <el-table-column label="返修 / 报废" width="140">
               <template #default="{ row }">
-                {{ formatNumber(row.reworkCount) }} / {{ formatNumber(row.scrapCount) }}
+                {{ formatNumber(row.reworkCount) }} /
+                {{ formatNumber(row.scrapCount) }}
               </template>
             </el-table-column>
             <el-table-column label="主要缺陷">
               <template #default="{ row }">
                 <div class="flex flex-wrap gap-2">
-                  <el-tag v-for="defect in row.defects" :key="defect.reason" size="small" type="info">
+                  <el-tag
+                    v-for="defect in row.defects"
+                    :key="defect.reason"
+                    size="small"
+                    type="info"
+                  >
                     {{ defect.reason }}: {{ defect.count }}
                   </el-tag>
                 </div>
@@ -156,9 +186,21 @@ import {
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { getProductOriginLabel } from "@/enums/product-origin";
-import type { DefectBreakdown, ProcessDetailData, ProcessDetailRow } from "../types";
+import type {
+  DefectBreakdown,
+  ProcessDetailData,
+  ProcessDetailRow
+} from "../types";
 
-use([BarChart, LineChart, GridComponent, LegendComponent, TitleComponent, TooltipComponent, CanvasRenderer]);
+use([
+  BarChart,
+  LineChart,
+  GridComponent,
+  LegendComponent,
+  TitleComponent,
+  TooltipComponent,
+  CanvasRenderer
+]);
 
 interface Props {
   detail: ProcessDetailData | null;
@@ -184,9 +226,11 @@ const filteredRows = computed<ProcessDetailRow[]>(() => {
   if (!props.detail) return [];
   return props.detail.rows.filter(row => {
     const equipmentMatched =
-      !selectedEquipment.value.length || selectedEquipment.value.includes(row.equipment);
+      !selectedEquipment.value.length ||
+      selectedEquipment.value.includes(row.equipment);
     const stationMatched =
-      !selectedStations.value.length || selectedStations.value.includes(row.station);
+      !selectedStations.value.length ||
+      selectedStations.value.includes(row.station);
     return equipmentMatched && stationMatched;
   });
 });
@@ -194,8 +238,14 @@ const filteredRows = computed<ProcessDetailRow[]>(() => {
 const summary = computed(() => {
   const rows = filteredRows.value;
   const totalOutput = rows.reduce((sum, row) => sum + row.output, 0);
-  const firstPass = rows.reduce((sum, row) => sum + row.output * row.firstPassRate, 0);
-  const finalPass = rows.reduce((sum, row) => sum + row.output * row.finalPassRate, 0);
+  const firstPass = rows.reduce(
+    (sum, row) => sum + row.output * row.firstPassRate,
+    0
+  );
+  const finalPass = rows.reduce(
+    (sum, row) => sum + row.output * row.finalPassRate,
+    0
+  );
   const scrap = rows.reduce((sum, row) => sum + row.scrapCount, 0);
   const rework = rows.reduce((sum, row) => sum + row.reworkCount, 0);
   return {
@@ -299,7 +349,6 @@ const numberFormatter = new Intl.NumberFormat("zh-CN", {
 
 const formatNumber = (value: number) => numberFormatter.format(value);
 const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
-
 </script>
 
 <style scoped>
