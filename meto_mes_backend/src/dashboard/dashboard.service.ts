@@ -107,7 +107,7 @@ export interface ProcessMetricsSummary {
 
 type AggregatedProcessMetric = ProcessMetricsSummary;
 
-const DEFAULT_METRIC_VALUE = 0;
+const DEFAULT_METRIC_VALUE = '-';
 
 export interface ProcessDetailRow {
   id: string;
@@ -374,6 +374,22 @@ export class DashboardService {
           range: { start, end },
         });
         console.log(data);
+      } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
+        data = await this.loadAutoAdjustMetrics({
+          product,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
+        console.log(data);
+      } else if (params.stepTypeNo == STEP_NO.S315FQC) {
+        data = await this.loadS315FqcMetrics({
+          product,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
+        console.log(data);
       } else {
         data = await this.loadProcessProductionMetrics({
           product,
@@ -475,40 +491,73 @@ export class DashboardService {
     }
   }
 
-  private async loadAutoAdjustMetrics(params: {
-    origin: ProductOrigin;
-    range: DateRange;
-  }): Promise<AggregatedProcessMetric | undefined> {
-    const definitions = this.getEquipmentDefinitions(
-      STEP_NO.AUTO_ADJUST,
-      params.origin,
-    );
-
-    if (!definitions.length) {
+  private async loadAutoAdjustMetrics(
+    params: ProcessMetricLoaderParams,
+  ): Promise<AggregatedProcessMetric | undefined> {
+    const { product, client, stepTypeNo, range } = params;
+    if (!product) {
       return undefined;
     }
 
-    const statistics = await this.calculateStepStatistics({
-      origin: params.origin,
-      stepTypeNo: STEP_NO.AUTO_ADJUST,
-      range: params.range,
-      equipment: definitions,
-    });
+    const tableAlias = 'mpspr';
+    const baseSql = Prisma.sql`
+      SELECT ${Prisma.raw(tableAlias)}.beam_sn AS product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.add_time AS start_time, ${Prisma.raw(tableAlias)}.add_time AS end_time
+      FROM mo_auto_adjust_info AS ${Prisma.raw(tableAlias)}
+    `;
 
-    if (!statistics.totalOutput) {
+    const filterConditions: Prisma.Sql[] = [];
+
+    const timestampExpr = Prisma.sql`COALESCE(${Prisma.raw(tableAlias)}.add_time)`;
+    if (range.start) {
+      filterConditions.push(Prisma.sql`${timestampExpr} >= ${range.start}`);
+    }
+
+    if (range.end) {
+      filterConditions.push(Prisma.sql`${timestampExpr} <= ${range.end}`);
+    }
+
+    const filterClause =
+      filterConditions.length > 0
+        ? Prisma.sql`AND ${Prisma.join(filterConditions, ' AND ')}`
+        : Prisma.empty;
+
+    const beamRows = await this.queryBeamInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'beam_sn',
+    );
+
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'beam_sn',
+    );
+
+    const combined = [...beamRows, ...tagRows];
+    if (!combined.length) {
       return undefined;
     }
 
-    const summary = this.createEmptyProcessMetricsSummary();
-    summary.数量.执行 = statistics.totalOutput;
-    summary.数量.良品 = Math.round(
-      statistics.totalOutput * this.clampRate(statistics.finalPassRate),
-    );
-    summary.良率.一次良率 = this.clampRate(statistics.firstPassRate);
-    summary.良率.最终良率 = this.clampRate(statistics.finalPassRate);
-    summary.良率.产品良率 = this.clampRate(statistics.finalPassRate);
+    const unique = new Map<string, ProcessMetricRow>();
+    for (const row of combined) {
+      const key = this.buildProcessMetricRowKey(row);
+      if (!unique.has(key)) {
+        unique.set(key, row);
+      }
+    }
 
-    return summary;
+    const data = [...unique.values()];
+    if (!data) {
+      return undefined;
+    }
+    // console.log(data);
+    return this.aggregateProcessMetricData(data);
   }
 
   private async loadCalibMetrics(
@@ -652,10 +701,69 @@ export class DashboardService {
   private async loadS315FqcMetrics(
     params: ProcessMetricLoaderParams,
   ): Promise<AggregatedProcessMetric | undefined> {
-    const data = await this.fetchGenericProcessMetricData(params);
+    const { product, client, stepTypeNo, range } = params;
+    if (!product) {
+      return undefined;
+    }
+
+    const tableAlias = 'mpspr';
+    const baseSql = Prisma.sql`
+      SELECT ${Prisma.raw(tableAlias)}.camera_sn AS product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.check_time AS start_time, ${Prisma.raw(tableAlias)}.check_time AS end_time
+      FROM mo_final_result AS ${Prisma.raw(tableAlias)}
+    `;
+
+    const filterConditions: Prisma.Sql[] = [];
+
+    const timestampExpr = Prisma.sql`COALESCE(${Prisma.raw(tableAlias)}.check_time)`;
+    if (range.start) {
+      filterConditions.push(Prisma.sql`${timestampExpr} >= ${range.start}`);
+    }
+
+    if (range.end) {
+      filterConditions.push(Prisma.sql`${timestampExpr} <= ${range.end}`);
+    }
+
+    const filterClause =
+      filterConditions.length > 0
+        ? Prisma.sql`AND ${Prisma.join(filterConditions, ' AND ')}`
+        : Prisma.empty;
+
+    const beamRows = await this.queryBeamInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
+
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
+
+    const combined = [...beamRows, ...tagRows];
+    if (!combined.length) {
+      return undefined;
+    }
+    console.log(combined);
+    const unique = new Map<string, ProcessMetricRow>();
+    for (const row of combined) {
+      const key = this.buildProcessMetricRowKey(row);
+      if (!unique.has(key)) {
+        unique.set(key, row);
+      }
+    }
+
+    const data = [...unique.values()];
     if (!data) {
       return undefined;
     }
+    // console.log(data);
     return this.aggregateProcessMetricData(data);
   }
 
@@ -865,15 +973,15 @@ export class DashboardService {
       },
       良率: {
         一次良率:
-          productCount > 0
+          productCount > 0 && firstPassSuccess > 0
             ? this.clampRate(firstPassSuccess / productCount)
             : DEFAULT_METRIC_VALUE,
         最终良率:
-          productCount > 0
+          productCount > 0 && finalPassSuccess > 0
             ? this.clampRate(finalPassSuccess / productCount)
             : DEFAULT_METRIC_VALUE,
         产品良率:
-          productCount > 0
+          productCount > 0 && anySuccess > 0
             ? this.clampRate(anySuccess / productCount)
             : DEFAULT_METRIC_VALUE,
       },
