@@ -155,6 +155,7 @@ interface ProcessMetricLoaderParams {
 interface ProcessMetricRow {
   product_sn?: string | null;
   error_code?: number | string | null;
+  ng_reason?: string | null;
   start_time?: Date | string | null;
   end_time?: Date | string | null;
 }
