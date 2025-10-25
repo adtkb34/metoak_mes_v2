@@ -7,13 +7,13 @@
         :origin="filters.origin"
         :product-options="productOptions"
         :process-options="processOptions"
-        :process-codes="filters.processCodes"
+        :process-code="filters.processCode"
         :origin-options="originOptions"
         :loading="filtersLoading"
         @update:dateRange="value => (filters.dateRange = value)"
         @update:product="value => (filters.product = value)"
         @update:origin="value => (filters.origin = value)"
-        @update:processCodes="value => (filters.processCodes = value)"
+        @update:processCode="value => (filters.processCode = value)"
         @submit="handleFiltersSubmit"
         @reset="handleFiltersReset"
       />
@@ -127,7 +127,7 @@ const filters = reactive<FilterState>({
   dateRange: getDefaultDateRange(),
   product: null,
   origin: ProductOrigin.Suzhou,
-  processCodes: []
+  processCode: null
 });
 
 const processStore = useProcessStore();
@@ -216,8 +216,8 @@ const hasMeaningfulMetrics = (summary: ProcessMetricsSummary): boolean => {
   return values.some(value => typeof value === "number");
 };
 
-const deriveStepTypeNosFromProcessCodes = (codes: string[]): string[] => {
-  if (!codes.length) {
+const deriveStepTypeNosFromProcessCode = (code: string | null): string[] => {
+  if (!code) {
     return [];
   }
 
@@ -226,41 +226,65 @@ const deriveStepTypeNosFromProcessCodes = (codes: string[]): string[] => {
     return [];
   }
 
+  const flow = flows.find(item => item.process_code === code);
+  if (!flow) {
+    return [];
+  }
+
+  const stageCodes = Array.isArray(flow.stage_codes) ? flow.stage_codes : [];
+  if (!stageCodes.length) {
+    return [];
+  }
+
   const stageMap = stageMapByCode.value;
-  const stepSet = new Set<string>();
-
-  codes.forEach(code => {
-    const flow = flows.find(item => item.process_code === code);
-    if (!flow) {
-      return;
-    }
-
-    const stageCodes = Array.isArray(flow.stage_codes) ? flow.stage_codes : [];
-    stageCodes.forEach(stageCode => {
-      const stage = stageMap.get(stageCode);
-      const stepNo = stage?.step_type_no?.trim?.();
-      if (stepNo) {
-        stepSet.add(stepNo);
-      }
-    });
-  });
-
-  return Array.from(stepSet);
+  return stageCodes
+    .map(stageCode => stageMap.get(stageCode)?.step_type_no?.trim?.())
+    .filter((step): step is string => !!step);
 };
 
-const activeProcessSteps = computed<string[]>(() => {
-  const codes = filters.processCodes.filter(code => code && code.length > 0);
-  const derivedSteps = deriveStepTypeNosFromProcessCodes(codes);
-  return derivedSteps.length ? derivedSteps : [...DEFAULT_STEP_TYPE_NOS];
-});
+const activeProcessSteps = ref<string[]>([...DEFAULT_STEP_TYPE_NOS]);
 
-processMetricsMap.value = buildEmptyMetricsMap(activeProcessSteps.value);
+const setActiveProcessSteps = (
+  steps: string[],
+  options: { fallbackToDefault?: boolean } = {}
+) => {
+  const normalizedSteps = steps
+    .map(step => step?.trim?.())
+    .filter((step): step is string => !!step);
+  const uniqueSteps = Array.from(new Set(normalizedSteps));
+
+  if (uniqueSteps.length) {
+    activeProcessSteps.value = uniqueSteps;
+    return;
+  }
+
+  if (options.fallbackToDefault !== false) {
+    activeProcessSteps.value = [...DEFAULT_STEP_TYPE_NOS];
+  } else {
+    activeProcessSteps.value = [];
+  }
+};
+
+const syncProcessStepsWithSelection = () => {
+  if (!filters.processCode) {
+    setActiveProcessSteps([], { fallbackToDefault: true });
+    return;
+  }
+
+  const derived = deriveStepTypeNosFromProcessCode(filters.processCode);
+  setActiveProcessSteps(derived, { fallbackToDefault: false });
+};
+
+processMetricsMap.value = {
+  ...buildEmptyMetricsMap(activeProcessSteps.value)
+};
 
 const processes = computed<ProcessOverviewItem[]>(() =>
   activeProcessSteps.value.map(step => ({
     id: step,
     name: getProcessLabel(step),
-    metrics: processMetricsMap.value[step] ?? createEmptyProcessMetricsSummary()
+    metrics:
+      processMetricsMap.value[step] ?? createEmptyProcessMetricsSummary()
   }))
 );
 
@@ -369,15 +393,16 @@ watch(
 );
 
 watch(
-  activeProcessSteps,
+  () => activeProcessSteps.value.slice(),
   steps => {
+    const previousMap = processMetricsMap.value;
     const nextMap = buildEmptyMetricsMap(steps);
     for (const step of steps) {
-      if (processMetricsMap.value[step]) {
-        nextMap[step] = processMetricsMap.value[step];
+      if (previousMap[step]) {
+        nextMap[step] = previousMap[step];
       }
     }
-    processMetricsMap.value = nextMap;
+    processMetricsMap.value = { ...nextMap };
 
     if (selectedProcessId.value && !steps.includes(selectedProcessId.value)) {
       selectedProcessId.value = null;
@@ -392,8 +417,32 @@ watch(
   () => filters.product,
   value => {
     if (!value) {
-      filters.processCodes = [];
-      processMetricsMap.value = buildEmptyMetricsMap(activeProcessSteps.value);
+      filters.processCode = null;
+      syncProcessStepsWithSelection();
+      processMetricsMap.value = {
+        ...buildEmptyMetricsMap(activeProcessSteps.value)
+      };
+    }
+  }
+);
+
+watch(
+  () => filters.processCode,
+  () => {
+    syncProcessStepsWithSelection();
+  },
+  { immediate: true }
+);
+
+watch(
+  processOptions,
+  options => {
+    if (
+      filters.processCode &&
+      !options.some(option => String(option.value) === filters.processCode)
+    ) {
+      filters.processCode = null;
+      syncProcessStepsWithSelection();
     }
   }
 );
@@ -413,7 +462,7 @@ const refreshProcessMetrics = async (
 ): Promise<boolean> => {
   const steps = activeProcessSteps.value;
   const baseMap = buildEmptyMetricsMap(steps);
-  processMetricsMap.value = baseMap;
+  processMetricsMap.value = { ...baseMap };
 
   if (!params.product || !steps.length) {
     return false;
@@ -452,7 +501,7 @@ const refreshProcessMetrics = async (
     }
   });
 
-  processMetricsMap.value = baseMap;
+  processMetricsMap.value = { ...baseMap };
 
   if (failedSteps.length) {
     const label = failedSteps.join("、");
@@ -508,7 +557,9 @@ const fetchSummary = async () => {
     if (params.product) {
       metricsAvailable = await refreshProcessMetrics(params);
     } else {
-      processMetricsMap.value = buildEmptyMetricsMap(activeProcessSteps.value);
+      processMetricsMap.value = {
+        ...buildEmptyMetricsMap(activeProcessSteps.value)
+      };
     }
 
     if (!metricsAvailable && !workOrders.value.length && params.product) {
@@ -517,7 +568,9 @@ const fetchSummary = async () => {
   } catch (error: any) {
     const message = error?.message ?? "获取仪表盘数据失败";
     summaryError.value = message;
-    processMetricsMap.value = buildEmptyMetricsMap(activeProcessSteps.value);
+    processMetricsMap.value = {
+      ...buildEmptyMetricsMap(activeProcessSteps.value)
+    };
     workOrders.value = [];
     ElMessage.error(message);
   } finally {
@@ -565,7 +618,11 @@ const handleFiltersReset = () => {
   filters.dateRange = getDefaultDateRange();
   filters.product = null;
   filters.origin = ProductOrigin.Suzhou;
-  filters.processCodes = [];
+  filters.processCode = null;
+  syncProcessStepsWithSelection();
+  processMetricsMap.value = {
+    ...buildEmptyMetricsMap(activeProcessSteps.value)
+  };
   handleFiltersSubmit();
 };
 
@@ -574,6 +631,7 @@ onMounted(async () => {
     processStore.setProcessFlow(),
     processStore.setProcessSteps()
   ]);
+  syncProcessStepsWithSelection();
   fetchSummary();
 });
 </script>
