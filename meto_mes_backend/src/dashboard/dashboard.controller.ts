@@ -14,6 +14,7 @@ import {
   type EquipmentOption,
   type DashboardSummaryResult,
   type ProcessMetricsSummary,
+  type ProcessStageInfo,
 } from './dashboard.service';
 
 @Controller('dashboard')
@@ -150,6 +151,20 @@ export class DashboardController {
       normalizedStep,
       origin,
     );
+
+    return { success: true, data };
+  }
+
+  @Get('process-stage-info')
+  async getProcessStageInfo(
+    @Query('processCode') processCode?: string,
+  ): Promise<{ success: true; data: ProcessStageInfo[] }> {
+    const normalizedCode = processCode?.trim();
+    if (!normalizedCode) {
+      throw new BadRequestException('缺少工艺编号');
+    }
+
+    const data = await this.dashboardService.getProcessStages(normalizedCode);
 
     return { success: true, data };
   }
