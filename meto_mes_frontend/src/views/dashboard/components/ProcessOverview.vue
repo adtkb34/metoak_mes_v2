@@ -16,46 +16,34 @@
                 {{ item.name }}
               </div>
               <div class="mt-1 text-xs text-gray-400">
-                目标产量 {{ formatNumber(item.targetOutput) }} 台
+                工艺编号 {{ item.id }}
               </div>
             </div>
-            <el-tag :type="item.trend >= 0 ? 'success' : 'danger'" size="small" effect="plain">
-              {{ item.trend >= 0 ? '+' : '' }}{{ item.trend.toFixed(1) }}%
-            </el-tag>
+            <el-tag size="small" effect="plain" type="info">指标概览</el-tag>
           </div>
-          <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <div class="text-gray-400">产量</div>
-              <div class="mt-1 text-xl font-semibold text-gray-700">
-                {{ formatNumber(item.output) }}
+          <div class="mt-4 space-y-3">
+            <div
+              v-for="group in metricGroups"
+              :key="group.key"
+              class="metric-group"
+            >
+              <div class="text-xs font-medium text-gray-500">
+                {{ group.label }}
               </div>
-            </div>
-            <div>
-              <div class="text-gray-400">在制</div>
-              <div class="mt-1 text-xl font-semibold text-gray-700">
-                {{ formatNumber(item.wip) }}
-              </div>
-            </div>
-            <div>
-              <div class="text-gray-400">一次良率</div>
-              <div class="mt-1 text-lg font-semibold text-emerald-600">
-                {{ formatPercent(item.firstPassYield) }}
-              </div>
-            </div>
-            <div>
-              <div class="text-gray-400">最终良率</div>
-              <div class="mt-1 text-lg font-semibold text-blue-600">
-                {{ formatPercent(item.finalYield) }}
+              <div class="mt-2 grid grid-cols-3 gap-3 text-sm">
+                <div
+                  v-for="metric in group.items"
+                  :key="metric.key"
+                  class="metric-item"
+                >
+                  <div class="text-gray-400">{{ metric.label }}</div>
+                  <div :class="['metric-value', getMetricClass(group.key)]">
+                    {{ formatMetricValue(group.key, metric.key, item.metrics) }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <el-progress
-            class="mt-4"
-            :stroke-width="10"
-            :percentage="computeCompletion(item.output, item.targetOutput)"
-            :status="item.output >= item.targetOutput ? 'success' : undefined"
-            striped
-          />
         </div>
       </div>
     </template>
@@ -64,10 +52,10 @@
 
 <script setup lang="ts">
 import { toRefs } from "vue";
-import type { ProcessMetric } from "../types";
+import type { ProcessMetricsSummary, ProcessOverviewItem } from "../types";
 
 interface Props {
-  processes: ProcessMetric[];
+  processes: ProcessOverviewItem[];
   loading?: boolean;
 }
 
@@ -77,22 +65,89 @@ const emit = defineEmits<{
 }>();
 const { processes, loading } = toRefs(props);
 
+const METRIC_GROUPS = [
+  {
+    key: "数量",
+    label: "数量",
+    items: [
+      { key: "良品", label: "良品" },
+      { key: "产品", label: "产品" },
+      { key: "执行", label: "执行" }
+    ]
+  },
+  {
+    key: "良率",
+    label: "良率",
+    items: [
+      { key: "一次良率", label: "一次良率" },
+      { key: "最终良率", label: "最终良率" },
+      { key: "产品良率", label: "产品良率" }
+    ]
+  },
+  {
+    key: "良品用时",
+    label: "良品用时 (秒)",
+    items: [
+      { key: "min", label: "最短" },
+      { key: "mean", label: "平均" },
+      { key: "max", label: "最长" }
+    ]
+  }
+] as const;
+
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
   maximumFractionDigits: 0
 });
 
-const formatNumber = (value: number) => numberFormatter.format(value);
-const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
-const computeCompletion = (output: number, target: number) => {
-  if (!target) return 0;
-  return Math.min(100, Math.round((output / target) * 100));
+const metricGroups = METRIC_GROUPS;
+
+const formatMetricValue = (
+  groupKey: string,
+  metricKey: string,
+  summary: ProcessMetricsSummary
+): string => {
+  const group = summary[groupKey as keyof ProcessMetricsSummary] as
+    | Record<string, number | string>
+    | undefined;
+  const rawValue = group?.[metricKey] ?? "-";
+
+  if (typeof rawValue !== "number") {
+    return String(rawValue);
+  }
+
+  if (groupKey === "良率") {
+    return `${(rawValue * 100).toFixed(1)}%`;
+  }
+
+  if (groupKey === "良品用时") {
+    return `${Math.round(rawValue)}s`;
+  }
+
+  return numberFormatter.format(rawValue);
 };
 
+const getMetricClass = (groupKey: string) => {
+  if (groupKey === "良率") {
+    return "text-emerald-600";
+  }
+  if (groupKey === "良品用时") {
+    return "text-indigo-600";
+  }
+  return "text-gray-700";
+};
 </script>
 
 <style scoped>
 .process-card {
   @apply rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg;
   cursor: pointer;
+}
+
+.metric-group {
+  @apply rounded-md border border-gray-100 bg-gray-50 p-3;
+}
+
+.metric-item .metric-value {
+  @apply mt-1 text-lg font-semibold;
 }
 </style>

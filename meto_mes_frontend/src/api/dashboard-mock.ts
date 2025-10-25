@@ -5,6 +5,7 @@ import type {
   ProcessDetailData,
   ProcessDetailRow,
   ProcessMetric,
+  ProcessMetricsSummary,
   SelectOption,
   WorkOrderRow
 } from "@/views/dashboard/types";
@@ -12,7 +13,8 @@ import type {
   DashboardSummaryParams,
   ProcessDetailParams,
   DashboardProductsParams,
-  DashboardProductOption
+  DashboardProductOption,
+  ProcessMetricsParams
 } from "./dashboard.types";
 
 const STEP_NO_TO_PROCESS_ID: Record<string, string> = {
@@ -109,6 +111,99 @@ const processMetricsSeed: ExtendedProcessMetric[] = [
     lastUpdated: "2025-01-08"
   }
 ];
+
+interface ProcessMetricsSummarySeed {
+  metrics: ProcessMetricsSummary;
+  products: string[];
+  origins: ProductOrigin[];
+  lastUpdated: string;
+}
+
+const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
+  数量: { 良品: "-", 产品: "-", 执行: "-" },
+  良率: { 一次良率: "-", 最终良率: "-", 产品良率: "-" },
+  良品用时: { mean: "-", min: "-", max: "-" }
+});
+
+const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
+  "002": {
+    metrics: {
+      数量: { 良品: 320, 产品: 342, 执行: 360 },
+      良率: { 一次良率: 0.928, 最终良率: 0.974, 产品良率: 0.996 },
+      良品用时: { mean: 185, min: 120, max: 264 }
+    },
+    products: ["XT-1", "XT-2", "XT-Pro"],
+    origins: [ProductOrigin.Suzhou, ProductOrigin.Mianyang],
+    lastUpdated: "2025-01-10"
+  },
+  "020": {
+    metrics: {
+      数量: { 良品: 298, 产品: 315, 执行: 332 },
+      良率: { 一次良率: 0.912, 最终良率: 0.968, 产品良率: 0.982 },
+      良品用时: { mean: 210, min: 150, max: 305 }
+    },
+    products: ["XT-1", "XT-Pro"],
+    origins: [ProductOrigin.Suzhou, ProductOrigin.Mianyang],
+    lastUpdated: "2025-01-10"
+  },
+  "027": {
+    metrics: {
+      数量: { 良品: 276, 产品: 289, 执行: 301 },
+      良率: { 一次良率: 0.958, 最终良率: 0.989, 产品良率: 0.995 },
+      良品用时: { mean: 165, min: 110, max: 230 }
+    },
+    products: ["XT-1", "XT-2", "XT-Pro"],
+    origins: [ProductOrigin.Mianyang, ProductOrigin.Suzhou],
+    lastUpdated: "2025-01-10"
+  },
+  "029": {
+    metrics: {
+      数量: { 良品: 360, 产品: 378, 执行: 396 },
+      良率: { 一次良率: 0.905, 最终良率: 0.965, 产品良率: 0.978 },
+      良品用时: { mean: 240, min: 180, max: 320 }
+    },
+    products: ["XT-1", "XT-Lite"],
+    origins: [ProductOrigin.Suzhou],
+    lastUpdated: "2025-01-09"
+  }
+};
+
+const cloneProcessMetricsSummary = (
+  summary: ProcessMetricsSummary
+): ProcessMetricsSummary => ({
+  数量: { ...summary.数量 },
+  良率: { ...summary.良率 },
+  良品用时: { ...summary.良品用时 }
+});
+
+export function buildProcessMetrics(
+  params: ProcessMetricsParams
+): ProcessMetricsSummary {
+  const stepTypeNo = params.stepTypeNo?.trim?.() ?? "";
+  if (!stepTypeNo) {
+    return createEmptyProcessMetricsSummary();
+  }
+
+  const seed = processMetricsSummarySeed[stepTypeNo];
+  if (!seed) {
+    return createEmptyProcessMetricsSummary();
+  }
+
+  const product = params.product?.trim?.() ?? "";
+  if (product && !seed.products.includes(product)) {
+    return createEmptyProcessMetricsSummary();
+  }
+
+  if (params.origin && !seed.origins.includes(params.origin)) {
+    return createEmptyProcessMetricsSummary();
+  }
+
+  if (!inDateRange(seed.lastUpdated, params.startDate, params.endDate)) {
+    return createEmptyProcessMetricsSummary();
+  }
+
+  return cloneProcessMetricsSummary(seed.metrics);
+}
 
 const workOrderSeed: WorkOrderRow[] = [
   {
@@ -507,7 +602,10 @@ function toOriginOptions(values: ProductOrigin[]): SelectOption[] {
 function inDateRange(date: string, start?: string, end?: string) {
   if (!start || !end) return true;
   const current = dayjs(date);
-  return current.isAfter(dayjs(start).subtract(1, "day")) && current.isBefore(dayjs(end).add(1, "day"));
+  return (
+    current.isAfter(dayjs(start).subtract(1, "day")) &&
+    current.isBefore(dayjs(end).add(1, "day"))
+  );
 }
 
 function unique<T>(array: T[]): T[] {
@@ -544,7 +642,8 @@ export function buildDashboardSummary(
   const filteredProcesses = processMetricsSeed.filter(item => {
     const matchStep = !stepProcessId || item.id === stepProcessId;
     const matchProduct = !product || item.products.includes(product);
-    const matchOrigin = !origins.length || origins.some(origin => item.origins.includes(origin));
+    const matchOrigin =
+      !origins.length || origins.some(origin => item.origins.includes(origin));
     const matchDate = inDateRange(item.lastUpdated, startDate, endDate);
     return matchStep && matchProduct && matchOrigin && matchDate;
   });
@@ -553,14 +652,15 @@ export function buildDashboardSummary(
     const matchProduct = !product || item.product === product;
     const matchOrigin = !origins.length || origins.includes(item.origin);
     const matchDate =
-      (!startDate || !endDate) ||
+      !startDate ||
+      !endDate ||
       inDateRange(item.startDate, startDate, endDate) ||
       inDateRange(item.dueDate, startDate, endDate);
     return matchProduct && matchOrigin && matchDate;
   });
 
   const processes: ProcessMetric[] = filteredProcesses.map(item => ({
-    id: stepProcessId ? params.stepTypeNo ?? item.id : item.id,
+    id: stepProcessId ? (params.stepTypeNo ?? item.id) : item.id,
     name: item.name,
     output: item.output,
     firstPassYield: item.firstPassYield,
@@ -571,10 +671,14 @@ export function buildDashboardSummary(
   }));
 
   const productOptions = unique(
-    processMetricsSeed.flatMap(item => item.products).concat(filteredWorkOrders.map(order => order.product))
+    processMetricsSeed
+      .flatMap(item => item.products)
+      .concat(filteredWorkOrders.map(order => order.product))
   );
   const originOptions = unique(
-    processMetricsSeed.flatMap(item => item.origins).concat(filteredWorkOrders.map(order => order.origin))
+    processMetricsSeed
+      .flatMap(item => item.origins)
+      .concat(filteredWorkOrders.map(order => order.origin))
   );
 
   return {
@@ -592,7 +696,7 @@ export function buildProcessDetail(
 ): ProcessDetailData {
   const normalizedId = processDetailSeed[params.processId]
     ? params.processId
-    : STEP_NO_TO_PROCESS_ID[params.processId] ?? params.processId;
+    : (STEP_NO_TO_PROCESS_ID[params.processId] ?? params.processId);
 
   const base = normalizedId ? processDetailSeed[normalizedId] : undefined;
   if (!base) {
@@ -613,7 +717,9 @@ export function buildProcessDetail(
     rows = [];
   }
 
-  const equipmentOptions = toStringOptions(unique(rows.map(row => row.equipment)));
+  const equipmentOptions = toStringOptions(
+    unique(rows.map(row => row.equipment))
+  );
   const stationOptions = toStringOptions(unique(rows.map(row => row.station)));
 
   return {
@@ -638,7 +744,9 @@ export function buildDashboardProducts(
 
   const processProducts = processMetricsSeed
     .filter(
-      item => matchesOrigin(item.origins) && inDateRange(item.lastUpdated, startDate, endDate)
+      item =>
+        matchesOrigin(item.origins) &&
+        inDateRange(item.lastUpdated, startDate, endDate)
     )
     .flatMap(item => item.products);
 
@@ -664,4 +772,3 @@ export function buildDashboardProducts(
     code: product
   }));
 }
-

@@ -51,6 +51,27 @@
           />
         </el-select>
       </el-form-item>
+      <el-form-item label="工艺">
+        <el-select
+          class="filter-select"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          clearable
+          filterable
+          placeholder="选择工艺"
+          :disabled="loading || !product"
+          :model-value="processSteps"
+          @update:model-value="onProcessStepsChange"
+        >
+          <el-option
+            v-for="item in processOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+      </el-form-item>
       <el-form-item>
         <div class="flex gap-2">
           <el-button type="primary" :loading="loading" @click="emit('submit')">
@@ -75,17 +96,28 @@ interface Props {
   product: string | null;
   origin: ProductOrigin | null;
   productOptions: SelectOption[];
+  processOptions: SelectOption[];
+  processSteps: string[];
   originOptions: SelectOption[];
   loading?: boolean;
 }
 
 const props = defineProps<Props>();
-const { dateRange, product, origin, productOptions, originOptions, loading } =
-  toRefs(props);
+const {
+  dateRange,
+  product,
+  origin,
+  productOptions,
+  processOptions,
+  processSteps,
+  originOptions,
+  loading
+} = toRefs(props);
 const emit = defineEmits([
   "update:dateRange",
   "update:product",
   "update:origin",
+  "update:processSteps",
   "submit",
   "reset"
 ]);
@@ -100,6 +132,11 @@ const onProductChange = (value: string | null) => {
 
 const onOriginChange = (value: ProductOrigin | null) => {
   emit("update:origin", value ?? null);
+};
+
+const onProcessStepsChange = (value: Array<string | number> | null) => {
+  const nextValue = Array.isArray(value) ? value.map(item => String(item)) : [];
+  emit("update:processSteps", nextValue);
 };
 </script>
 
@@ -125,5 +162,4 @@ const onOriginChange = (value: ProductOrigin | null) => {
   width: 240px;
   max-width: 100%;
 }
-
 </style>
