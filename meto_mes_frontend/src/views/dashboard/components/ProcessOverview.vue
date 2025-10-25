@@ -16,7 +16,7 @@
                 {{ item.name }}
               </div>
               <div class="mt-1 text-xs text-gray-400">
-                工艺编号 {{ item.id }}
+                工序编码 {{ item.code ?? "-" }}
               </div>
             </div>
             <el-tag size="small" effect="plain" type="info">指标概览</el-tag>

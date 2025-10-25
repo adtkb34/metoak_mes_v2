@@ -29,6 +29,7 @@ export type ProcessMetricsSummary = ApiProcessMetricsSummary;
 export interface ProcessOverviewItem {
   id: string;
   name: string;
+  code: string | null;
   metrics: ProcessMetricsSummary;
 }
 
