@@ -90,7 +90,7 @@ export async function fetchDashboardProducts(
     DASHBOARD_PRODUCTS_URL,
     { params }
   );
-
+  console.log(response);
   return unwrapResponse(response, "获取产品选项失败");
 }
 

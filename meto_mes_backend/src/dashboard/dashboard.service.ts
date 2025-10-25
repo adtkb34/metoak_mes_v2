@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, PrismaClient, mo_workstage } from '@prisma/client';
-import dayjs from 'dayjs';
+import * as dayjs from 'dayjs';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ProductOrigin,
@@ -447,9 +447,7 @@ export class DashboardService {
 
     const parsedStart = dayjs(startBoundary);
     if (parsedEnd.isBefore(parsedStart)) {
-      endBoundary = parsedStart
-        .endOf('day')
-        .format('YYYY-MM-DD HH:mm:ss');
+      endBoundary = parsedStart.endOf('day').format('YYYY-MM-DD HH:mm:ss');
     }
 
     const orderTimestampExpr = Prisma.sql`
@@ -481,7 +479,6 @@ export class DashboardService {
           mpo.material_name,
           mpo.material_code
         FROM mo_produce_order AS mpo
-        ${whereClause}
         ORDER BY mpo.material_name, mpo.material_code;
       `);
 

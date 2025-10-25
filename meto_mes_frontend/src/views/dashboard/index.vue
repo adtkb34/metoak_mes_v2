@@ -283,8 +283,7 @@ const processes = computed<ProcessOverviewItem[]>(() =>
   activeProcessSteps.value.map(step => ({
     id: step,
     name: getProcessLabel(step),
-    metrics:
-      processMetricsMap.value[step] ?? createEmptyProcessMetricsSummary()
+    metrics: processMetricsMap.value[step] ?? createEmptyProcessMetricsSummary()
   }))
 );
 
@@ -434,18 +433,15 @@ watch(
   { immediate: true }
 );
 
-watch(
-  processOptions,
-  options => {
-    if (
-      filters.processCode &&
-      !options.some(option => String(option.value) === filters.processCode)
-    ) {
-      filters.processCode = null;
-      syncProcessStepsWithSelection();
-    }
+watch(processOptions, options => {
+  if (
+    filters.processCode &&
+    !options.some(option => String(option.value) === filters.processCode)
+  ) {
+    filters.processCode = null;
+    syncProcessStepsWithSelection();
   }
-);
+});
 
 const buildSummaryParams = (): DashboardSummaryParams => {
   const hasRange = filters.dateRange.length === 2;
@@ -461,6 +457,7 @@ const refreshProcessMetrics = async (
   params: DashboardSummaryParams
 ): Promise<boolean> => {
   const steps = activeProcessSteps.value;
+  console.log(steps);
   const baseMap = buildEmptyMetricsMap(steps);
   processMetricsMap.value = { ...baseMap };
 
