@@ -10,7 +10,7 @@ export interface FilterState {
   dateRange: string[];
   product: string | null;
   origin: ProductOrigin | null;
-  steps: string[];
+  processCodes: string[];
 }
 
 export interface ProcessMetric {

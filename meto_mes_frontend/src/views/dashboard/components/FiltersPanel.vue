@@ -61,8 +61,8 @@
           filterable
           placeholder="选择工艺"
           :disabled="loading || !product"
-          :model-value="processSteps"
-          @update:model-value="onProcessStepsChange"
+          :model-value="processCodes"
+          @update:model-value="onProcessCodesChange"
         >
           <el-option
             v-for="item in processOptions"
@@ -97,7 +97,7 @@ interface Props {
   origin: ProductOrigin | null;
   productOptions: SelectOption[];
   processOptions: SelectOption[];
-  processSteps: string[];
+  processCodes: string[];
   originOptions: SelectOption[];
   loading?: boolean;
 }
@@ -109,7 +109,7 @@ const {
   origin,
   productOptions,
   processOptions,
-  processSteps,
+  processCodes,
   originOptions,
   loading
 } = toRefs(props);
@@ -117,7 +117,7 @@ const emit = defineEmits([
   "update:dateRange",
   "update:product",
   "update:origin",
-  "update:processSteps",
+  "update:processCodes",
   "submit",
   "reset"
 ]);
@@ -134,9 +134,9 @@ const onOriginChange = (value: ProductOrigin | null) => {
   emit("update:origin", value ?? null);
 };
 
-const onProcessStepsChange = (value: Array<string | number> | null) => {
+const onProcessCodesChange = (value: Array<string | number> | null) => {
   const nextValue = Array.isArray(value) ? value.map(item => String(item)) : [];
-  emit("update:processSteps", nextValue);
+  emit("update:processCodes", nextValue);
 };
 </script>
 
