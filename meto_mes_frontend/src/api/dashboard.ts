@@ -106,7 +106,7 @@ export async function fetchProcessMetrics(
     PROCESS_METRICS_URL,
     { params }
   );
-
+  console.log(1, response);
   return unwrapResponse(response, "获取工序指标失败");
 }
 

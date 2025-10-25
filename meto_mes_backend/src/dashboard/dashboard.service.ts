@@ -91,7 +91,7 @@ export interface ProcessMetricsSummary {
   数量: {
     良品: number | string;
     产品: number | string;
-    执行: number | string;
+    总体: number | string;
   };
   良率: {
     一次: number | string;
@@ -965,7 +965,7 @@ export class DashboardService {
       数量: {
         良品: finalGoodCount || DEFAULT_METRIC_VALUE,
         产品: productCount || DEFAULT_METRIC_VALUE,
-        执行: rows.length || DEFAULT_METRIC_VALUE,
+        总体: rows.length || DEFAULT_METRIC_VALUE,
       },
       良率: {
         一次:
@@ -990,7 +990,7 @@ export class DashboardService {
       数量: {
         良品: DEFAULT_METRIC_VALUE,
         产品: DEFAULT_METRIC_VALUE,
-        执行: DEFAULT_METRIC_VALUE,
+        总体: DEFAULT_METRIC_VALUE,
       },
       良率: {
         一次: DEFAULT_METRIC_VALUE,
