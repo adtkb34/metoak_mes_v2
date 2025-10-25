@@ -1,3 +1,4 @@
+import type { ProcessMetricsSummary as ApiProcessMetricsSummary } from "@/api/dashboard.types";
 import type { ProductOrigin } from "@/enums/product-origin";
 
 export interface SelectOption {
@@ -9,6 +10,7 @@ export interface FilterState {
   dateRange: string[];
   product: string | null;
   origin: ProductOrigin | null;
+  steps: string[];
 }
 
 export interface ProcessMetric {
@@ -20,6 +22,14 @@ export interface ProcessMetric {
   wip: number;
   trend: number;
   targetOutput: number;
+}
+
+export type ProcessMetricsSummary = ApiProcessMetricsSummary;
+
+export interface ProcessOverviewItem {
+  id: string;
+  name: string;
+  metrics: ProcessMetricsSummary;
 }
 
 export interface DashboardSummaryResponse {
