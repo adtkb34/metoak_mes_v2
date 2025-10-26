@@ -69,7 +69,7 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item>
+      <el-form-item class="filter-actions">
         <div class="flex gap-2">
           <el-button type="primary" :loading="loading" @click="emit('submit')">
             查询
@@ -141,9 +141,10 @@ const onProcessCodeChange = (value: string | number | null) => {
 <style scoped>
 .filter-form {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 16px;
   align-items: center;
+  overflow-x: auto;
 }
 
 .filters-panel {
@@ -156,8 +157,18 @@ const onProcessCodeChange = (value: string | number | null) => {
 }
 
 .filter-select {
-  min-width: 220px;
-  width: 240px;
+  min-width: 180px;
+  width: 200px;
   max-width: 100%;
+}
+
+.filter-actions {
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.filter-actions :deep(.el-form-item__content) {
+  display: flex;
 }
 </style>

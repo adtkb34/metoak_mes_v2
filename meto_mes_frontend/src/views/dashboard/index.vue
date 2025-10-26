@@ -291,7 +291,10 @@ const syncProcessStepsWithSelection = () => {
     return;
   }
 
-  fetchProcessStageInfo({ processCode })
+  fetchProcessStageInfo({
+    processCode,
+    origin: filters.origin ?? undefined
+  })
     .then(result => {
       if (requestToken !== processStageRequestToken) {
         return;
@@ -437,6 +440,7 @@ watch(
       ElMessage.error(message);
     }
     refreshProductOptions();
+    syncProcessStepsWithSelection();
   }
 );
 
