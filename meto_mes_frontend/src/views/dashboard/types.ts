@@ -1,4 +1,7 @@
-import type { ProcessMetricsSummary as ApiProcessMetricsSummary } from "@/api/dashboard.types";
+import type {
+  ParetoChartData as ApiParetoChartData,
+  ProcessMetricsSummary as ApiProcessMetricsSummary
+} from "@/api/dashboard.types";
 import type { ProductOrigin } from "@/enums/product-origin";
 
 export interface SelectOption {
@@ -25,6 +28,7 @@ export interface ProcessMetric {
 }
 
 export type ProcessMetricsSummary = ApiProcessMetricsSummary;
+export type ParetoChartData = ApiParetoChartData;
 
 export interface ProcessOverviewItem {
   id: string;

@@ -23,6 +23,20 @@ export interface ProcessMetricsParams {
   stations?: string[];
 }
 
+export interface ParetoChartParams {
+  product: string;
+  origin: ProductOrigin;
+  stepTypeNo: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ParetoChartData {
+  categories: string[];
+  counts: number[];
+  cumulative: number[];
+}
+
 export interface ProcessMetricsSummary {
   数量: {
     良品: number | string;
