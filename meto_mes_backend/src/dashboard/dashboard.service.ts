@@ -548,6 +548,19 @@ export class DashboardService {
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
+        console.log(rows);
+        if (params.origin == ProductOrigin.MIANYANG) {
+          if (rows != undefined) {
+            rows = await this.populateAiweishiAANgReasonFromErrorCode(rows);
+          }
+        } else {
+          if (rows != undefined) {
+            rows = await this.populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+              rows,
+              'AA',
+            );
+          }
+        }
       } else if (params.stepTypeNo == STEP_NO.S315FQC) {
         rows = await this.fetchS315FqcMetricRows({
           product,
@@ -555,6 +568,9 @@ export class DashboardService {
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
+        if (rows != undefined) {
+          rows = await this.populateFQCNgReasonFromErrorCode(rows);
+        }
       } else if (params.stepTypeNo == STEP_NO.PACKING) {
         rows = await this.fetchPackingMetricRows({
           product,
@@ -562,13 +578,19 @@ export class DashboardService {
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
-      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
         rows = await this.fetchStereoPrecheckMetricRows({
           product,
           client,
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
+        if (rows != undefined) {
+          rows = await this.populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+            rows,
+            'stereo_precheck',
+          );
+        }
       } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
         rows = await this.fetchStereoPostCheckMetricRows({
           product,
@@ -576,6 +598,12 @@ export class DashboardService {
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
+        if (rows != undefined) {
+          rows = await this.populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+            rows,
+            'stereo_postcheck',
+          );
+        }
       } else {
         rows = await this.fetchGenericProcessMetricData({
           product,
@@ -584,7 +612,6 @@ export class DashboardService {
           range: { start, end },
         });
       }
-      console.log(rows);
       if (!rows?.length) {
         return empty;
       }
@@ -723,7 +750,7 @@ export class DashboardService {
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
-      SELECT ${Prisma.raw(tableAlias)}.beam_sn AS product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.add_time AS start_time, ${Prisma.raw(tableAlias)}.add_time AS end_time
+      SELECT ${Prisma.raw(tableAlias)}.beam_sn AS product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.ng_reason, ${Prisma.raw(tableAlias)}.add_time AS start_time, ${Prisma.raw(tableAlias)}.add_time AS end_time
       FROM mo_auto_adjust_info AS ${Prisma.raw(tableAlias)}
     `;
 
@@ -1219,7 +1246,6 @@ export class DashboardService {
     WHERE mpo.material_code = ${materialCode}
     ${filterClause ?? Prisma.empty}
   `;
-    console.log(query);
     const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
 
     return rows;
@@ -1453,33 +1479,97 @@ export class DashboardService {
       .sort((a, b) => b[1] - a[1])
       .map(([reason, count]) => ({ reason, count }));
   }
+
   private async populateCalibOrGUanghaojieAANgReasonFromErrorCode(
     rows: ProcessMetricRow[],
     procedure_: string,
   ): Promise<ProcessMetricRow[]> {
-    const records = await this.prisma.error_descriptions.findMany({
-      where: { procedure_ }, // stage 是函数参数变量
-      select: {
-        message: true,
-        code: true,
-      },
-    });
+    // 获取数据库客户端（苏州源）
+    const client = this.prisma.getClientByOrigin(ProductOrigin.SUZHOU);
 
+    // 参数化查询，防止 SQL 注入
+    const records = await client.$queryRaw<
+      Array<{ code: string | number; message: string }>
+    >`
+    SELECT code, message
+    FROM error_descriptions
+    WHERE procedure_ = ${procedure_}
+  `;
+
+    // 构建错误码 -> 描述 Map
     const errorMap = new Map<string, string>();
     for (const { code, message } of records) {
       if (code != null && message != null) {
-        errorMap.set(code.toString(), message);
+        errorMap.set(String(code), message);
       }
     }
-    rows.forEach((o) => {
-      if (o.error_code != null && o.error_code != undefined) {
-        let error_code_ = o.error_code.toString();
-        if (procedure_ === 'calibration') {
+
+    // 遍历填充 ng_reason
+    for (const o of rows) {
+      if (o.error_code != null) {
+        let error_code_ = String(o.error_code);
+
+        // calibration 的特殊规则：去掉首字母
+        if (procedure_ === 'calibration' && error_code_.length > 1) {
           error_code_ = error_code_.slice(1);
         }
+
         o.ng_reason = errorMap.get(error_code_) ?? '';
+      } else {
+        o.ng_reason = '';
       }
-    });
+    }
+
+    return rows;
+  }
+
+  private async populateAiweishiAANgReasonFromErrorCode(
+    rows: ProcessMetricRow[],
+  ): Promise<ProcessMetricRow[]> {
+    // 遍历填充 ng_reason
+    for (const o of rows) {
+      o.ng_reason = await this.update_ng_reason_4_aiweishi(
+        STEP_NO.AUTO_ADJUST,
+        o.ng_reason,
+      );
+    }
+
+    return rows;
+  }
+
+  private async populateFQCNgReasonFromErrorCode(
+    rows: ProcessMetricRow[],
+  ): Promise<ProcessMetricRow[]> {
+    // 获取数据库客户端（苏州源）
+    const client = this.prisma.getClientByOrigin(ProductOrigin.SUZHOU);
+
+    // 参数化查询，防止 SQL 注入
+    const records = await client.$queryRaw<
+      Array<{ code: string | number; message: string }>
+    >`
+    SELECT error_code AS code, description AS message
+    FROM mo_error_desc
+    WHERE stage = 'FQC'
+  `;
+
+    // 构建错误码 -> 描述 Map
+    const errorMap = new Map<string, string>();
+    for (const { code, message } of records) {
+      if (code != null && message != null) {
+        errorMap.set(String(code), message);
+      }
+    }
+
+    // 遍历填充 ng_reason
+    for (const o of rows) {
+      if (o.error_code != null) {
+        let error_code_ = String(o.error_code);
+        o.ng_reason = errorMap.get(error_code_) ?? '';
+      } else {
+        o.ng_reason = '';
+      }
+    }
+
     return rows;
   }
   // private populateNgReasonFromErrorCode(row: ProcessMetricRow): void {
