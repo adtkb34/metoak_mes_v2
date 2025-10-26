@@ -1,6 +1,7 @@
 import { baseUrlApi } from "@/router/utils";
 import { getUserAuth } from "@/utils/auth";
 import { http } from "@/utils/http";
+import type { ProductOrigin } from "@/enums/product-origin";
 
 export type StageCode = string;
 export type ProcessFlowSteps = {
@@ -65,10 +66,16 @@ export const deleteProcessStep = (stage_codes: string[]) => {
   });
 };
 
-export const getProcessFlow = () => {
+export const getProcessFlow = (origin?: ProductOrigin | null) => {
+  const config =
+    origin === undefined || origin === null
+      ? undefined
+      : { params: { origin } };
+
   return http.request<Array<ProcessFlow>>(
     "get",
-    "/basic-information/process-flow"
+    "/basic-information/process-flow",
+    config
   );
 };
 

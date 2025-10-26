@@ -428,8 +428,14 @@ const refreshProductOptions = async () => {
 
 watch(
   () => filters.origin,
-  () => {
+  async value => {
     resetProductSelection();
+    try {
+      await processStore.setProcessFlow(true, value ?? null);
+    } catch (error: any) {
+      const message = error?.message ?? "获取工艺流程失败";
+      ElMessage.error(message);
+    }
     refreshProductOptions();
   }
 );
@@ -713,7 +719,12 @@ const handleFiltersReset = () => {
 };
 
 onMounted(async () => {
-  await processStore.setProcessFlow();
+  try {
+    await processStore.setProcessFlow(false, filters.origin ?? null);
+  } catch (error: any) {
+    const message = error?.message ?? "获取工艺流程失败";
+    ElMessage.error(message);
+  }
   syncProcessStepsWithSelection();
   fetchSummary();
 });
