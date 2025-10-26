@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ProductOrigin } from 'src/common/enums/product-origin.enum';
 import { ProcessStep } from './type';
 import { UpdateStageDto } from './update-stage.dto';
 import { CreateProcessDto } from './create-flow.dto';
@@ -153,8 +154,10 @@ export class BasicInformationService {
     });
   }
 
-  async getProcessFlow() {
-    const result = await this.prisma.mo_process_flow.findMany({
+  async getProcessFlow(origin?: ProductOrigin) {
+    const client = this.prisma.getClientByOrigin(origin);
+
+    const result = await client.mo_process_flow.findMany({
       select: {
         process_code: true,
         process_name: true,

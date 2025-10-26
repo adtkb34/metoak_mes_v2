@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, ForbiddenException, Get, Patch, Post, Query } from '@nestjs/common';
+import { ProductOrigin } from '../common/enums/product-origin.enum';
 import { BasicInformationService } from './basic-information.service';
 import { ProcessStep } from './type';
 import { UpdateStageDto } from './update-stage.dto';
@@ -74,8 +75,10 @@ export class BasicInformationController {
   }
 
   @Get('process-flow')
-  async getProcessFlow() {
-    const processFlow = await this.service.getProcessFlow();
+  async getProcessFlow(@Query('origin') originParam?: string) {
+    const origin = this.parseOrigin(originParam);
+
+    const processFlow = await this.service.getProcessFlow(origin);
     const steps = await this.service.getProcessManagement();
 
     const grouped = Object.values(
@@ -116,5 +119,24 @@ export class BasicInformationController {
     if (user_level === undefined || user_level > 1) {
       throw new ForbiddenException('Permission denied');
     }
+  }
+
+  private parseOrigin(value?: string | number | null): ProductOrigin | undefined {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    const numeric = Number(value);
+    if (!Number.isInteger(numeric)) {
+      return undefined;
+    }
+
+    const allowedOrigins = Object.values(ProductOrigin).filter(
+      (item): item is ProductOrigin => typeof item === 'number',
+    );
+
+    return allowedOrigins.includes(numeric as ProductOrigin)
+      ? (numeric as ProductOrigin)
+      : undefined;
   }
 }
