@@ -3,7 +3,7 @@
     <el-form :inline="true" label-width="80px" class="filter-form">
       <el-form-item label="时间">
         <el-date-picker
-          class="filter-date-picker"
+          class="filter-select"
           type="daterange"
           unlink-panels
           range-separator="至"
@@ -151,7 +151,7 @@ const onProcessCodeChange = (value: string | number | null) => {
 }
 
 .filter-date-picker {
-  width: 320px;
+  width: 220px;
   max-width: 100%;
 }
 

@@ -412,15 +412,10 @@ export class DashboardService {
     if (params.origin === undefined || !normalizedStepTypeNo) {
       return summary;
     }
-    console.log(params.startDate, params.endDate);
     const { start, end } = this.normalizeDateRange(
       params.startDate,
       params.endDate,
     );
-    console.log(start, end);
-    // const start = params.startDate;
-
-    // const end = params.endDate;
 
     try {
       const client = this.prisma.getClientByOrigin(params.origin);
@@ -533,6 +528,12 @@ export class DashboardService {
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
+        if (rows != undefined) {
+          rows = await this.populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+            rows,
+            'calibration',
+          );
+        }
       } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
         rows = await this.fetchAssemblePcbaMetricRows({
           product,
@@ -1452,7 +1453,35 @@ export class DashboardService {
       .sort((a, b) => b[1] - a[1])
       .map(([reason, count]) => ({ reason, count }));
   }
+  private async populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+    rows: ProcessMetricRow[],
+    procedure_: string,
+  ): Promise<ProcessMetricRow[]> {
+    const records = await this.prisma.error_descriptions.findMany({
+      where: { procedure_ }, // stage 是函数参数变量
+      select: {
+        message: true,
+        code: true,
+      },
+    });
 
+    const errorMap = new Map<string, string>();
+    for (const { code, message } of records) {
+      if (code != null && message != null) {
+        errorMap.set(code.toString(), message);
+      }
+    }
+    rows.forEach((o) => {
+      if (o.error_code != null && o.error_code != undefined) {
+        let error_code_ = o.error_code.toString();
+        if (procedure_ === 'calibration') {
+          error_code_ = error_code_.slice(1);
+        }
+        o.ng_reason = errorMap.get(error_code_) ?? '';
+      }
+    });
+    return rows;
+  }
   // private populateNgReasonFromErrorCode(row: ProcessMetricRow): void {
   //   if (typeof row.ng_reason === 'string') {
   //     row.ng_reason = row.ng_reason.trim();
