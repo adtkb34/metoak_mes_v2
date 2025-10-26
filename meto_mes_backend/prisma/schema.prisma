@@ -1128,6 +1128,7 @@ model mo_process_step_production_result {
   operator              String?   @db.VarChar(255)
   software_tool         String?   @db.VarChar(255)
   software_tool_version String?   @db.VarChar(255)
+  add_time            DateTime? @db.DateTime(0)
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments

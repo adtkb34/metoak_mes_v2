@@ -403,7 +403,7 @@ export class SerialNumberDataService {
 
     const records = await client.mo_process_step_production_result.findMany({
       where: { product_sn: serialNumber, step_type_no: String(stepTypeNo) },
-      orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
+      orderBy: [{ add_time: 'desc' }, { id: 'desc' }],
     });
 
     const workstage = await client.mo_workstage.findFirst({
@@ -418,7 +418,7 @@ export class SerialNumberDataService {
         workstage?.stage_name ||
         record.step_type ||
         `未找到对应的工序名: ${stepTypeNo}`,
-      timestamp: this.formatTimestamp(record.start_time),
+      timestamp: this.formatTimestamp(record.add_time),
       result: record.error_code
         ? (this.parseResultValue(parseResult, record.ng_reason) ?? '')
         : (record.ng_reason ?? ''),
