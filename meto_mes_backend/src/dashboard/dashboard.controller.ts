@@ -134,17 +134,17 @@ export class DashboardController {
   ): Promise<{ success: true; data: ProcessMetricsSummary }> {
     const origin = this.parseOrigin(query?.origin);
 
-    const startDate =
-      this.normalizeDateParam('start', query?.startDate) ?? query?.startDate;
-    const endDate =
-      this.normalizeDateParam('end', query?.endDate) ?? query?.endDate;
-
+    // const startDate =
+    //   this.normalizeDateParam('start', query?.startDate) ?? query?.startDate;
+    // const endDate =
+    //   this.normalizeDateParam('end', query?.endDate) ?? query?.endDate;
+    // console.log(startDate, endDate);
     const summary = await this.dashboardService.getProcessMetrics({
       origin,
       product: query.product,
       stepTypeNo: query?.stepTypeNo?.trim(),
-      startDate,
-      endDate,
+      startDate: query.startDate,
+      endDate: query.endDate,
       deviceNos: this.normalizeStringArray(query?.deviceNos),
       stations: this.normalizeStringArray(query?.stations),
     });

@@ -412,11 +412,15 @@ export class DashboardService {
     if (params.origin === undefined || !normalizedStepTypeNo) {
       return summary;
     }
-
+    console.log(params.startDate, params.endDate);
     const { start, end } = this.normalizeDateRange(
       params.startDate,
       params.endDate,
     );
+    console.log(start, end);
+    // const start = params.startDate;
+
+    // const end = params.endDate;
 
     try {
       const client = this.prisma.getClientByOrigin(params.origin);
@@ -1161,7 +1165,7 @@ export class DashboardService {
     WHERE mpo.material_code = ${materialCode}
     ${filterClause ?? Prisma.empty}
   `;
-
+    console.log(query);
     const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
 
     return rows;
@@ -1605,26 +1609,20 @@ export class DashboardService {
       value?: string,
       kind: 'start' | 'end' = 'start',
     ): Date | undefined => {
-      if (!value) {
-        return undefined;
-      }
+      if (!value) return undefined;
       const trimmed = value.trim();
-      if (!trimmed) {
-        return undefined;
-      }
+      if (!trimmed) return undefined;
+
+      // 如果是 YYYY-MM-DD 格式
       if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-        const date = new Date(trimmed);
-        if (Number.isNaN(date.getTime())) {
-          return undefined;
-        }
-        if (kind === 'start') {
-          date.setHours(0, 0, 0, 0);
-        } else {
-          date.setHours(23, 59, 59, 999);
-        }
-        return date;
+        const dateStr =
+          kind === 'start' ? `${trimmed} 00:00:00` : `${trimmed} 23:59:59`;
+        const date = new Date(dateStr);
+        console.log(dateStr, date);
+        return Number.isNaN(date.getTime()) ? undefined : date;
       }
 
+      // 其他格式，直接 new Date 解析
       const date = new Date(trimmed);
       return Number.isNaN(date.getTime()) ? undefined : date;
     };
