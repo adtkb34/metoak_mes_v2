@@ -140,7 +140,7 @@ const chartOption = computed(() => {
       data: paretoData.value.categories,
       axisLabel: {
         interval: 0,
-        rotate: 20
+        rotate: 0
       }
     },
     yAxis: [

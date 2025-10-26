@@ -68,6 +68,7 @@ export interface DashboardProductOption {
 
 export interface ProcessStageInfoParams {
   processCode: string;
+  origin?: ProductOrigin | null;
 }
 
 export interface ProcessStageInfo {

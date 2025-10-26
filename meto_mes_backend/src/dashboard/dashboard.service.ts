@@ -285,8 +285,13 @@ export class DashboardService {
     return `工序 ${stepTypeNo}`;
   }
 
-  async getProcessStages(processCode: string): Promise<ProcessStageInfo[]> {
-    const rows = await this.prisma.$queryRawUnsafe<
+  async getProcessStages(
+    processCode: string,
+    origin?: ProductOrigin,
+  ): Promise<ProcessStageInfo[]> {
+    const client = this.prisma.getClientByOrigin(origin);
+
+    const rows = await client.$queryRawUnsafe<
       { stageCode: string; stage_name: string; step_type_no: string }[]
     >(`
   SELECT mw.stage_code, mw.stage_name, mw.step_type_no

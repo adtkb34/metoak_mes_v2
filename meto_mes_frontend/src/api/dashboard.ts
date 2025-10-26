@@ -140,10 +140,15 @@ export async function fetchProcessStageInfo(
     return Promise.resolve([]);
   }
 
+  const requestParams =
+    params.origin === undefined || params.origin === null
+      ? { processCode: params.processCode }
+      : params;
+
   const response = await http.request<ApiResponse<ProcessStageInfo[]>>(
     "get",
     PROCESS_STAGE_INFO_URL,
-    { params }
+    { params: requestParams }
   );
 
   return unwrapResponse(response, "获取工序信息失败");

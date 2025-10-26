@@ -211,14 +211,19 @@ export class DashboardController {
   @Get('process-stage-info')
   async getProcessStageInfo(
     @Query('processCode') processCode?: string,
+    @Query('origin') originParam?: string,
   ): Promise<{ success: true; data: ProcessStageInfo[] }> {
     const normalizedCode = processCode?.trim();
     if (!normalizedCode) {
       throw new BadRequestException('缺少工艺编号');
     }
 
-    const data = await this.dashboardService.getProcessStages(normalizedCode);
-    console.log(1, data);
+    const origin = this.parseOrigin(originParam);
+
+    const data = await this.dashboardService.getProcessStages(
+      normalizedCode,
+      origin,
+    );
     return { success: true, data };
   }
 
