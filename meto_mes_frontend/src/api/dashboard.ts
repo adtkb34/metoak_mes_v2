@@ -7,7 +7,8 @@ import {
   buildDashboardSummary,
   buildProcessDetail,
   buildDashboardProducts,
-  buildProcessMetrics
+  buildProcessMetrics,
+  buildParetoData
 } from "./dashboard-mock";
 import type {
   DashboardSummaryParams,
@@ -17,7 +18,9 @@ import type {
   ProcessMetricsParams,
   ProcessMetricsSummary,
   ProcessStageInfoParams,
-  ProcessStageInfo
+  ProcessStageInfo,
+  ParetoChartParams,
+  ParetoChartData
 } from "./dashboard.types";
 import { fa } from "element-plus/es/locale/index.mjs";
 
@@ -32,6 +35,7 @@ const PROCESS_DETAIL_URL = "/dashboard/process-detail";
 const DASHBOARD_PRODUCTS_URL = "/dashboard/products";
 const PROCESS_METRICS_URL = "/dashboard/process-metrics";
 const PROCESS_STAGE_INFO_URL = "/dashboard/process-stage-info";
+const PROCESS_PARETO_URL = "/dashboard/pareto";
 
 const isMockEnabled = (() => {
   const flag = false;
@@ -113,6 +117,22 @@ export async function fetchProcessMetrics(
   return unwrapResponse(response, "获取工序指标失败");
 }
 
+export async function fetchParetoData(
+  params: ParetoChartParams
+): Promise<ParetoChartData> {
+  if (isMockEnabled) {
+    return Promise.resolve(buildParetoData(params));
+  }
+
+  const response = await http.request<ApiResponse<ParetoChartData>>(
+    "get",
+    PROCESS_PARETO_URL,
+    { params }
+  );
+
+  return unwrapResponse(response, "获取柏拉图数据失败");
+}
+
 export async function fetchProcessStageInfo(
   params: ProcessStageInfoParams
 ): Promise<ProcessStageInfo[]> {
@@ -136,5 +156,7 @@ export type {
   DashboardProductOption,
   ProcessMetricsParams,
   ProcessMetricsSummary,
-  ProcessStageInfo
+  ProcessStageInfo,
+  ParetoChartParams,
+  ParetoChartData
 };

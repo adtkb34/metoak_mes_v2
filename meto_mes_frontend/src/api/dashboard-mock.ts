@@ -14,7 +14,9 @@ import type {
   ProcessDetailParams,
   DashboardProductsParams,
   DashboardProductOption,
-  ProcessMetricsParams
+  ProcessMetricsParams,
+  ParetoChartParams,
+  ParetoChartData
 } from "./dashboard.types";
 
 const STEP_NO_TO_PROCESS_ID: Record<string, string> = {
@@ -203,6 +205,24 @@ export function buildProcessMetrics(
   }
 
   return cloneProcessMetricsSummary(seed.metrics);
+}
+
+export function buildParetoData(params: ParetoChartParams): ParetoChartData {
+  void params;
+  const categories = ["缺陷A", "缺陷B", "缺陷C"];
+  const counts = [18, 12, 6];
+  const total = counts.reduce((sum, value) => sum + value, 0);
+  let running = 0;
+  const cumulative = counts.map(count => {
+    running += count;
+    return total ? Number(((running / total) * 100).toFixed(1)) : 0;
+  });
+
+  return {
+    categories,
+    counts,
+    cumulative
+  };
 }
 
 const workOrderSeed: WorkOrderRow[] = [

@@ -53,8 +53,8 @@
       />
       <process-detail
         v-if="isDetailVisible"
-        :detail="processDetail"
         :metrics="selectedProcessMetrics"
+        :pareto="paretoData"
         :loading="detailLoading"
       />
       <process-overview
@@ -89,14 +89,14 @@ import ProcessDetail from "./components/ProcessDetail.vue";
 import WorkOrdersTable from "./components/WorkOrdersTable.vue";
 import type {
   FilterState,
-  ProcessDetailData,
+  ParetoChartData,
   ProcessMetricsSummary,
   ProcessOverviewItem,
   SelectOption,
   WorkOrderRow
 } from "./types";
 import {
-  fetchProcessDetail,
+  fetchParetoData,
   fetchDashboardProducts,
   fetchProcessMetrics,
   fetchProcessStageInfo
@@ -108,8 +108,9 @@ import { useProcessStore } from "@/store/modules/processFlow";
 import type { ProcessFlow } from "@/api/processFlow";
 
 const getDefaultDateRange = (): string[] => {
-  const today = dayjs().format("YYYY-MM-DD");
-  return [today, today];
+  const start = dayjs().startOf("day").format("YYYY-MM-DD HH:mm:ss");
+  const end = dayjs().endOf("day").format("YYYY-MM-DD HH:mm:ss");
+  return [start, end];
 };
 
 const DEFAULT_STEP_TYPE_NOS: string[] = [];
@@ -168,7 +169,12 @@ const summaryError = ref<string | null>(null);
 const detailError = ref<string | null>(null);
 
 const selectedProcessId = ref<string | null>(null);
-const processDetail = ref<ProcessDetailData | null>(null);
+const createEmptyParetoData = (): ParetoChartData => ({
+  categories: [],
+  counts: [],
+  cumulative: []
+});
+const paretoData = ref<ParetoChartData>(createEmptyParetoData());
 
 const getStepDisplayLabel = (step: ProcessStepInfo): string => {
   const explicitLabel = step.label?.trim?.();
@@ -339,9 +345,6 @@ const activeProcessStepMap = computed(() => {
 });
 
 const selectedProcessName = computed(() => {
-  if (processDetail.value?.processName) {
-    return processDetail.value.processName;
-  }
   if (!selectedProcessId.value) return "";
   const step = activeProcessStepMap.value.get(selectedProcessId.value);
   if (step) {
@@ -357,11 +360,6 @@ const headerTitle = computed(() =>
 const selectedProcessMetrics = computed<ProcessMetricsSummary>(() => {
   if (!selectedProcessId.value) {
     return createEmptyProcessMetricsSummary();
-  }
-
-  const metricsFromDetail = processDetail.value?.summary;
-  if (metricsFromDetail) {
-    return metricsFromDetail;
   }
 
   return (
@@ -460,8 +458,8 @@ watch(
       !steps.some(step => step.id === selectedProcessId.value)
     ) {
       selectedProcessId.value = null;
-      processDetail.value = null;
       detailError.value = null;
+      paretoData.value = createEmptyParetoData();
     }
   },
   { immediate: true, deep: true }
@@ -476,6 +474,9 @@ watch(
       processMetricsMap.value = {
         ...buildEmptyMetricsMap(activeProcessSteps.value)
       };
+      selectedProcessId.value = null;
+      detailError.value = null;
+      paretoData.value = createEmptyParetoData();
     }
   }
 );
@@ -499,7 +500,10 @@ watch(processOptions, options => {
 });
 
 const buildSummaryParams = (): DashboardSummaryParams => {
-  const hasRange = filters.dateRange.length === 2;
+  const hasRange =
+    filters.dateRange.length === 2 &&
+    filters.dateRange[0] &&
+    filters.dateRange[1];
   return {
     startDate: hasRange ? filters.dateRange[0] : undefined,
     endDate: hasRange ? filters.dateRange[1] : undefined,
@@ -629,6 +633,9 @@ const fetchSummary = async () => {
       ...buildEmptyMetricsMap(activeProcessSteps.value)
     };
     workOrders.value = [];
+    selectedProcessId.value = null;
+    paretoData.value = createEmptyParetoData();
+    detailError.value = null;
     ElMessage.error(message);
   } finally {
     overviewLoading.value = false;
@@ -640,23 +647,38 @@ const handleProcessSelect = async (processId: string) => {
   const step = activeProcessStepMap.value.get(processId);
   selectedProcessId.value = processId;
   detailError.value = null;
-  processDetail.value = null;
+  paretoData.value = createEmptyParetoData();
 
   if (!step?.code) {
+    detailError.value = "当前工序缺少编号，无法获取柏拉图数据";
+    return;
+  }
+
+  const params = buildSummaryParams();
+  if (!params.product) {
+    detailError.value = "请选择产品后查看工序详情";
+    return;
+  }
+
+  if (params.origin === undefined) {
+    detailError.value = "请选择产地后查看工序详情";
     return;
   }
 
   detailLoading.value = true;
   try {
-    const params = buildSummaryParams();
-    const result = await fetchProcessDetail({
-      ...params,
-      processId: step.code,
-      stepTypeNo: step.code
+    const product = params.product;
+    const origin = params.origin;
+    const result = await fetchParetoData({
+      product,
+      origin,
+      stepTypeNo: step.code,
+      startDate: params.startDate,
+      endDate: params.endDate
     });
-    processDetail.value = result;
+    paretoData.value = result;
   } catch (error: any) {
-    const message = error?.message ?? "获取工序详情失败";
+    const message = error?.message ?? "获取柏拉图数据失败";
     detailError.value = message;
     ElMessage.error(message);
   } finally {
@@ -666,14 +688,14 @@ const handleProcessSelect = async (processId: string) => {
 
 const handleBackToOverview = () => {
   selectedProcessId.value = null;
-  processDetail.value = null;
   detailError.value = null;
+  paretoData.value = createEmptyParetoData();
 };
 
 const handleFiltersSubmit = () => {
   selectedProcessId.value = null;
-  processDetail.value = null;
   detailError.value = null;
+  paretoData.value = createEmptyParetoData();
   fetchSummary();
 };
 
@@ -686,6 +708,7 @@ const handleFiltersReset = () => {
   processMetricsMap.value = {
     ...buildEmptyMetricsMap(activeProcessSteps.value)
   };
+  paretoData.value = createEmptyParetoData();
   handleFiltersSubmit();
 };
 
