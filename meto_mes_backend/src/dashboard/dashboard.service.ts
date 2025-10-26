@@ -112,6 +112,12 @@ export interface ProcessMetricsSummary {
   };
 }
 
+export interface ParetoChartData {
+  categories: string[];
+  counts: number[];
+  cumulative: number[];
+}
+
 type AggregatedProcessMetric = ProcessMetricsSummary;
 
 const DEFAULT_METRIC_VALUE = '-';
@@ -482,6 +488,75 @@ export class DashboardService {
         error.stack,
       );
       return summary;
+    }
+  }
+
+  async getParetoData(params: {
+    product: string;
+    origin: ProductOrigin;
+    stepTypeNo: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<ParetoChartData> {
+    const empty: ParetoChartData = {
+      categories: [],
+      counts: [],
+      cumulative: [],
+    };
+
+    const product = params.product.trim();
+    const stepTypeNo = params.stepTypeNo.trim();
+
+    if (!product || !stepTypeNo) {
+      return empty;
+    }
+
+    const { start, end } = this.normalizeDateRange(
+      params.startDate,
+      params.endDate,
+    );
+
+    try {
+      const client = this.prisma.getClientByOrigin(params.origin);
+      const rows =
+        (await this.fetchGenericProcessMetricData({
+          product,
+          client,
+          stepTypeNo,
+          range: { start, end },
+        })) ?? [];
+
+      if (!rows.length) {
+        return empty;
+      }
+
+      const breakdown = this.buildParetoBreakdown(rows, (row) =>
+        this.populateNgReasonFromErrorCode(row),
+      );
+
+      if (!breakdown.length) {
+        return empty;
+      }
+
+      const total = breakdown.reduce((sum, item) => sum + item.count, 0);
+      let running = 0;
+
+      return {
+        categories: breakdown.map((item) => item.reason),
+        counts: breakdown.map((item) => item.count),
+        cumulative: breakdown.map((item) => {
+          running += item.count;
+          return total
+            ? Number(((running / total) * 100).toFixed(1))
+            : 0;
+        }),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error ?? '');
+      this.logger.warn(
+        `Failed to load pareto data for process ${stepTypeNo}: ${message}`,
+      );
+      return empty;
     }
   }
 

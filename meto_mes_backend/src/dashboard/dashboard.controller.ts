@@ -15,6 +15,7 @@ import {
   type DashboardSummaryResult,
   type ProcessMetricsSummary,
   type ProcessStageInfo,
+  type ParetoChartData,
 } from './dashboard.service';
 
 @Controller('dashboard')
@@ -149,6 +150,44 @@ export class DashboardController {
     });
 
     return { success: true, data: summary };
+  }
+
+  @Get('pareto')
+  async getParetoData(
+    @Query('product') product?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('origin') originParam?: string,
+    @Query('stepTypeNo') stepTypeNo?: string,
+  ): Promise<{ success: true; data: ParetoChartData }> {
+    const normalizedProduct = product?.trim();
+    if (!normalizedProduct) {
+      throw new BadRequestException('缺少产品');
+    }
+
+    const normalizedStep = stepTypeNo?.trim();
+    if (!normalizedStep) {
+      throw new BadRequestException('缺少工序编号');
+    }
+
+    const origin = this.parseOrigin(originParam);
+    if (origin === undefined) {
+      throw new BadRequestException('缺少产地');
+    }
+
+    const normalizedStart =
+      this.normalizeDateParam('start', startDate) ?? startDate;
+    const normalizedEnd = this.normalizeDateParam('end', endDate) ?? endDate;
+
+    const data = await this.dashboardService.getParetoData({
+      product: normalizedProduct,
+      stepTypeNo: normalizedStep,
+      origin,
+      startDate: normalizedStart,
+      endDate: normalizedEnd,
+    });
+
+    return { success: true, data };
   }
 
   @Get('equipment-options')
