@@ -1,4 +1,5 @@
 import { getProcessFlow, getProcessSteps } from "@/api/processFlow";
+import type { ProductOrigin } from "@/enums/product-origin";
 import { defineStore } from "pinia";
 import { store } from "..";
 
@@ -10,7 +11,8 @@ export const useProcessStore = defineStore("process", {
     },
     processFlow: {
       list: [],
-      currentFlow: null
+      currentFlow: null,
+      origin: null as ProductOrigin | null
     },
     sortSwap: false
   }),
@@ -28,9 +30,17 @@ export const useProcessStore = defineStore("process", {
       this.sortSwap = value;
     },
 
-    async setProcessFlow(force = false) {
-      if (this.processFlow.list.length === 0 || force) {
-        this.processFlow.list = await getProcessFlow();
+    async setProcessFlow(force = false, origin?: ProductOrigin | null) {
+      const normalizedOrigin =
+        typeof origin === "number" ? (origin as ProductOrigin) : null;
+      const shouldRequest =
+        this.processFlow.list.length === 0 ||
+        force ||
+        this.processFlow.origin !== normalizedOrigin;
+
+      if (shouldRequest) {
+        this.processFlow.list = await getProcessFlow(normalizedOrigin ?? undefined);
+        this.processFlow.origin = normalizedOrigin;
       }
     },
 
