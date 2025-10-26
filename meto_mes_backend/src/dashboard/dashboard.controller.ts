@@ -133,7 +133,7 @@ export class DashboardController {
     },
   ): Promise<{ success: true; data: ProcessMetricsSummary }> {
     const origin = this.parseOrigin(query?.origin);
-
+    console.log(query?.stepTypeNo);
     const summary = await this.dashboardService.getProcessMetrics({
       origin,
       product: query.product,

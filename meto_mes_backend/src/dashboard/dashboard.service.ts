@@ -170,6 +170,7 @@ interface ProcessMetricRow {
   ng_reason?: string | null;
   start_time?: Date | string | null;
   end_time?: Date | string | null;
+  station_num?: number | null;
 }
 
 interface NormalizedRecord {
@@ -465,7 +466,7 @@ export class DashboardService {
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
-      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
         rows = await this.fetchStereoPrecheckMetricRows({
           product,
           client,
@@ -558,10 +559,9 @@ export class DashboardService {
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
-        console.log(rows);
         if (params.origin == ProductOrigin.MIANYANG) {
           if (rows != undefined) {
-            rows = await populateAiweishiAANgReasonFromErrorCode(
+            return await populateAiweishiAANgReasonFromErrorCode(
               rows,
               this.configService,
             );
@@ -766,7 +766,7 @@ export class DashboardService {
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
-      SELECT ${Prisma.raw(tableAlias)}.beam_sn AS product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.ng_reason, ${Prisma.raw(tableAlias)}.add_time AS start_time, ${Prisma.raw(tableAlias)}.add_time AS end_time
+      SELECT ${Prisma.raw(tableAlias)}.beam_sn AS product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.ng_reason, ${Prisma.raw(tableAlias)}.add_time AS start_time, ${Prisma.raw(tableAlias)}.add_time AS end_time, ${Prisma.raw(tableAlias)}.station_num
       FROM mo_auto_adjust_info AS ${Prisma.raw(tableAlias)}
     `;
 
