@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma, PrismaClient, mo_workstage } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +8,11 @@ import {
   PRODUCT_ORIGIN_OPTIONS,
 } from '../common/enums/product-origin.enum';
 import { STEP_NO } from 'src/utils/stepNo';
+import {
+  populateAiweishiAANgReasonFromErrorCode,
+  populateCalibOrGUanghaojieAANgReasonFromErrorCode,
+  populateFQCNgReasonFromErrorCode,
+} from '../common/utils/error-reason.util';
 
 export interface ProductOption {
   label: string;
@@ -186,7 +192,10 @@ interface StatisticsResult {
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async getDashboardSummary(
     params: DashboardSummaryParams,
@@ -529,7 +538,8 @@ export class DashboardService {
           range: { start, end },
         });
         if (rows != undefined) {
-          rows = await this.populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+          rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+            this.prisma,
             rows,
             'calibration',
           );
@@ -551,11 +561,15 @@ export class DashboardService {
         console.log(rows);
         if (params.origin == ProductOrigin.MIANYANG) {
           if (rows != undefined) {
-            rows = await this.populateAiweishiAANgReasonFromErrorCode(rows);
+            rows = await populateAiweishiAANgReasonFromErrorCode(
+              rows,
+              this.configService,
+            );
           }
         } else {
           if (rows != undefined) {
-            rows = await this.populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+            rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+              this.prisma,
               rows,
               'AA',
             );
@@ -569,7 +583,7 @@ export class DashboardService {
           range: { start, end },
         });
         if (rows != undefined) {
-          rows = await this.populateFQCNgReasonFromErrorCode(rows);
+          rows = await populateFQCNgReasonFromErrorCode(this.prisma, rows);
         }
       } else if (params.stepTypeNo == STEP_NO.PACKING) {
         rows = await this.fetchPackingMetricRows({
@@ -586,7 +600,8 @@ export class DashboardService {
           range: { start, end },
         });
         if (rows != undefined) {
-          rows = await this.populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+          rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+            this.prisma,
             rows,
             'stereo_precheck',
           );
@@ -599,7 +614,8 @@ export class DashboardService {
           range: { start, end },
         });
         if (rows != undefined) {
-          rows = await this.populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+          rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+            this.prisma,
             rows,
             'stereo_postcheck',
           );
@@ -1480,98 +1496,6 @@ export class DashboardService {
       .map(([reason, count]) => ({ reason, count }));
   }
 
-  private async populateCalibOrGUanghaojieAANgReasonFromErrorCode(
-    rows: ProcessMetricRow[],
-    procedure_: string,
-  ): Promise<ProcessMetricRow[]> {
-    // 获取数据库客户端（苏州源）
-    const client = this.prisma.getClientByOrigin(ProductOrigin.SUZHOU);
-
-    // 参数化查询，防止 SQL 注入
-    const records = await client.$queryRaw<
-      Array<{ code: string | number; message: string }>
-    >`
-    SELECT code, message
-    FROM error_descriptions
-    WHERE procedure_ = ${procedure_}
-  `;
-
-    // 构建错误码 -> 描述 Map
-    const errorMap = new Map<string, string>();
-    for (const { code, message } of records) {
-      if (code != null && message != null) {
-        errorMap.set(String(code), message);
-      }
-    }
-
-    // 遍历填充 ng_reason
-    for (const o of rows) {
-      if (o.error_code != null) {
-        let error_code_ = String(o.error_code);
-
-        // calibration 的特殊规则：去掉首字母
-        if (procedure_ === 'calibration' && error_code_.length > 1) {
-          error_code_ = error_code_.slice(1);
-        }
-
-        o.ng_reason = errorMap.get(error_code_) ?? '';
-      } else {
-        o.ng_reason = '';
-      }
-    }
-
-    return rows;
-  }
-
-  private async populateAiweishiAANgReasonFromErrorCode(
-    rows: ProcessMetricRow[],
-  ): Promise<ProcessMetricRow[]> {
-    // 遍历填充 ng_reason
-    for (const o of rows) {
-      o.ng_reason = await this.update_ng_reason_4_aiweishi(
-        STEP_NO.AUTO_ADJUST,
-        o.ng_reason,
-      );
-    }
-
-    return rows;
-  }
-
-  private async populateFQCNgReasonFromErrorCode(
-    rows: ProcessMetricRow[],
-  ): Promise<ProcessMetricRow[]> {
-    // 获取数据库客户端（苏州源）
-    const client = this.prisma.getClientByOrigin(ProductOrigin.SUZHOU);
-
-    // 参数化查询，防止 SQL 注入
-    const records = await client.$queryRaw<
-      Array<{ code: string | number; message: string }>
-    >`
-    SELECT error_code AS code, description AS message
-    FROM mo_error_desc
-    WHERE stage = 'FQC'
-  `;
-
-    // 构建错误码 -> 描述 Map
-    const errorMap = new Map<string, string>();
-    for (const { code, message } of records) {
-      if (code != null && message != null) {
-        errorMap.set(String(code), message);
-      }
-    }
-
-    // 遍历填充 ng_reason
-    for (const o of rows) {
-      if (o.error_code != null) {
-        let error_code_ = String(o.error_code);
-        o.ng_reason = errorMap.get(error_code_) ?? '';
-      } else {
-        o.ng_reason = '';
-      }
-    }
-
-    return rows;
-  }
   // private populateNgReasonFromErrorCode(row: ProcessMetricRow): void {
   //   if (typeof row.ng_reason === 'string') {
   //     row.ng_reason = row.ng_reason.trim();
