@@ -8,6 +8,7 @@ import {
   mapErrCodeDescMA,
   mapErrCodeFQC,
 } from './errorCode';
+import { updateNgReason4Aiweishi } from '../common/utils/error-reason.util';
 
 @Injectable()
 export class QualityManagementService {
@@ -450,7 +451,8 @@ export class QualityManagementService {
 
     for (const o of newRes.data) {
       if (o.error_code != 0) {
-        o.ng_reason = await this.update_ng_reason_4_aiweishi(
+        o.ng_reason = await updateNgReason4Aiweishi(
+          this.configService,
           stepNo,
           o.ng_reason,
         );
@@ -477,36 +479,6 @@ export class QualityManagementService {
       total: result.total,
       errorCount: result.errorCount,
     };
-  }
-
-  async update_ng_reason_4_aiweishi(stepNo: String, ng_reason: String) {
-    const parts = ng_reason
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const baseUrl = this.configService.get<string>('MES_API_BASE');
-    const token = this.configService.get<string>('MES_API_TOKEN');
-
-    const results: string[] = [];
-
-    for (const part of parts) {
-      const [attrNo] = part.split('-');
-      if (!attrNo) continue;
-
-      const url = `${baseUrl}/api/mes/v1/stepAttrKeys/label?stepTypeNo=${stepNo}&attrNo=${attrNo}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: token as string,
-        },
-      });
-
-      const data = await response.json();
-      if (data?.data) results.push(data.data);
-    }
-
-    return results.join(';');
   }
 
   async getFieldComment(tableName: string) {
@@ -973,7 +945,8 @@ export class QualityManagementService {
     const rows = allRows.flat();
     for (const o of rows) {
       if (o.error_code != 0) {
-        o.ng_reason = await this.update_ng_reason_4_aiweishi(
+        o.ng_reason = await updateNgReason4Aiweishi(
+          this.configService,
           stepNo,
           o.ng_reason,
         );
