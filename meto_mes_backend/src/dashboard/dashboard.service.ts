@@ -522,20 +522,70 @@ export class DashboardService {
 
     try {
       const client = this.prisma.getClientByOrigin(params.origin);
-      const rows =
-        (await this.fetchGenericProcessMetricData({
+      let data;
+      if (params.stepTypeNo == STEP_NO.CALIB) {
+        data = await this.loadCalibMetrics({
+          product,
+          client,
+          stepTypeNo: stepTypeNo,
+          range: { start, end },
+        });
+      } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
+        data = await this.loadAssemblePcbaMetrics({
+          product,
+          client,
+          stepTypeNo: stepTypeNo,
+          range: { start, end },
+        });
+      } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
+        data = await this.loadAutoAdjustMetrics({
+          product,
+          client,
+          stepTypeNo: stepTypeNo,
+          range: { start, end },
+        });
+      } else if (params.stepTypeNo == STEP_NO.S315FQC) {
+        data = await this.loadS315FqcMetrics({
+          product,
+          client,
+          stepTypeNo: stepTypeNo,
+          range: { start, end },
+        });
+      } else if (params.stepTypeNo == STEP_NO.PACKING) {
+        data = await this.loadPackingMetrics({
+          product,
+          client,
+          stepTypeNo: stepTypeNo,
+          range: { start, end },
+        });
+      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+        data = await this.loadStereoPrecheckMetrics({
+          product,
+          client,
+          stepTypeNo: stepTypeNo,
+          range: { start, end },
+        });
+      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+        data = await this.loadStereoPostCheckcheckMetrics({
+          product,
+          client,
+          stepTypeNo: stepTypeNo,
+          range: { start, end },
+        });
+      } else {
+        data = await this.fetchGenericProcessMetricData({
           product,
           client,
           stepTypeNo,
           range: { start, end },
-        })) ?? [];
-
-      if (!rows.length) {
+        });
+      }
+      console.log(data);
+      if (!data.length) {
         return empty;
       }
-      console.log(rows);
       const breakdown = this.buildParetoBreakdown(
-        rows,
+        data,
         // this.populateNgReasonFromErrorCode(row),
       );
 
