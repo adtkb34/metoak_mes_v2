@@ -147,8 +147,8 @@ export interface ProcessDetailData {
 }
 
 interface DateRange {
-  start?: Date;
-  end?: Date;
+  start?: string;
+  end?: string;
 }
 
 interface ProcessMetricLoaderParams {
