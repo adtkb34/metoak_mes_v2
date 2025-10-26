@@ -68,7 +68,7 @@ const { processes, loading } = toRefs(props);
 const METRIC_GROUPS = [
   {
     key: "数量",
-    label: "数量",
+    label: "产量",
     items: [
       { key: "良品", label: "良品" },
       { key: "产品", label: "产品" },
