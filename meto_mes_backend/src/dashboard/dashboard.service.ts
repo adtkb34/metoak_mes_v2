@@ -1608,23 +1608,18 @@ export class DashboardService {
     const parse = (
       value?: string,
       kind: 'start' | 'end' = 'start',
-    ): Date | undefined => {
+    ): string | undefined => {
       if (!value) return undefined;
       const trimmed = value.trim();
       if (!trimmed) return undefined;
 
       // 如果是 YYYY-MM-DD 格式
       if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-        const dateStr =
-          kind === 'start' ? `${trimmed} 00:00:00` : `${trimmed} 23:59:59`;
-        const date = new Date(dateStr);
-        console.log(dateStr, date);
-        return Number.isNaN(date.getTime()) ? undefined : date;
+        return kind === 'start' ? `${trimmed} 00:00:00` : `${trimmed} 23:59:59`;
       }
 
-      // 其他格式，直接 new Date 解析
-      const date = new Date(trimmed);
-      return Number.isNaN(date.getTime()) ? undefined : date;
+      // 其他情况直接返回原始字符串
+      return trimmed;
     };
 
     return {
