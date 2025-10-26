@@ -94,6 +94,32 @@ export class SerialNumberDataService {
           ...(await this.getAssemblePCBABaseInfo(serialNumber, productOrigin)),
         );
       }
+    } else if (stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+      for (const productOrigin of [
+        ProductOrigin.SUZHOU,
+        ProductOrigin.MIANYANG,
+      ]) {
+        processes.push(
+          ...(await this.getStereoPostCheckBaseInfo(
+            serialNumber,
+            () => null,
+            productOrigin,
+          )),
+        );
+      }
+    } else if (stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
+      for (const productOrigin of [
+        ProductOrigin.SUZHOU,
+        ProductOrigin.MIANYANG,
+      ]) {
+        processes.push(
+          ...(await this.getStereoPreCheckBaseInfo(
+            serialNumber,
+            () => null,
+            productOrigin,
+          )),
+        );
+      }
     } else if (stepTypeNo == STEP_NO.S315FQC) {
       for (const productOrigin of [
         ProductOrigin.SUZHOU,
@@ -101,6 +127,19 @@ export class SerialNumberDataService {
       ]) {
         processes.push(
           ...(await this.get315FinalCheckBaseInfo(
+            serialNumber,
+            () => null,
+            productOrigin,
+          )),
+        );
+      }
+    } else if (stepTypeNo == STEP_NO.PACKING) {
+      for (const productOrigin of [
+        ProductOrigin.SUZHOU,
+        ProductOrigin.MIANYANG,
+      ]) {
+        processes.push(
+          ...(await this.getPackingBaseInfo(
             serialNumber,
             () => null,
             productOrigin,
@@ -456,6 +495,84 @@ export class SerialNumberDataService {
       serialNumber,
       process: '终检',
       timestamp: this.formatTimestamp(record.check_time),
+      result:
+        record.error_code == 0
+          ? 'SUCCESS'
+          : this.parseResultValue(parseResult, record.error_code),
+      operator: this.extractOperator(record),
+      error_code: this.normalizeErrorCode(record.error_code),
+    }));
+  }
+
+  async getPackingBaseInfo(
+    serialNumber: string,
+    parseResult: ResultParser,
+    productOrigin: ProductOrigin,
+  ): Promise<SerialNumberAaBaseInfo[]> {
+    const client = this.prisma.getClientByOrigin(productOrigin);
+
+    const records = await client.mo_packing_info.findMany({
+      where: { camera_sn: serialNumber },
+      orderBy: [{ start_time: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!records || records.length === 0) return [];
+
+    return records.map((record) => ({
+      serialNumber,
+      process: '打包',
+      timestamp: this.formatTimestamp(record.start_time),
+      result: 'SUCCESS',
+      operator: this.extractOperator(record),
+      error_code: this.normalizeErrorCode(0),
+    }));
+  }
+
+  async getStereoPostCheckBaseInfo(
+    serialNumber: string,
+    parseResult: ResultParser,
+    productOrigin: ProductOrigin,
+  ): Promise<SerialNumberAaBaseInfo[]> {
+    const client = this.prisma.getClientByOrigin(productOrigin);
+
+    const records = await client.mo_stereo_postcheck.findMany({
+      where: { sn: serialNumber },
+      orderBy: [{ datetime: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!records || records.length === 0) return [];
+
+    return records.map((record) => ({
+      serialNumber,
+      process: '终检',
+      timestamp: this.formatTimestamp(record.datetime),
+      result:
+        record.error_code == 0
+          ? 'SUCCESS'
+          : this.parseResultValue(parseResult, record.error_code),
+      operator: this.extractOperator(record),
+      error_code: this.normalizeErrorCode(record.error_code),
+    }));
+  }
+
+  async getStereoPreCheckBaseInfo(
+    serialNumber: string,
+    parseResult: ResultParser,
+    productOrigin: ProductOrigin,
+  ): Promise<SerialNumberAaBaseInfo[]> {
+    const client = this.prisma.getClientByOrigin(productOrigin);
+
+    const records = await client.mo_stereo_precheck.findMany({
+      where: { sn: serialNumber },
+      orderBy: [{ datetime: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!records || records.length === 0) return [];
+
+    return records.map((record) => ({
+      serialNumber,
+      process: '性能检',
+      timestamp: this.formatTimestamp(record.datetime),
       result:
         record.error_code == 0
           ? 'SUCCESS'

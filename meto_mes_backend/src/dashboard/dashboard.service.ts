@@ -369,9 +369,8 @@ export class DashboardService {
           })) ?? [];
 
         if (paretoRows.length) {
-          paretoBreakdown = this.buildParetoBreakdown(
-            paretoRows,
-            (row) => this.populateNgReasonFromErrorCode(row),
+          paretoBreakdown = this.buildParetoBreakdown(paretoRows, (row) =>
+            this.populateNgReasonFromErrorCode(row),
           );
         }
       } catch (error) {
@@ -440,6 +439,27 @@ export class DashboardService {
         });
       } else if (params.stepTypeNo == STEP_NO.S315FQC) {
         data = await this.loadS315FqcMetrics({
+          product,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
+      } else if (params.stepTypeNo == STEP_NO.PACKING) {
+        data = await this.loadPackingMetrics({
+          product,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
+      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+        data = await this.loadStereoPrecheckMetrics({
+          product,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+        });
+      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+        data = await this.loadStereoPostCheckcheckMetrics({
           product,
           client,
           stepTypeNo: normalizedStepTypeNo,
@@ -784,6 +804,210 @@ export class DashboardService {
     const filterConditions: Prisma.Sql[] = [];
 
     const timestampExpr = Prisma.sql`COALESCE(${Prisma.raw(tableAlias)}.check_time)`;
+    if (range.start) {
+      filterConditions.push(Prisma.sql`${timestampExpr} >= ${range.start}`);
+    }
+
+    if (range.end) {
+      filterConditions.push(Prisma.sql`${timestampExpr} <= ${range.end}`);
+    }
+
+    const filterClause =
+      filterConditions.length > 0
+        ? Prisma.sql`AND ${Prisma.join(filterConditions, ' AND ')}`
+        : Prisma.empty;
+
+    const beamRows = await this.queryBeamInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
+
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
+
+    const combined = [...beamRows, ...tagRows];
+    if (!combined.length) {
+      return undefined;
+    }
+    const unique = new Map<string, ProcessMetricRow>();
+    for (const row of combined) {
+      const key = this.buildProcessMetricRowKey(row);
+      if (!unique.has(key)) {
+        unique.set(key, row);
+      }
+    }
+
+    const data = [...unique.values()];
+    if (!data) {
+      return undefined;
+    }
+    //
+    return this.aggregateProcessMetricData(data);
+  }
+
+  private async loadStereoPrecheckMetrics(
+    params: ProcessMetricLoaderParams,
+  ): Promise<AggregatedProcessMetric | undefined> {
+    const { product, client, stepTypeNo, range } = params;
+    if (!product) {
+      return undefined;
+    }
+
+    const tableAlias = 'mpspr';
+    const baseSql = Prisma.sql`
+      SELECT ${Prisma.raw(tableAlias)}.sn AS product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.datetime AS start_time, ${Prisma.raw(tableAlias)}.datetime AS end_time
+      FROM mo_stereo_precheck AS ${Prisma.raw(tableAlias)}
+    `;
+
+    const filterConditions: Prisma.Sql[] = [];
+
+    const timestampExpr = Prisma.sql`COALESCE(${Prisma.raw(tableAlias)}.datetime)`;
+    if (range.start) {
+      filterConditions.push(Prisma.sql`${timestampExpr} >= ${range.start}`);
+    }
+
+    if (range.end) {
+      filterConditions.push(Prisma.sql`${timestampExpr} <= ${range.end}`);
+    }
+
+    const filterClause =
+      filterConditions.length > 0
+        ? Prisma.sql`AND ${Prisma.join(filterConditions, ' AND ')}`
+        : Prisma.empty;
+
+    const beamRows = await this.queryBeamInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'sn',
+    );
+
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'sn',
+    );
+
+    const combined = [...beamRows, ...tagRows];
+    if (!combined.length) {
+      return undefined;
+    }
+    const unique = new Map<string, ProcessMetricRow>();
+    for (const row of combined) {
+      const key = this.buildProcessMetricRowKey(row);
+      if (!unique.has(key)) {
+        unique.set(key, row);
+      }
+    }
+
+    const data = [...unique.values()];
+    if (!data) {
+      return undefined;
+    }
+    //
+    return this.aggregateProcessMetricData(data);
+  }
+
+  private async loadStereoPostCheckcheckMetrics(
+    params: ProcessMetricLoaderParams,
+  ): Promise<AggregatedProcessMetric | undefined> {
+    const { product, client, stepTypeNo, range } = params;
+    if (!product) {
+      return undefined;
+    }
+
+    const tableAlias = 'mpspr';
+    const baseSql = Prisma.sql`
+      SELECT ${Prisma.raw(tableAlias)}.sn AS product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.datetime AS start_time, ${Prisma.raw(tableAlias)}.datetime AS end_time
+      FROM mo_stereo_postcheck AS ${Prisma.raw(tableAlias)}
+    `;
+
+    const filterConditions: Prisma.Sql[] = [];
+
+    const timestampExpr = Prisma.sql`COALESCE(${Prisma.raw(tableAlias)}.datetime)`;
+    if (range.start) {
+      filterConditions.push(Prisma.sql`${timestampExpr} >= ${range.start}`);
+    }
+
+    if (range.end) {
+      filterConditions.push(Prisma.sql`${timestampExpr} <= ${range.end}`);
+    }
+
+    const filterClause =
+      filterConditions.length > 0
+        ? Prisma.sql`AND ${Prisma.join(filterConditions, ' AND ')}`
+        : Prisma.empty;
+
+    const beamRows = await this.queryBeamInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'sn',
+    );
+
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'sn',
+    );
+
+    const combined = [...beamRows, ...tagRows];
+    if (!combined.length) {
+      return undefined;
+    }
+    const unique = new Map<string, ProcessMetricRow>();
+    for (const row of combined) {
+      const key = this.buildProcessMetricRowKey(row);
+      if (!unique.has(key)) {
+        unique.set(key, row);
+      }
+    }
+
+    const data = [...unique.values()];
+    if (!data) {
+      return undefined;
+    }
+    //
+    return this.aggregateProcessMetricData(data);
+  }
+
+  private async loadPackingMetrics(
+    params: ProcessMetricLoaderParams,
+  ): Promise<AggregatedProcessMetric | undefined> {
+    const { product, client, stepTypeNo, range } = params;
+    if (!product) {
+      return undefined;
+    }
+
+    const tableAlias = 'mpspr';
+    const baseSql = Prisma.sql`
+      SELECT ${Prisma.raw(tableAlias)}.camera_sn AS product_sn, ${Prisma.raw(tableAlias)}.start_time, ${Prisma.raw(tableAlias)}.end_time
+      FROM mo_packing_info AS ${Prisma.raw(tableAlias)}
+    `;
+
+    const filterConditions: Prisma.Sql[] = [];
+
+    const timestampExpr = Prisma.sql`COALESCE(${Prisma.raw(tableAlias)}.start_time)`;
     if (range.start) {
       filterConditions.push(Prisma.sql`${timestampExpr} >= ${range.start}`);
     }
@@ -1247,7 +1471,7 @@ export class DashboardService {
 
   private isSuccessCode(value: unknown): boolean {
     if (value === null || value === undefined) {
-      return false;
+      return true;
     }
 
     if (typeof value === 'number') {
@@ -1574,8 +1798,7 @@ export class DashboardService {
   private formatDateRange(start?: string, end?: string): string {
     const normalizedStart =
       this.normalizeDate('start', start) ?? start?.trim() ?? '';
-    const normalizedEnd =
-      this.normalizeDate('end', end) ?? end?.trim() ?? '';
+    const normalizedEnd = this.normalizeDate('end', end) ?? end?.trim() ?? '';
 
     if (normalizedStart && normalizedEnd) {
       if (normalizedStart === normalizedEnd) {
