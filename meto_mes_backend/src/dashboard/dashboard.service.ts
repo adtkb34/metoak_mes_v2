@@ -196,6 +196,7 @@ export class DashboardService {
     });
 
     const origin = params.origin;
+    const productCode = params.product?.trim();
 
     let processMetrics: ProcessMetricRow[] = [];
 
@@ -337,7 +338,7 @@ export class DashboardService {
       for (const { definition, result } of statsList) {
         rows.push({
           id: `${stepTypeNo}-${definition.value}`,
-          product: params.product ?? '',
+          product: productCode ?? '',
           origin,
           batch: '',
           date: this.formatDateRange(params.startDate, params.endDate),
@@ -353,6 +354,38 @@ export class DashboardService {
           reworkCount: result.reworkCount,
           defects: [],
         });
+      }
+    }
+
+    let paretoBreakdown: Array<{ reason: string; count: number }> = [];
+    if (origin !== undefined && productCode) {
+      try {
+        const paretoRows =
+          (await this.fetchGenericProcessMetricData({
+            product: productCode,
+            client: this.prisma.getClientByOrigin(origin),
+            stepTypeNo,
+            range: { start, end },
+          })) ?? [];
+
+        if (paretoRows.length) {
+          paretoBreakdown = this.buildParetoBreakdown(
+            paretoRows,
+            (row) => this.populateNgReasonFromErrorCode(row),
+          );
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : String(error ?? '');
+        this.logger.warn(
+          `Failed to load pareto data for process ${stepTypeNo}: ${message}`,
+        );
+      }
+    }
+
+    if (paretoBreakdown.length) {
+      for (const row of rows) {
+        row.defects = paretoBreakdown.map((item) => ({ ...item }));
       }
     }
 
@@ -1024,6 +1057,79 @@ export class DashboardService {
     };
   }
 
+  private buildParetoBreakdown(
+    rows: ProcessMetricRow[],
+    setNgReason: (row: ProcessMetricRow) => void,
+  ): Array<{ reason: string; count: number }> {
+    if (!rows.length) {
+      return [];
+    }
+
+    const counter = new Map<string, number>();
+
+    for (const row of rows) {
+      if (this.isSuccessCode(row.error_code)) {
+        continue;
+      }
+
+      try {
+        setNgReason(row);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : String(error ?? '');
+        this.logger.warn(
+          `Failed to map NG reason for product ${row.product_sn ?? ''}: ${message}`,
+        );
+      }
+
+      const reason =
+        typeof row.ng_reason === 'string' ? row.ng_reason.trim() : undefined;
+
+      if (!reason) {
+        continue;
+      }
+
+      counter.set(reason, (counter.get(reason) ?? 0) + 1);
+    }
+
+    return [...counter.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([reason, count]) => ({ reason, count }));
+  }
+
+  private populateNgReasonFromErrorCode(row: ProcessMetricRow): void {
+    if (typeof row.ng_reason === 'string') {
+      row.ng_reason = row.ng_reason.trim();
+      if (row.ng_reason) {
+        return;
+      }
+    }
+
+    const code = row.error_code;
+
+    if (code === null || code === undefined) {
+      row.ng_reason = '';
+      return;
+    }
+
+    if (typeof code === 'string') {
+      row.ng_reason = code.trim();
+      return;
+    }
+
+    if (typeof code === 'number') {
+      row.ng_reason = code === 0 ? '' : String(code);
+      return;
+    }
+
+    if (typeof code === 'bigint') {
+      row.ng_reason = code === BigInt(0) ? '' : code.toString();
+      return;
+    }
+
+    row.ng_reason = '';
+  }
+
   private createEmptyProcessMetricsSummary(): ProcessMetricsSummary {
     return {
       数量: {
@@ -1466,19 +1572,10 @@ export class DashboardService {
   }
 
   private formatDateRange(start?: string, end?: string): string {
-    const normalize = (value?: string): string => {
-      if (!value) {
-        return '';
-      }
-      const trimmed = value.trim();
-      if (!trimmed) {
-        return '';
-      }
-      return trimmed;
-    };
-
-    const normalizedStart = normalize(start);
-    const normalizedEnd = normalize(end);
+    const normalizedStart =
+      this.normalizeDate('start', start) ?? start?.trim() ?? '';
+    const normalizedEnd =
+      this.normalizeDate('end', end) ?? end?.trim() ?? '';
 
     if (normalizedStart && normalizedEnd) {
       if (normalizedStart === normalizedEnd) {
