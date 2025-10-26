@@ -425,58 +425,58 @@ export class DashboardService {
     try {
       const client = this.prisma.getClientByOrigin(params.origin);
       const product = params.product;
-      let data;
+      let rows: ProcessMetricRow[] | undefined;
       if (params.stepTypeNo == STEP_NO.CALIB) {
-        data = await this.loadCalibMetrics({
+        rows = await this.fetchCalibMetricRows({
           product,
           client,
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
-        data = await this.loadAssemblePcbaMetrics({
+        rows = await this.fetchAssemblePcbaMetricRows({
           product,
           client,
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
-        data = await this.loadAutoAdjustMetrics({
+        rows = await this.fetchAutoAdjustMetricRows({
           product,
           client,
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.S315FQC) {
-        data = await this.loadS315FqcMetrics({
+        rows = await this.fetchS315FqcMetricRows({
           product,
           client,
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.PACKING) {
-        data = await this.loadPackingMetrics({
+        rows = await this.fetchPackingMetricRows({
           product,
           client,
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
-        data = await this.loadStereoPrecheckMetrics({
+        rows = await this.fetchStereoPrecheckMetricRows({
           product,
           client,
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
-        data = await this.loadStereoPostCheckcheckMetrics({
+        rows = await this.fetchStereoPostCheckMetricRows({
           product,
           client,
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
       } else {
-        data = await this.loadProcessProductionMetrics({
+        rows = await this.fetchProcessProductionMetricRows({
           product,
           client,
           stepTypeNo: normalizedStepTypeNo,
@@ -484,8 +484,11 @@ export class DashboardService {
         });
       }
 
-      console.log(data);
-      return data ?? summary;
+      const aggregated = rows
+        ? this.aggregateProcessMetricData(rows)
+        : undefined;
+
+      return aggregated ?? summary;
     } catch (error) {
       this.logger.error(
         `Failed to load process metrics from mo_process_step_production_result: ${error.message}`,
@@ -522,70 +525,70 @@ export class DashboardService {
 
     try {
       const client = this.prisma.getClientByOrigin(params.origin);
-      let data;
+      let rows: ProcessMetricRow[] | undefined;
       if (params.stepTypeNo == STEP_NO.CALIB) {
-        data = await this.loadCalibMetrics({
+        rows = await this.fetchCalibMetricRows({
           product,
           client,
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
-        data = await this.loadAssemblePcbaMetrics({
+        rows = await this.fetchAssemblePcbaMetricRows({
           product,
           client,
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
-        data = await this.loadAutoAdjustMetrics({
+        rows = await this.fetchAutoAdjustMetricRows({
           product,
           client,
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.S315FQC) {
-        data = await this.loadS315FqcMetrics({
+        rows = await this.fetchS315FqcMetricRows({
           product,
           client,
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.PACKING) {
-        data = await this.loadPackingMetrics({
+        rows = await this.fetchPackingMetricRows({
           product,
           client,
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
-        data = await this.loadStereoPrecheckMetrics({
+        rows = await this.fetchStereoPrecheckMetricRows({
           product,
           client,
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
       } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
-        data = await this.loadStereoPostCheckcheckMetrics({
+        rows = await this.fetchStereoPostCheckMetricRows({
           product,
           client,
           stepTypeNo: stepTypeNo,
           range: { start, end },
         });
       } else {
-        data = await this.fetchGenericProcessMetricData({
+        rows = await this.fetchGenericProcessMetricData({
           product,
           client,
           stepTypeNo,
           range: { start, end },
         });
       }
-      console.log(data);
-      if (!data.length) {
+      console.log(rows);
+      if (!rows?.length) {
         return empty;
       }
       const breakdown = this.buildParetoBreakdown(
-        data,
+        rows,
         // this.populateNgReasonFromErrorCode(row),
       );
 
@@ -709,9 +712,9 @@ export class DashboardService {
     }
   }
 
-  private async loadAutoAdjustMetrics(
+  private async fetchAutoAdjustMetricRows(
     params: ProcessMetricLoaderParams,
-  ): Promise<AggregatedProcessMetric | undefined> {
+  ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
     if (!product) {
       return undefined;
@@ -774,13 +777,13 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    //
-    return this.aggregateProcessMetricData(data);
+
+    return data;
   }
 
-  private async loadCalibMetrics(
+  private async fetchCalibMetricRows(
     params: ProcessMetricLoaderParams,
-  ): Promise<AggregatedProcessMetric | undefined> {
+  ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
     if (!product) {
       return undefined;
@@ -843,13 +846,13 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    //
-    return this.aggregateProcessMetricData(data);
+
+    return data;
   }
 
-  private async loadAssemblePcbaMetrics(
+  private async fetchAssemblePcbaMetricRows(
     params: ProcessMetricLoaderParams,
-  ): Promise<AggregatedProcessMetric | undefined> {
+  ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
     if (!product) {
       return undefined;
@@ -912,13 +915,13 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    //
-    return this.aggregateProcessMetricData(data);
+
+    return data;
   }
 
-  private async loadS315FqcMetrics(
+  private async fetchS315FqcMetricRows(
     params: ProcessMetricLoaderParams,
-  ): Promise<AggregatedProcessMetric | undefined> {
+  ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
     if (!product) {
       return undefined;
@@ -980,13 +983,13 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    //
-    return this.aggregateProcessMetricData(data);
+
+    return data;
   }
 
-  private async loadStereoPrecheckMetrics(
+  private async fetchStereoPrecheckMetricRows(
     params: ProcessMetricLoaderParams,
-  ): Promise<AggregatedProcessMetric | undefined> {
+  ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
     if (!product) {
       return undefined;
@@ -1048,13 +1051,13 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    //
-    return this.aggregateProcessMetricData(data);
+
+    return data;
   }
 
-  private async loadStereoPostCheckcheckMetrics(
+  private async fetchStereoPostCheckMetricRows(
     params: ProcessMetricLoaderParams,
-  ): Promise<AggregatedProcessMetric | undefined> {
+  ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
     if (!product) {
       return undefined;
@@ -1116,13 +1119,13 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    //
-    return this.aggregateProcessMetricData(data);
+
+    return data;
   }
 
-  private async loadPackingMetrics(
+  private async fetchPackingMetricRows(
     params: ProcessMetricLoaderParams,
-  ): Promise<AggregatedProcessMetric | undefined> {
+  ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
     if (!product) {
       return undefined;
@@ -1184,18 +1187,18 @@ export class DashboardService {
     if (!data) {
       return undefined;
     }
-    //
-    return this.aggregateProcessMetricData(data);
+
+    return data;
   }
 
-  private async loadProcessProductionMetrics(
+  private async fetchProcessProductionMetricRows(
     params: ProcessMetricLoaderParams,
-  ): Promise<AggregatedProcessMetric | undefined> {
+  ): Promise<ProcessMetricRow[] | undefined> {
     const data = await this.fetchGenericProcessMetricData(params);
     if (!data) {
       return undefined;
     }
-    return this.aggregateProcessMetricData(data);
+    return data;
   }
 
   private async queryBeamInfoProducts(
