@@ -75,49 +75,49 @@ export class DashboardController {
     };
   }
 
-  @Post('process-detail')
-  async getProcessDetail(
-    @Body()
-    body: {
-      processId?: string;
-      startDate?: string;
-      endDate?: string;
-      origin?: string | number | null;
-      product?: string | null;
-      stepTypeNo?: string;
-      equipmentIds?: string[] | string | null;
-    },
-  ): Promise<{ success: true; data: ProcessDetailData }> {
-    const processId = body?.processId?.trim();
-    if (!processId) {
-      throw new BadRequestException('缺少工序ID');
-    }
+  // @Post('process-detail')
+  // async getProcessDetail(
+  //   @Body()
+  //   body: {
+  //     processId?: string;
+  //     startDate?: string;
+  //     endDate?: string;
+  //     origin?: string | number | null;
+  //     product?: string | null;
+  //     stepTypeNo?: string;
+  //     equipmentIds?: string[] | string | null;
+  //   },
+  // ): Promise<{ success: true; data: ProcessDetailData }> {
+  //   const processId = body?.processId?.trim();
+  //   if (!processId) {
+  //     throw new BadRequestException('缺少工序ID');
+  //   }
 
-    const origin = this.parseOrigin(body?.origin);
+  //   const origin = this.parseOrigin(body?.origin);
 
-    const equipmentIds = Array.isArray(body?.equipmentIds)
-      ? body?.equipmentIds
-      : body?.equipmentIds
-        ? [String(body.equipmentIds)]
-        : undefined;
+  //   const equipmentIds = Array.isArray(body?.equipmentIds)
+  //     ? body?.equipmentIds
+  //     : body?.equipmentIds
+  //       ? [String(body.equipmentIds)]
+  //       : undefined;
 
-    const startDate =
-      this.normalizeDateParam('start', body?.startDate) ?? body?.startDate;
-    const endDate =
-      this.normalizeDateParam('end', body?.endDate) ?? body?.endDate;
+  //   const startDate =
+  //     this.normalizeDateParam('start', body?.startDate) ?? body?.startDate;
+  //   const endDate =
+  //     this.normalizeDateParam('end', body?.endDate) ?? body?.endDate;
 
-    const data = await this.dashboardService.getProcessDetail({
-      processId,
-      startDate,
-      endDate,
-      origin,
-      product: body?.product ?? null,
-      stepTypeNo: body?.stepTypeNo,
-      equipmentIds,
-    });
+  //   const data = await this.dashboardService.getProcessDetail({
+  //     processId,
+  //     startDate,
+  //     endDate,
+  //     origin,
+  //     product: body?.product ?? null,
+  //     stepTypeNo: body?.stepTypeNo,
+  //     equipmentIds,
+  //   });
 
-    return { success: true, data };
-  }
+  //   return { success: true, data };
+  // }
 
   @Get('process-metrics')
   async getProcessMetrics(

@@ -293,115 +293,115 @@ export class DashboardService {
     }));
   }
 
-  async getProcessDetail(
-    params: ProcessDetailParams,
-  ): Promise<ProcessDetailData> {
-    const stepTypeNo = params.processId?.trim();
-    if (!stepTypeNo) {
-      throw new Error('缺少工序编号');
-    }
+  // async getProcessDetail(
+  //   params: ProcessDetailParams,
+  // ): Promise<ProcessDetailData> {
+  //   const stepTypeNo = params.processId?.trim();
+  //   if (!stepTypeNo) {
+  //     throw new Error('缺少工序编号');
+  //   }
 
-    const origin = params.origin;
+  //   const origin = params.origin;
 
-    const stage = await this.prisma.mo_workstage.findFirst({
-      where: { step_type_no: stepTypeNo },
-    });
+  //   const stage = await this.prisma.mo_workstage.findFirst({
+  //     where: { step_type_no: stepTypeNo },
+  //   });
 
-    const { start, end } = this.normalizeDateRange(
-      params.startDate,
-      params.endDate,
-    );
+  //   const { start, end } = this.normalizeDateRange(
+  //     params.startDate,
+  //     params.endDate,
+  //   );
 
-    const equipmentDefinitions =
-      origin !== undefined
-        ? this.getEquipmentDefinitions(stepTypeNo, origin)
-        : [];
+  //   const equipmentDefinitions =
+  //     origin !== undefined
+  //       ? this.getEquipmentDefinitions(stepTypeNo, origin)
+  //       : [];
 
-    const equipmentOptions = equipmentDefinitions.map(({ label, value }) => ({
-      label,
-      value,
-    }));
+  //   const equipmentOptions = equipmentDefinitions.map(({ label, value }) => ({
+  //     label,
+  //     value,
+  //   }));
 
-    const rows: ProcessDetailRow[] = [];
+  //   const rows: ProcessDetailRow[] = [];
 
-    if (origin !== undefined && equipmentDefinitions.length) {
-      const definitionsToUse = this.filterEquipmentDefinitions(
-        equipmentDefinitions,
-        params.equipmentIds,
-      );
+  //   if (origin !== undefined && equipmentDefinitions.length) {
+  //     const definitionsToUse = this.filterEquipmentDefinitions(
+  //       equipmentDefinitions,
+  //       params.equipmentIds,
+  //     );
 
-      const statsList = await Promise.all(
-        definitionsToUse.map((definition) =>
-          this.calculateStepStatistics({
-            origin,
-            stepTypeNo,
-            range: { start, end },
-            equipment: [definition],
-          }).then((result) => ({ definition, result })),
-        ),
-      );
+  //     const statsList = await Promise.all(
+  //       definitionsToUse.map((definition) =>
+  //         this.calculateStepStatistics({
+  //           origin,
+  //           stepTypeNo,
+  //           range: { start, end },
+  //           equipment: [definition],
+  //         }).then((result) => ({ definition, result })),
+  //       ),
+  //     );
 
-      for (const { definition, result } of statsList) {
-        rows.push({
-          id: `${stepTypeNo}-${definition.value}`,
-          product: productCode ?? '',
-          origin,
-          batch: '',
-          date: this.formatDateRange(params.startDate, params.endDate),
-          equipment: definition.label,
-          station:
-            definition.source === 'INFO'
-              ? String(definition.stationNum ?? '')
-              : 'ST08',
-          output: result.totalOutput,
-          firstPassRate: result.firstPassRate,
-          finalPassRate: result.finalPassRate,
-          scrapCount: result.scrapCount,
-          reworkCount: result.reworkCount,
-          defects: [],
-        });
-      }
-    }
+  //     for (const { definition, result } of statsList) {
+  //       rows.push({
+  //         id: `${stepTypeNo}-${definition.value}`,
+  //         product: productCode ?? '',
+  //         origin,
+  //         batch: '',
+  //         date: this.formatDateRange(params.startDate, params.endDate),
+  //         equipment: definition.label,
+  //         station:
+  //           definition.source === 'INFO'
+  //             ? String(definition.stationNum ?? '')
+  //             : 'ST08',
+  //         output: result.totalOutput,
+  //         firstPassRate: result.firstPassRate,
+  //         finalPassRate: result.finalPassRate,
+  //         scrapCount: result.scrapCount,
+  //         reworkCount: result.reworkCount,
+  //         defects: [],
+  //       });
+  //     }
+  //   }
 
-    let paretoBreakdown: Array<{ reason: string; count: number }> = [];
-    if (origin !== undefined && productCode) {
-      try {
-        const paretoRows =
-          (await this.fetchGenericProcessMetricData({
-            product: productCode,
-            client: this.prisma.getClientByOrigin(origin),
-            stepTypeNo,
-            range: { start, end },
-          })) ?? [];
+  //   let paretoBreakdown: Array<{ reason: string; count: number }> = [];
+  //   if (origin !== undefined && productCode) {
+  //     try {
+  //       const paretoRows =
+  //         (await this.fetchGenericProcessMetricData({
+  //           product: productCode,
+  //           client: this.prisma.getClientByOrigin(origin),
+  //           stepTypeNo,
+  //           range: { start, end },
+  //         })) ?? [];
 
-        if (paretoRows.length) {
-          paretoBreakdown = this.buildParetoBreakdown(paretoRows, (row) =>
-            this.populateNgReasonFromErrorCode(row),
-          );
-        }
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : String(error ?? '');
-        this.logger.warn(
-          `Failed to load pareto data for process ${stepTypeNo}: ${message}`,
-        );
-      }
-    }
+  //       if (paretoRows.length) {
+  //         paretoBreakdown = this.buildParetoBreakdown(paretoRows, (row) =>
+  //           this.populateNgReasonFromErrorCode(row),
+  //         );
+  //       }
+  //     } catch (error) {
+  //       const message =
+  //         error instanceof Error ? error.message : String(error ?? '');
+  //       this.logger.warn(
+  //         `Failed to load pareto data for process ${stepTypeNo}: ${message}`,
+  //       );
+  //     }
+  //   }
 
-    if (paretoBreakdown.length) {
-      for (const row of rows) {
-        row.defects = paretoBreakdown.map((item) => ({ ...item }));
-      }
-    }
+  //   if (paretoBreakdown.length) {
+  //     for (const row of rows) {
+  //       row.defects = paretoBreakdown.map((item) => ({ ...item }));
+  //     }
+  //   }
 
-    return {
-      processId: stepTypeNo,
-      processName: stage?.stage_name ?? `工序 ${stepTypeNo}`,
-      equipmentOptions,
-      stationOptions: [],
-      rows,
-    };
-  }
+  //   return {
+  //     processId: stepTypeNo,
+  //     processName: stage?.stage_name ?? `工序 ${stepTypeNo}`,
+  //     equipmentOptions,
+  //     stationOptions: [],
+  //     rows,
+  //   };
+  // }
 
   async getProcessMetrics(
     params: ProcessMetricsParams,
@@ -529,9 +529,10 @@ export class DashboardService {
       if (!rows.length) {
         return empty;
       }
-
-      const breakdown = this.buildParetoBreakdown(rows, (row) =>
-        this.populateNgReasonFromErrorCode(row),
+      console.log(rows);
+      const breakdown = this.buildParetoBreakdown(
+        rows,
+        // this.populateNgReasonFromErrorCode(row),
       );
 
       if (!breakdown.length) {
@@ -546,13 +547,12 @@ export class DashboardService {
         counts: breakdown.map((item) => item.count),
         cumulative: breakdown.map((item) => {
           running += item.count;
-          return total
-            ? Number(((running / total) * 100).toFixed(1))
-            : 0;
+          return total ? Number(((running / total) * 100).toFixed(1)) : 0;
         }),
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error ?? '');
+      const message =
+        error instanceof Error ? error.message : String(error ?? '');
       this.logger.warn(
         `Failed to load pareto data for process ${stepTypeNo}: ${message}`,
       );
@@ -1203,7 +1203,7 @@ export class DashboardService {
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
-      SELECT ${Prisma.raw(tableAlias)}.product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.start_time, ${Prisma.raw(tableAlias)}.end_time
+      SELECT ${Prisma.raw(tableAlias)}.product_sn, ${Prisma.raw(tableAlias)}.error_code, ${Prisma.raw(tableAlias)}.start_time, ${Prisma.raw(tableAlias)}.end_time, ${Prisma.raw(tableAlias)}.ng_reason
       FROM mo_process_step_production_result AS ${Prisma.raw(tableAlias)}
     `;
 
@@ -1358,7 +1358,7 @@ export class DashboardService {
 
   private buildParetoBreakdown(
     rows: ProcessMetricRow[],
-    setNgReason: (row: ProcessMetricRow) => void,
+    // setNgReason: (row: ProcessMetricRow) => void,
   ): Array<{ reason: string; count: number }> {
     if (!rows.length) {
       return [];
@@ -1371,15 +1371,15 @@ export class DashboardService {
         continue;
       }
 
-      try {
-        setNgReason(row);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : String(error ?? '');
-        this.logger.warn(
-          `Failed to map NG reason for product ${row.product_sn ?? ''}: ${message}`,
-        );
-      }
+      // try {
+      //   setNgReason(row);
+      // } catch (error) {
+      //   const message =
+      //     error instanceof Error ? error.message : String(error ?? '');
+      //   this.logger.warn(
+      //     `Failed to map NG reason for product ${row.product_sn ?? ''}: ${message}`,
+      //   );
+      // }
 
       const reason =
         typeof row.ng_reason === 'string' ? row.ng_reason.trim() : undefined;
@@ -1396,38 +1396,38 @@ export class DashboardService {
       .map(([reason, count]) => ({ reason, count }));
   }
 
-  private populateNgReasonFromErrorCode(row: ProcessMetricRow): void {
-    if (typeof row.ng_reason === 'string') {
-      row.ng_reason = row.ng_reason.trim();
-      if (row.ng_reason) {
-        return;
-      }
-    }
+  // private populateNgReasonFromErrorCode(row: ProcessMetricRow): void {
+  //   if (typeof row.ng_reason === 'string') {
+  //     row.ng_reason = row.ng_reason.trim();
+  //     if (row.ng_reason) {
+  //       return;
+  //     }
+  //   }
 
-    const code = row.error_code;
+  //   const code = row.error_code;
 
-    if (code === null || code === undefined) {
-      row.ng_reason = '';
-      return;
-    }
+  //   if (code === null || code === undefined) {
+  //     row.ng_reason = '';
+  //     return;
+  //   }
 
-    if (typeof code === 'string') {
-      row.ng_reason = code.trim();
-      return;
-    }
+  //   if (typeof code === 'string') {
+  //     row.ng_reason = code.trim();
+  //     return;
+  //   }
 
-    if (typeof code === 'number') {
-      row.ng_reason = code === 0 ? '' : String(code);
-      return;
-    }
+  //   if (typeof code === 'number') {
+  //     row.ng_reason = code === 0 ? '' : String(code);
+  //     return;
+  //   }
 
-    if (typeof code === 'bigint') {
-      row.ng_reason = code === BigInt(0) ? '' : code.toString();
-      return;
-    }
+  //   if (typeof code === 'bigint') {
+  //     row.ng_reason = code === BigInt(0) ? '' : code.toString();
+  //     return;
+  //   }
 
-    row.ng_reason = '';
-  }
+  //   row.ng_reason = '';
+  // }
 
   private createEmptyProcessMetricsSummary(): ProcessMetricsSummary {
     return {
