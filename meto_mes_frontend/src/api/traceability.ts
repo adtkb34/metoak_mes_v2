@@ -38,6 +38,12 @@ export interface TraceabilityProcessStepDataResponse {
   data: TraceabilityProcessRecord[];
 }
 
+export interface TraceabilityMaterialCodeResponse {
+  serialNumber: string;
+  workOrderCode: string | null;
+  materialCode: string | null;
+}
+
 export interface TraceabilityQuery {
   serialNumber: string;
   processCode?: string;
@@ -65,6 +71,14 @@ export function getTraceabilityProcess(params: TraceabilityProcessQuery) {
   return http.request<TraceabilityProcessStepDataResponse>(
     "get",
     "/traceability/process",
+    { params }
+  );
+}
+
+export function getTraceabilityMaterialCode(params: { serialNumber: string }) {
+  return http.request<TraceabilityMaterialCodeResponse>(
+    "get",
+    "/traceability/material-code",
     { params }
   );
 }

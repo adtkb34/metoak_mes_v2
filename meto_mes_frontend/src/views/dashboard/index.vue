@@ -87,6 +87,7 @@ import FiltersPanel from "./components/FiltersPanel.vue";
 import ProcessOverview from "./components/ProcessOverview.vue";
 import ProcessDetail from "./components/ProcessDetail.vue";
 import WorkOrdersTable from "./components/WorkOrdersTable.vue";
+import { getFlowCodeByMaterial } from "@/api/quality";
 import type {
   FilterState,
   ParetoChartData,
@@ -175,6 +176,76 @@ const createEmptyParetoData = (): ParetoChartData => ({
   cumulative: []
 });
 const paretoData = ref<ParetoChartData>(createEmptyParetoData());
+
+let productProcessRequestToken = 0;
+
+function normalizeStringValue(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const stringified = String(value).trim();
+  return stringified.length > 0 ? stringified : null;
+}
+
+function extractFlowCodes(response: any): string[] {
+  const source = Array.isArray(response?.data)
+    ? response.data
+    : Array.isArray(response)
+      ? response
+      : [];
+
+  const codes = source
+    .map((item: any) =>
+      normalizeStringValue(
+        item?.flow_code ??
+          item?.flowCode ??
+          item?.process_code ??
+          item?.processCode
+      )
+    )
+    .filter((code): code is string => Boolean(code));
+
+  return Array.from(new Set(codes));
+}
+
+function selectPreferredProcessCode(codes: string[]): string | null {
+  if (!codes.length) {
+    return null;
+  }
+
+  const availableCodes = new Set(
+    (processOptions.value ?? [])
+      .map(option => normalizeStringValue(option?.value))
+      .filter((code): code is string => Boolean(code))
+  );
+
+  if (availableCodes.size > 0) {
+    for (const code of codes) {
+      if (availableCodes.has(code)) {
+        return code;
+      }
+    }
+    return null;
+  }
+
+  return codes[0] ?? null;
+}
+
+const resetProcessDataState = () => {
+  syncProcessStepsWithSelection();
+  processMetricsMap.value = {
+    ...buildEmptyMetricsMap(activeProcessSteps.value)
+  };
+  selectedProcessId.value = null;
+  detailError.value = null;
+  paretoData.value = createEmptyParetoData();
+};
 
 const getStepDisplayLabel = (step: ProcessStepInfo): string => {
   const explicitLabel = step.label?.trim?.();
@@ -477,16 +548,33 @@ watch(
 
 watch(
   () => filters.product,
-  value => {
-    if (!value) {
-      filters.processCode = null;
-      syncProcessStepsWithSelection();
-      processMetricsMap.value = {
-        ...buildEmptyMetricsMap(activeProcessSteps.value)
-      };
-      selectedProcessId.value = null;
-      detailError.value = null;
-      paretoData.value = createEmptyParetoData();
+  async value => {
+    const normalizedProduct = normalizeStringValue(value);
+    const requestToken = ++productProcessRequestToken;
+
+    filters.processCode = null;
+    resetProcessDataState();
+
+    if (!normalizedProduct) {
+      return;
+    }
+
+    try {
+      const response = await getFlowCodeByMaterial(normalizedProduct);
+      if (requestToken !== productProcessRequestToken) {
+        return;
+      }
+
+      const candidateCodes = extractFlowCodes(response);
+      const preferredCode = selectPreferredProcessCode(candidateCodes);
+      if (preferredCode) {
+        filters.processCode = preferredCode;
+      }
+    } catch (error) {
+      if (requestToken !== productProcessRequestToken) {
+        return;
+      }
+      console.error(error);
     }
   }
 );
