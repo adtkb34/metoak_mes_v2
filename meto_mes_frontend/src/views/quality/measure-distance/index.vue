@@ -11,6 +11,7 @@
         <el-option v-for="item in precisionOptions" :key="item.value" :label="item.label" :value="item.value" />
       </el-select>
       <el-button type="primary" @click="fetchData">查询</el-button>
+      <el-button type="primary" @click="exportCSV">导出</el-button>
     </div>
 
     <!-- 组合图表 -->
@@ -22,7 +23,7 @@
 import { ref, onMounted } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { getMeasureDistanceData } from '@/api/quality' // 你的接口
+import { exportMeasureDistanceData, getMeasureDistanceData } from '@/api/quality' // 你的接口
 
 const dateRange = ref([])
 const distance = ref()
@@ -133,6 +134,36 @@ const fetchData = async () => {
     console.error(error)
   }
 }
+
+const exportCSV = async () => {
+  if (!dateRange.value.length) {
+    ElMessage.warning('请选择日期范围');
+    return;
+  }
+
+  const params = {
+    startDate: dateRange.value[0],
+    endDate: dateRange.value[1],
+  };
+
+  try {
+    const res = await exportMeasureDistanceData(params);
+    const blob = new Blob([res], { type: 'text/csv;charset=utf-8;' });
+
+    // 动态生成文件名
+    const fileName = `dist_measuring_check_${params.startDate}_${params.endDate}.csv`;
+
+    // 创建下载链接
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  } catch (err) {
+    console.error(err);
+    ElMessage.error('导出失败');
+  }
+};
 
 onMounted(() => {
   initChart()

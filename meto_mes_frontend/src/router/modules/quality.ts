@@ -18,15 +18,15 @@ export default {
     rank: 1
   },
   children: [
-    {
-      path: "/statistics/quality-v2",
-      name: "QualityV2",
-      component: () => import("@/views/quality/analysis-v2/index.vue"),
-      meta: {
-        title: "工序产量统计",
-        showParent: true,
-      }
-    },
+    // {
+    //   path: "/statistics/quality-v2",
+    //   name: "QualityV2",
+    //   component: () => import("@/views/quality/analysis-v2/index.vue"),
+    //   meta: {
+    //     title: "工序产量统计",
+    //     showParent: true,
+    //   }
+    // },
     {
       path: "/statistics/quality",
       name: "Quality",

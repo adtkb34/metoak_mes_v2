@@ -155,6 +155,7 @@ export class BasicInformationService {
   }
 
   async getProcessFlow(origin?: ProductOrigin) {
+    console.log(111111111, origin)
     const client = this.prisma.getClientByOrigin(origin);
 
     const result = await client.mo_process_flow.findMany({

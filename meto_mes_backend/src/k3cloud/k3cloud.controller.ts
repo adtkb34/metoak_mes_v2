@@ -54,7 +54,7 @@ export class K3CloudController {
     @Query('productCode') productCode: string,
   ) {
     const data = await this.k3cloudService.queryBomItems(productCode);
-    
+    console.log(data)
     return {
       success: data.length > 0,
       data,

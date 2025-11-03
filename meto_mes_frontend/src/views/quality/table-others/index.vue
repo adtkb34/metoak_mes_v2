@@ -90,12 +90,12 @@
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
 import { getOthersData, getOthersDataErrorCodes } from '@/api/quality'
-import { useSpcStorev2 } from '@/store/modules/SPC/v2'
+import { useSpcStore } from '@/store/modules/SPC/v2'
 import { ElMessage } from 'element-plus'
 import { formatDateToYMDHMS } from '../utils'
 import QualityErrorChart from '../components/QualityErrorChart.vue'
 
-const spc = useSpcStorev2()
+const spc = useSpcStore('table-others')
 const stepNo = ref()
 const analysisData = ref([0])
 const enableAnalysis = ref(false);
@@ -176,7 +176,7 @@ const fetchErrCodes = async () => {
   const res = await getOthersDataErrorCodes(params);
   analysisData.value = res.stats.map(item => {
     return {
-      name: item.error_code + '' === '0' ? `合格: ${item.count}` : `错误码-${item.error_code}: ${item.count}`,
+      name: item.error_code + '' === '0' ? `合格: ${item.count}` : `${item.error_code}: ${item.count}`,
       value: +item.count
     }
   });
@@ -229,6 +229,6 @@ watch(
 )
 
 onMounted(() => {
-  spc.fetchSteps()
+  spc.fetchSteps(false)
 })
 </script>

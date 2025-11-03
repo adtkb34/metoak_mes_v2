@@ -1,124 +1,134 @@
 <template>
-  <div class="h-[100%] w-[100%] pr-10 flex flex-col">
-    <!-- 设置弹窗 -->
-    <el-dialog v-model="showControlDialog" title="控制图设置" width="700px" destroy-on-close draggable :modal="false">
-      <SpcControlPanel />
-      <template #footer>
-        <SpcExporter :chart-id="`chart-${station.key}`" :tableData="visibleData" />
-      </template>
-    </el-dialog>
-
-    <!-- 控制图区域 -->
-    <div class="p-4 flex-shrink-0">
-      <div>
-        <div class="text-xl font-bold">{{ spc.selectedTitle }}</div>
-        <div class="flex gap-4 items-center">
-          <!-- <el-select v-model="spc.selectedField" placeholder="选择字段" style="width: 180px" filterable
-            @change="handleFieldChange">
-            <el-option v-for="field in fields" :key="field.key" :label="field.label" :value="field.key" />
-          </el-select> -->
-          <el-select v-model="selectedChart" placeholder="选择控制图" style="width: 150px">
+  <div class="spc-dashboard w-[95%] h-full p-4 flex flex-col gap-4 overflow-auto">
+    <!-- 多行控制图面板 -->
+    <div v-for="panel in panels" :key="panel.id"
+      class="spc-panel border border-gray-200 rounded-md shadow-sm bg-white p-4 flex flex-col gap-4">
+      <!-- 面板头部 -->
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-4">
+          <div class="text-xl font-bold">{{ chartTitle(panel.id) }}</div>
+          <el-select v-model="panel.selectedChart" placeholder="选择控制图" style="width: 150px">
             <el-option label="均值控制图" value="spc" />
             <el-option label="极差图" value="r" />
           </el-select>
-          <el-button type="primary" @click="showControlDialog = true">控制图设置</el-button>
-          <ExcelUploader v-if="!spc.isRealtime" @update:data="handleExcelUpdate" />
+        </div>
+        <div class="flex gap-2">
+          <el-button type="primary" @click="panel.showDialog = true">控制图设置</el-button>
+          <el-button type="danger" text @click="removePanel(panel.id)">删除</el-button>
         </div>
       </div>
+
+      <!-- 控制图设置弹窗 -->
+      <el-dialog v-model="panel.showDialog" title="控制图设置" width="700px" destroy-on-close draggable :modal="false">
+        <SpcControlPanel :spc="panel.spc" />
+        <template #footer>
+          <SpcExporter :chart-id="`chart-${panel.id}`" :tableData="panel.spc.data" />
+        </template>
+      </el-dialog>
+
+
+      <!-- 控制图 -->
       <div class="h-[40vh]">
-        <SpcChart :data="visibleData" :usl="spc.usl" :lsl="spc.lsl" :show-control-lines="spc.showControlLines"
-          v-if="selectedChart === 'spc'" v-model:rules="spc.selectedRules" :id="`chart-${station.key}`" />
-        <RChart v-if="selectedChart === 'r'" :data="rData" :show-control-lines="spc.showControlLines" />
+        <SpcChart v-if="panel.selectedChart === 'spc'" :data="panel.spc.data" :usl="panel.spc.usl" :lsl="panel.spc.lsl"
+          :show-control-lines="panel.spc.showControlLines" v-model:rules="panel.spc.selectedRules"
+          :id="`chart-${panel.id}`" />
+        <RChart v-else :data="splitIntoSubgroups(panel.spc.data, panel.spc.childLength || 5)"
+          :show-control-lines="panel.spc.showControlLines" />
+      </div>
+
+      <!-- 下方三栏 -->
+      <div class="flex flex-1 gap-4">
+        <!-- 左 -->
+        <el-card class="flex-1" shadow="never">
+          <NormalFit :data="panel.spc.data" :active-tab="'normal'" />
+        </el-card>
+
+        <!-- 中 -->
+        <div class="flex flex-col flex-1 gap-4">
+          <el-card shadow="never">
+            <SpcCpkReport :data="panel.spc.data" :usl="panel.spc.usl" :lsl="panel.spc.lsl" />
+          </el-card>
+          <el-card shadow="never">
+            <StatsSummary :data="panel.spc.data" :ng="panel.spc.ng.length" />
+          </el-card>
+        </div>
+
+        <!-- 右 -->
+        <!-- <el-card header="P 图" class="flex-1" shadow="never">
+          <PChart :defectiveCounts="[3, 1, 0, 2, 1, 4]" :sampleSizes="[100, 100, 100, 100, 100, 100]"
+            :showControlLines="true" />
+        </el-card> -->
       </div>
     </div>
 
-    <!-- 下方区域三栏布局 -->
-    <div class="flex flex-1 gap-4 px-4 pb-4">
-      <!-- 左侧 -->
-      <div class="flex flex-col w-1/3 gap-4">
-        <el-card class="flex-1" shadow="never">
-          <NormalFit :data="visibleData" :active-tab="'normal'" />
-        </el-card>
-      </div>
-
-      <!-- 中间 -->
-      <div class="w-1/3">
-        <el-card shadow="never">
-          <SpcCpkReport ref="cpkPanelRef" :data="visibleData" :usl="spc.usl" :lsl="spc.lsl" />
-        </el-card>
-        <el-card class="mt-4 flex-1" shadow="never">
-          <StatsSummary :data="spc.data" />
-        </el-card>
-      </div>
-
-      <!-- 右侧 -->
-      <div class="w-1/3">
-        <el-card header="P 图" class="h-full" shadow="never">
-          <PChart :defectiveCounts="[3, 1, 0, 2, 1, 4]" :sampleSizes="[100, 100, 100, 100, 100, 100]"
-            :showControlLines="true" />
-        </el-card>
-      </div>
+    <!-- 新增按钮 -->
+    <div class="text-center">
+      <el-button type="primary" @click="addPanel">新增分析行</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { ElMessage } from 'element-plus';
-import SpcChart from './components/SpcChart.vue';
-import RChart from './components/RChart.vue';
-import PChart from './components/PChart.vue';
-import SpcExporter from './components/SpcExporter.vue';
-import ExcelUploader from '@/components/ExcelUploader.vue';
-import SpcCpkReport from './components/SpcCpkReport.vue';
-import SpcControlPanel from './components/SpcControlPanel.vue';
-import { splitIntoSubgroups } from './utils/XBarRChart';
-import StatsSummary from './components/Analysis/StatsSummary.vue';
-import NormalFit from './components/Analysis/NormalFit.vue';
-import { useSpcStore } from '@/store/modules/SPC/v1';
-import { useSpcRealtimeFetch } from '@/views/SPC/utils/composable';
-import { useSpcStorev2 } from '@/store/modules/SPC/v2';
+import { ref } from 'vue'
+import SpcChart from './components/SpcChart.vue'
+import RChart from './components/RChart.vue'
+import PChart from './components/PChart.vue'
+import SpcExporter from './components/SpcExporter.vue'
+import SpcCpkReport from './components/SpcCpkReport.vue'
+import SpcControlPanel from './components/SpcControlPanel.vue'
+import StatsSummary from './components/Analysis/StatsSummary.vue'
+import NormalFit from './components/Analysis/NormalFit.vue'
+import { splitIntoSubgroups } from './utils/XBarRChart'
+import { createSpcStore, useSpcStore } from '@/store/modules/SPC/v2'
 
-// const spc = useSpcStore();
-const spc = useSpcStorev2();
-const selectedChart = ref<'spc' | 'r'>('spc');
-const showControlDialog = ref(false);
-
-const visibleData = computed(() => spc.data);
-const rData = computed(() => splitIntoSubgroups(visibleData.value, spc.childLength || 5));
-
-const station = ref({
-  key: '',
-  title: '',
-});
-
-const fields = ref<{ key: string; label: string }[]>([]);
-
-onMounted(async () => {
-  try {
-    const BASE_URL = import.meta.env.VITE_SPC_URL;
-    const res = await fetch(`${BASE_URL}/spc/fields`);
-    fields.value = await res.json();
-    if (!spc.selectedField && fields.value.length > 0) {
-      spc.selectedField = fields.value[0].key;
-      spc.selectedTitle = fields.value[0].label;
-    }
-  } catch (e) {
-    console.error(e);
-  }
-});
-
-function handleFieldChange(val: string) {
-  const selected = fields.value.find(f => f.key === val);
-  if (selected) spc.selectedTitle = selected.label;
+// 每行一个 store
+interface Panel {
+  id: string
+  spc: ReturnType<ReturnType<typeof createSpcStore>>
+  showDialog: boolean
+  selectedChart: 'spc' | 'r'
 }
 
-function handleExcelUpdate(newData: number[][]) {
-  const col = 1;
-  const parsed = newData.map(row => row[col]).filter(val => typeof val === 'number' && !isNaN(val));
-  spc.data = parsed;
-  ElMessage.success(`已读取 ${parsed.length} 条数据`);
+const panels = ref<Panel[]>([])
+
+function addPanel() {
+  const id = `${Date.now()}`
+  const store = createSpcStore(id)()
+  store.fetchSteps()
+  panels.value.push({
+    id,
+    spc: store,
+    showDialog: false,
+    selectedChart: 'spc',
+  })
 }
 
-useSpcRealtimeFetch();
+function removePanel(id: string) {
+  panels.value = panels.value.filter((p) => p.id !== id)
+}
+
+// 默认添加一行
+addPanel()
+
+const getStore = (id: string) => useSpcStore(id);
+
+// 生成标题
+const chartTitle = (id: string) => {
+  const spc = getStore(id)
+  const stepLabel = spc.stepList.find(i => i.key === spc.selectedStep)?.label || spc.selectedStep || ''
+  const attrLabel = spc.attrList.find(i => i.key === spc.selectedField)?.label || spc.selectedField || ''
+  if (stepLabel && attrLabel) return `${stepLabel} : ${attrLabel}`
+  return '未选择任务与参数'
+}
 </script>
+
+<style scoped>
+.spc-dashboard {
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.spc-panel {
+  min-height: 70vh;
+}
+</style>

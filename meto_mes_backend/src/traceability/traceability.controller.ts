@@ -1,10 +1,11 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { SerialNumberMaterialInfo } from 'src/serial-number-data/serial-number-data.service';
 import {
   TraceabilityBaseResponse,
+  TraceabilityMaterialCodeResponse,
   TraceabilityProcessStepData,
   TraceabilityService,
 } from './traceability.service';
+import { SerialNumberMaterialInfo } from 'src/serial-number-data/serial-number-data.service';
 
 @Controller('traceability')
 export class TraceabilityController {
@@ -19,6 +20,13 @@ export class TraceabilityController {
       serialNumber,
       processCode,
     );
+  }
+
+  @Get('material-code')
+  async getMaterialCode(
+    @Query('serialNumber') serialNumber: string,
+  ): Promise<TraceabilityMaterialCodeResponse> {
+    return this.traceabilityService.getMaterialCode(serialNumber);
   }
 
   @Get('materials')

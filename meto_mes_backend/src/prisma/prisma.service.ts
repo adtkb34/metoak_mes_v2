@@ -42,6 +42,7 @@ export class PrismaService
     }
 
     const client = this.originClients.get(origin);
+    console.log(this.originClients)
     if (!client) {
       this.logger.warn(
         `No Prisma client configured for origin ${ProductOrigin[origin] ?? origin}, falling back to default connection.`,

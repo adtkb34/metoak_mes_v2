@@ -27,11 +27,11 @@ export class StereoPrecheckService {
     });
   }
 
-async getAll(sn: string) {
-  return this.prisma.$queryRaw<
-    any[]
-  >`SELECT * FROM view_stereo_precheck_perfc WHERE sn = ${sn} ORDER BY datetime DESC`;
-}
+  async getAll(sn: string) {
+    return this.prisma.$queryRaw<
+      any[]
+    >`SELECT * FROM view_stereo_precheck_perfc WHERE sn = ${sn} ORDER BY datetime DESC`;
+  }
 
   private buildDateWhere(startDate?: string, endDate?: string) {
     if (startDate && endDate) {
@@ -105,6 +105,64 @@ async getAll(sn: string) {
       pageSize,
       records,
     });
+  }
+
+  async findOQC(sn: string): Promise<[]> {
+    const _sn = await this.transferToCameraSN(sn);
+
+    const queryBySN = async (snValue: string): Promise<[]> => {
+      return this.prisma.$queryRaw<[]>`
+      SELECT *
+      FROM view_stereo_precheck_oqc
+      WHERE sn = ${snValue}
+      ORDER BY datetime DESC
+    `;
+    };
+
+    // 先查转换后的 SN
+    let rows = await queryBySN(_sn ?? sn);
+
+    // 如果没有结果，再尝试原始 SN
+    if (rows.length === 0 && _sn && _sn !== sn) {
+      rows = await queryBySN(sn);
+    }
+
+    return rows;
+  }
+
+  async findPerfc(sn: string) {
+    // 转换一次相机 SN
+    const _sn = await this.transferToCameraSN(sn);
+
+    // 封装查询函数
+    const queryBySN = async (snValue: string) => {
+      return this.prisma.$queryRaw<any[]>`
+      SELECT *
+      FROM view_stereo_precheck_perfc
+      WHERE sn = ${snValue}
+      ORDER BY datetime DESC
+    `;
+    };
+
+    // 先查原始 SN
+    let rows = await queryBySN(sn) as any[];
+
+    // 如果没有结果，查转换后的 SN
+    if (rows.length === 0 && _sn !== sn) {
+      rows = await queryBySN(_sn);
+    }
+
+    return rows;
+  }
+
+
+  async transferToCameraSN(sn: string): Promise<string> {
+    const res = await this.prisma.mo_tag_shell_info.findFirst({
+      select: { camera_sn: true },
+      where: { shell_sn: sn },
+      orderBy: { operation_time: 'desc' }
+    })
+    return res?.camera_sn ?? '';
   }
 }
 

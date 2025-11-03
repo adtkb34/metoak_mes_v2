@@ -23,3 +23,4 @@ tests/**/coverage/
 tsconfig.tsbuildinfo
 
 *.zip
+build_package.tar.gz

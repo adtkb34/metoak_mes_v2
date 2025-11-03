@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from "vue";
 import * as echarts from "echarts";
-import { fitNormal } from "../../utils/fit";
+import { fitNormal, testNormality } from "../../utils/fit";
 import StatsSummary from "./StatsSummary.vue";
 
 const props = defineProps<{
@@ -23,6 +23,7 @@ const drawChart = () => {
   if (!chart.value) chart.value = echarts.init(chartRef.value);
 
   const raw = props.data;
+  const { p, isNormal } = testNormality(raw);
   const { x, y, mean, std } = fitNormal(raw);
 
   // 构造直方图数据
@@ -44,7 +45,7 @@ const drawChart = () => {
 
   chart.value.setOption({
     title: {
-      text: `正态拟合 μ=${mean.toFixed(2)}, σ=${std.toFixed(2)}`,
+      text: `正态拟合 μ=${mean.toFixed(2)}, σ=${std.toFixed(2)} (p=${p.toFixed(3)} ${isNormal ? "正态" : "非正态"})`,
       left: "center"
     },
     tooltip: { trigger: "axis" },

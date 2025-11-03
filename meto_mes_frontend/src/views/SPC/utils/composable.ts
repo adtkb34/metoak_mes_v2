@@ -1,10 +1,9 @@
 // views/SPC/utils/composable.ts
-import { useSpcStore } from '@/store/modules/SPC/v1';
-import { useSpcStorev2 } from '@/store/modules/SPC/v2';
+import { useSpcStore } from '@/store/modules/SPC/v2';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 export function useSpcRealtimeFetch() {
-  const spc = useSpcStorev2();
+  const spc = useSpcStore('real-time');
   const intervalId = ref<number | null>(null);
 
   const start = async () => {

@@ -11,9 +11,11 @@ export class K3CloudService {
 
   async queryPrdMO(): Promise<any[]> {
     return new Promise(async (resolve, reject) => {
-      const scriptPath = path.join(__dirname, '../../script/query_prd_mo.py');
+      // const scriptPath = path.join(__dirname, '../../script/query_prd_mo.py');
 
-      const pyProcess = spawn('python3', [scriptPath]);
+      // const pyProcess = spawn('python3', [scriptPath]);
+
+      const pyProcess = spawn('python', ['script/query_prd_mo.py']);
 
       let stdout = '';
       let stderr = '';
@@ -106,8 +108,10 @@ export class K3CloudService {
 
   async queryMaterials(): Promise<any[]> {
     return new Promise(async (resolve, reject) => {
-      const scriptPath = path.join(__dirname, '../../script/query_product_from_order.py');
-      const pyProcess = spawn('python3', [scriptPath]);
+      // const scriptPath = path.join(__dirname, '../../script/query_product_from_order.py');
+      // const pyProcess = spawn('python3', [scriptPath]);
+
+      const pyProcess = spawn('python', ['script/query_product_from_order.py']);
 
       let stdout = '';
       let stderr = '';
@@ -161,9 +165,11 @@ export class K3CloudService {
 
   async queryJianMaterials(): Promise<any[]> {
     return new Promise(async (resolve, reject) => {
-      const scriptPath = path.join(__dirname, '../../script/query_product_from_jian_order.py');
+      // const scriptPath = path.join(__dirname, '../../script/query_product_from_jian_order.py');
 
-      const pyProcess = spawn('python', [scriptPath]);
+      // const pyProcess = spawn('python', [scriptPath]);
+
+      const pyProcess = spawn('python', ['script/query_product_from_jian_order.py']);
 
       let stdout = '';
       let stderr = '';
@@ -218,9 +224,9 @@ export class K3CloudService {
   async queryBomItems(productCode: string): Promise<any[]> {
     return new Promise((resolve, reject) => {
       // 构建 Python 脚本的路径
-      const scriptPath = path.join(__dirname, '../../script/query_bom_items.py');
+      // const scriptPath = path.join(__dirname, '../../script/query_bom_items.py');
       // 使用 spawn 启动 Python 进程
-      const pyProcess = spawn('python', [scriptPath, productCode]);
+      const pyProcess = spawn('python', ['script/query_bom_items.py', productCode]);
 
       let stdout = '';
       let stderr = '';
@@ -270,9 +276,9 @@ export class K3CloudService {
   async queryMaterialLotNos(materialCodes: string): Promise<any[]> {
     return new Promise((resolve, reject) => {
       // 构建 Python 脚本的路径
-      const scriptPath = path.join(__dirname, '../../script/query_lot_no.py');
+      // const scriptPath = path.join(__dirname, '../../script/query_lot_no.py');
       // 使用 spawn 启动 Python 进程
-      const pyProcess = spawn('python', [scriptPath, materialCodes]);
+      const pyProcess = spawn('python', ['script/query_lot_no.py', materialCodes]);
 
       let stdout = '';
       let stderr = '';

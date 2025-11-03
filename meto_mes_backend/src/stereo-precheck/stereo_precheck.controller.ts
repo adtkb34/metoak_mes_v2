@@ -74,4 +74,16 @@ export class StereoPrecheckController {
       pageSize: parseInt(pageSize, 10),
     });
   }
+
+  @Get('/list-oqc')
+  async getOQC(@Query("sn") sn: string) {
+    const res = await this.service.findOQC(sn);
+    return mo_success(res);
+  }
+
+  @Get('/list-performance')
+  async getPerf(@Query("sn") sn) {
+    const res = await this.service.findPerfc(sn);
+    return mo_success(res);
+  }
 }

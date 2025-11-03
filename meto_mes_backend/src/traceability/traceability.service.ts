@@ -14,6 +14,13 @@ export interface TraceabilitySerialNumber {
   type: SnType;
 }
 
+
+export interface TraceabilityMaterialCodeResponse {
+  serialNumber: string;
+  workOrderCode: string | null;
+  materialCode: string | null;
+}
+
 export interface TraceabilityBaseOption {
   label: string;
   value: string | null;
@@ -78,6 +85,97 @@ export class TraceabilityService {
     private readonly prisma: PrismaService,
     private readonly serialNumberDataService: SerialNumberDataService,
   ) {}
+
+async getMaterialCode(
+    serialNumber: string,
+  ): Promise<TraceabilityMaterialCodeResponse> {
+    const normalizedSerialNumber = serialNumber?.trim();
+    if (!normalizedSerialNumber) {
+      throw new BadRequestException('serialNumber is required');
+    }
+
+    const workOrderCode = await this.findWorkOrderCodeBySerialNumber(
+      normalizedSerialNumber,
+    );
+    if (!workOrderCode) {
+      return {
+        serialNumber: normalizedSerialNumber,
+        workOrderCode: null,
+        materialCode: null,
+      };
+    }
+
+    const orderInfo = await this.prisma.mo_produce_order.findFirst({
+      where: { work_order_code: workOrderCode },
+      select: { material_code: true },
+    });
+    
+    return {
+      serialNumber: normalizedSerialNumber,
+      workOrderCode,
+      materialCode: orderInfo?.material_code?.trim() || null,
+    };
+  }
+
+  private async findWorkOrderCodeBySerialNumber(
+    serialNumber: string,
+  ): Promise<string | null> {
+    const normalizedSerialNumber = serialNumber.trim();
+
+    const beamRecord = await this.prisma.mo_beam_info.findFirst({
+      where: { beam_sn: normalizedSerialNumber },
+      select: { work_order_code: true },
+    });
+    const beamWorkOrder = beamRecord?.work_order_code?.trim();
+    if (beamWorkOrder) {
+      return beamWorkOrder;
+    }
+
+    const tagRecord = await this.prisma.mo_tag_info.findFirst({
+      where: { tag_sn: normalizedSerialNumber },
+      select: { work_order_code: true },
+    });
+    const tagWorkOrder = tagRecord?.work_order_code?.trim();
+    if (tagWorkOrder) {
+      return tagWorkOrder;
+    }
+
+    const shellLink = await this.prisma.mo_tag_shell_info.findFirst({
+      where: { shell_sn: normalizedSerialNumber },
+      orderBy: { id: 'desc' },
+      select: { camera_sn: true },
+    });
+    const relatedCameraSn = shellLink?.camera_sn?.trim();
+    if (relatedCameraSn) {
+      const relatedBeam = await this.prisma.mo_beam_info.findFirst({
+        where: { beam_sn: relatedCameraSn },
+        select: { work_order_code: true },
+      });
+      const relatedBeamOrder = relatedBeam?.work_order_code?.trim();
+      if (relatedBeamOrder) {
+        return relatedBeamOrder;
+      }
+    }
+
+    const cameraLink = await this.prisma.mo_tag_shell_info.findFirst({
+      where: { camera_sn: normalizedSerialNumber },
+      orderBy: { id: 'desc' },
+      select: { shell_sn: true },
+    });
+    const relatedShellSn = cameraLink?.shell_sn?.trim();
+    if (relatedShellSn) {
+      const relatedTag = await this.prisma.mo_tag_info.findFirst({
+        where: { tag_sn: relatedShellSn },
+        select: { work_order_code: true },
+      });
+      const relatedTagOrder = relatedTag?.work_order_code?.trim();
+      if (relatedTagOrder) {
+        return relatedTagOrder;
+      }
+    }
+
+    return null;
+  }
 
   async getBaseInformation(
     serialNumber: string,
@@ -172,7 +270,6 @@ export class TraceabilityService {
         flowContext.serialNumber,
         resolvedStepTypeNo,
       );
-
     return {
       stepTypeNo: resolvedStepTypeNo,
       data,

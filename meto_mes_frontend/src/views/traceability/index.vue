@@ -13,7 +13,7 @@ import {
 } from "@/api/traceability";
 import { useProcessStore } from "@/store/modules/processFlow";
 import { message } from "@/utils/message";
-import { formatToUTC8 } from "@/utils/date";
+import dayjs from "dayjs";
 
 defineOptions({ name: "Traceability" });
 
@@ -339,6 +339,10 @@ function createTreeRow(
     __statusText: statusTag?.text ?? "-",
     ...formatted
   };
+}
+function formatToUTC8(value: number | string): string {
+  console.log(value);
+  return dayjs(value).format("YYYY-MM-DD HH:mm:ss");
 }
 
 function formatRecord(

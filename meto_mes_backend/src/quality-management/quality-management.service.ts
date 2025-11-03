@@ -352,6 +352,16 @@ export class QualityManagementService {
     return { dates, series, counts };
   }
 
+  async getAllMeasureDistanceRawData(start: string, end: string) {
+    const query = `
+    SELECT *
+    FROM dist_measuring_check
+    WHERE timestamp BETWEEN ? AND ?
+    ORDER BY timestamp
+  `;
+    return await this.prisma.$queryRawUnsafe<any[]>(query, start, end);
+  }
+
   async getStereoCalibration(params: {
     startTime?: string;
     endTime?: string;
@@ -1117,8 +1127,7 @@ export class QualityManagementService {
     const stats = rows.map((r) => {
       const count = Number(r.count);
       return {
-        error_code:
-          r.check_result !== null ? r.check_result.toString() : 'null',
+        error_code: r.check_result !== null ? (r.check_result ? 0 : 1).toString() : 'null',
         count,
         percent: total === 0 ? '0%' : ((count / total) * 100).toFixed(1) + '%',
       };

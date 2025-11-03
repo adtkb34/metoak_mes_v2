@@ -1,23 +1,21 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick, computed, toRef, toRefs } from 'vue';
+import { ref, watch, onMounted, onUnmounted, nextTick, toRefs } from 'vue';
 import * as echarts from 'echarts';
 import { fitNormal } from '../utils/fit';
 import {
   detectRule1, detectRule2, detectRule3, detectRule4,
   detectRule5, detectRule6, detectRule7, detectRule8
 } from '../utils/detectRules';
-import { useSpcStore } from '@/store/modules/SPC/v1';
-import { useSpcStorev2 } from '@/store/modules/SPC/v2';
 
 const props = defineProps<{
   data: number[];
   showControlLines?: boolean;
-  rules: string[]
+  rules: string[];
+  usl?: number;
+  lsl?: number;
 }>();
 
-const spc = useSpcStorev2();
-
-const { showControlLines, rules } = toRefs(props);
+const { showControlLines, rules, usl, lsl } = toRefs(props);
 
 const chartDom = ref<HTMLDivElement | null>(null);
 let chartInstance: echarts.ECharts | null = null;
@@ -29,13 +27,12 @@ const ucl = ref(0);
 let std = 0;
 
 function updateParams() {
-  const { mean: m, std: s } = fitNormal(props.data);
+  const arr = props.data.length === 0 ? [0] : props.data;
+  const { mean: m, std: s } = fitNormal(arr);
   std = s > 1e-8 ? s : 0.01;
   avg.value = m;
   lcl.value = m - 3 * s;
   ucl.value = m + 3 * s;
-  // spc.lsl = lcl.value - 0.5 * std;
-  // spc.usl = ucl.value + std;
 }
 
 const ruleOptions = [
@@ -53,16 +50,27 @@ function renderChart() {
   if (!chartDom.value) return;
   if (!chartInstance) chartInstance = echarts.init(chartDom.value);
 
+  if (!props.data || props.data.length === 0) {
+    chartInstance.clear();
+    chartInstance.setOption({
+      title: { text: '暂无数据', left: 'center', top: 'middle' },
+    });
+    return;
+  }
+
   updateParams();
 
-  // 每个规则对应的异常点索引
+  const curUSL = usl?.value ?? ucl.value + std;
+  const curLSL = lsl?.value ?? lcl.value - 0.5 * std;
+
+  // 计算异常点
   const ruleAbnormals: Record<string, number[]> = {};
   const allAbnormalSet = new Set<number>();
 
   for (const ruleName of props.rules) {
     let res: number[] = [];
     switch (ruleName) {
-      case 'rule_1': res = detectRule1(props.data, spc.usl, spc.lsl); break;
+      case 'rule_1': res = detectRule1(props.data, curUSL, curLSL); break;
       case 'rule_2': res = detectRule2(props.data); break;
       case 'rule_3': res = detectRule3(props.data, avg.value); break;
       case 'rule_4': res = detectRule4(props.data); break;
@@ -75,6 +83,7 @@ function renderChart() {
     res.forEach(i => allAbnormalSet.add(i));
   }
 
+  // 主折线
   const mainSeries = {
     name: '值',
     type: 'line',
@@ -84,33 +93,26 @@ function renderChart() {
     lineStyle: { color: '#409EFF' },
     data: props.data.map((v, i) => ({
       value: v,
-      itemStyle: {
-        color: allAbnormalSet.has(i) ? 'red' : '#409EFF'
-      }
+      itemStyle: { color: allAbnormalSet.has(i) ? 'red' : '#409EFF' },
     })),
-    markLine: props.showControlLines !== false ? {
+    markLine: showControlLines.value ? {
       symbol: 'none',
-      label: {
-        show: true,
-        position: 'end',
-        formatter: p => `${p.name}: ${p.value.toFixed(2)}`,
-        color: '#000'
-      },
+      label: { show: true, position: 'end', formatter: p => `${p.name}: ${p.value.toFixed(2)}` },
       lineStyle: { type: 'dashed', color: 'gray' },
       data: [
-        { yAxis: spc.usl, name: 'USL', lineStyle: { color: 'red' } },
-        { yAxis: spc.lsl, name: 'LSL', lineStyle: { color: 'green' } },
+        { yAxis: curUSL, name: 'USL', lineStyle: { color: 'red' } },
+        { yAxis: curLSL, name: 'LSL', lineStyle: { color: 'green' } },
         { yAxis: avg.value, name: '均值', lineStyle: { color: '#FFA500' } },
         { yAxis: ucl.value, name: 'UCL', lineStyle: { color: 'purple' } },
-        { yAxis: lcl.value, name: 'LCL', lineStyle: { color: 'purple' } }
-      ]
-    } : undefined
+        { yAxis: lcl.value, name: 'LCL', lineStyle: { color: 'purple' } },
+      ],
+    } : undefined,
   };
 
+  // 异常点散点堆叠
   const scatterSeries = props.rules.map((rule, idx) => {
     const label = ruleOptions.find(r => r.value === rule)?.label || rule;
     const yBase = lcl.value - (idx + 10) * 0.2 * std; // 堆叠向下
-
     return {
       name: label,
       type: 'scatter',
@@ -118,100 +120,48 @@ function renderChart() {
       symbolSize: 5,
       itemStyle: { color: ['#f56c6c', '#e6a23c', '#67c23a', '#409EFF'][idx % 4] },
       data: ruleAbnormals[rule].map(i => [i, yBase]),
-      label: {
-        show: true,
-        position: 'top',
-        formatter: () => rule.replace('rule_', 'R'),
-        fontSize: 10
-      },
-      labelLayout: {
-        hideOverlap: true,
-        moveOverlap: true
-      },
-      tooltip: {
-        formatter: p => `${label} 异常：第 ${p.data[0]} 个`
-      },
+      label: { show: true, position: 'top', formatter: () => rule.replace('rule_', 'R'), fontSize: 10 },
+      labelLayout: { hideOverlap: true, moveOverlap: true },
+      tooltip: { formatter: p => `${label} 异常：第 ${p.data[0]} 个` },
     };
   });
 
-  // 添加round函数
-  const round2 = (v: number) => Math.round(v * 100) / 100;
-
+  // 动态 y 轴范围
   const dataMin = Math.min(...props.data);
   const dataMax = Math.max(...props.data);
-  const scatterMinY = Math.min(...scatterSeries.flatMap(s => s.data.map(d => d[1])));
-  const yMin = Math.min(dataMin, scatterMinY);
-  const yMax = Math.max(dataMax, ucl.value);
+  const scatterYs = scatterSeries.flatMap(s => s.data.map(d => d[1]));
+  // const yMin = Math.min(dataMin, ...scatterYs, curLSL, lcl.value);
+  // const yMax = Math.max(dataMax, ...scatterYs, curUSL, ucl.value);
+  const yMin = Math.min(dataMin, ...scatterYs, lcl.value);
+  const yMax = Math.max(dataMax, ...scatterYs, ucl.value);
 
-  // 避免堆叠时 yRange 为 0
-  const trueRange = yMax - yMin;
-  const minVisualRange = 1; // 至少拉开 1 的纵向跨度
-  const margin = Math.max((trueRange * 0.2), (minVisualRange - trueRange) / 2, 0.05);
-
-  const finalMin = round2(yMin - margin);
-  const finalMax = round2(yMax + margin);
+  const margin = Math.max((yMax - yMin) * 0.2, 0.05);
+  const round2 = (v: number) => Math.round(v * 100) / 100;
 
   chartInstance.setOption({
     animation: false,
     tooltip: { trigger: 'axis' },
-    xAxis: {
-      type: 'category',
-      data: props.data.map((_, i) => i + 1),
-      boundaryGap: false,
-    },
+    xAxis: { type: 'category', data: props.data.map((_, i) => i + 1), boundaryGap: false },
+    yAxis: { type: 'value', min: round2(yMin - margin), max: round2(yMax + margin) },
     series: [mainSeries, ...scatterSeries],
-    yAxis: {
-      type: 'value',
-      min: finalMin,
-      max: finalMax,
-    },
     dataZoom: [
-      {
-        type: 'inside', // 鼠标滚轮缩放
-        xAxisIndex: 0,
-        zoomOnMouseWheel: true,
-        moveOnMouseMove: true,
-        moveOnMouseWheel: true
-      },
-      {
-        type: 'slider', // 底部缩放条
-        xAxisIndex: 0,
-        height: 20,
-        bottom: 0
-      }
+      { type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: true },
+      { type: 'slider', xAxisIndex: 0, height: 20, bottom: 0 }
     ],
-  }, true); // 第二个参数为 true 表示“重置”option，防止堆叠残留
+  }, { notMerge: true });
 
   chartInstance.resize();
 }
 
-watch([
-  () => spc.usl,
-  () => spc.lsl,
-  () => showControlLines,
-  () => rules
-], () => {
-  console.log(spc.usl, spc.lsl);
-  
-  updateParams();
-  renderChart();
-});
-
-watch(() => props.data, () => {
-  updateParams();
-  renderChart();
-}, { deep: true });
+watch(() => props.data, () => renderChart(), { deep: true });
+watch([showControlLines, rules, usl, lsl], () => renderChart(), { deep: true });
 
 onMounted(() => {
-  updateParams();
   nextTick(() => {
     if (chartDom.value) {
       chartInstance = echarts.init(chartDom.value);
       renderChart();
-
-      resizeObserver = new ResizeObserver(() => {
-        chartInstance?.resize();
-      });
+      resizeObserver = new ResizeObserver(() => chartInstance?.resize());
       resizeObserver.observe(chartDom.value);
     }
   });
@@ -224,8 +174,5 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div style=" display: flex; flex-direction: column; height: 100%;">
-    <!-- 图表区域：高度由父容器控制 -->
-    <div ref="chartDom" style="flex: 1; width: 100%; min-height: 300px;" />
-  </div>
+  <div ref="chartDom" style="width: 100%; height: 300px;" />
 </template>

@@ -11,14 +11,14 @@ export default {
     rank: 2
   },
   children: [
-    {
-      path: "/dashboard/overview",
-      name: "ProductionDashboardOverview",
-      component: () => import("@/views/dashboard/index.vue"),
-      meta: {
-        title: "生产仪表盘",
-        showParent: true
-      }
-    }
+    // {
+    //   path: "/dashboard/overview",
+    //   name: "ProductionDashboardOverview",
+    //   component: () => import("@/views/dashboard/index.vue"),
+    //   meta: {
+    //     title: "生产仪表盘",
+    //     showParent: true
+    //   }
+    // }
   ]
 } satisfies RouteConfigsTable;

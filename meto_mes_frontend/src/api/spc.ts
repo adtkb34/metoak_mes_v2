@@ -47,18 +47,27 @@ export const getSpcValues = async (
   stepNo: string,
   field: string,
   limit: number,
+  position: string | undefined,
+  station: string | undefined,
   start?: string,
-  end?: string
+  end?: string,
 ) => {
-  return await http.request<number[]>("get", SPC_VAL_ROUTE, {
-    params: {
-      stepNo,
-      field,
-      start,
-      end,
-      limit
-    }
+  const payload = {
+    stepNo,
+    field,
+    start,
+    position,
+    station,
+    end,
+    limit
+  }
+  console.log(payload);
+
+  const res = await http.request<number[]>("get", SPC_VAL_ROUTE, {
+    params: payload
   });
+  console.log(res);
+  return res
 }
 
 export const getConfig = async (userId: string, tableName: string, field: string) => {
@@ -71,26 +80,26 @@ export const getConfig = async (userId: string, tableName: string, field: string
   })
   if (!res) {
     res = await http.request<Promise<SpcConfig>>("get", "/spc/config", {
-    params: {
-      userId: 'szdev',
-      tableName,
-      field
-    }
-  })
+      params: {
+        userId: 'szdev',
+        tableName,
+        field
+      }
+    })
 
   }
   return {
     lsl: res.lsl ? res.lsl : 0,
     usl: res.usl ? res.usl : 0,
     is_real_time: res.is_real_time,
-    rules: res.rules ?  res.rules : 0,
-    subgroup_length: res.subgroup_length ?  res.subgroup_length : 1
+    rules: res.rules ? res.rules : 0,
+    subgroup_length: res.subgroup_length ? res.subgroup_length : 1
   };
 }
 
 export interface SpcConfig {
   user_name: string,
-  station?: number,
+  station?: string,
   table_name?: string,
   field_name?: string,
   usl?: number,
@@ -99,7 +108,7 @@ export interface SpcConfig {
   rules?: number,
   is_real_time?: boolean,
   statistics_length?: number,
-  position?: number
+  position?: string
 }
 
 export const uploadConfig = async (config: SpcConfig) => {

@@ -586,7 +586,6 @@ export class SerialNumberDataService {
     if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
       return null;
     }
-
     return value.toISOString();
   }
 

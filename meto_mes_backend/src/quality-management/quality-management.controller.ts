@@ -1,8 +1,9 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Res, StreamableFile } from '@nestjs/common';
 import { QualityManagementService } from './quality-management.service';
 import { mo_fail, mo_success } from 'src/utils/response';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { STEP_NO } from 'src/utils/stepNo';
+import { Readable } from 'stream';
 
 @Controller('quality-management')
 export class QualityManagementController {
@@ -25,6 +26,47 @@ export class QualityManagementController {
   @Get('/quality-data')
   getQualityData(@Query('start') start: string, @Query('end') end: string) {
     // return this.qualityService.getQualityData(start, end);
+  }
+
+  @Get('/measure-distance/export')
+  async exportAllMeasureDistanceData(
+    @Query('startDate') start: string,
+    @Query('endDate') end: string
+  ): Promise<StreamableFile> {
+    if (!start || !end) {
+      throw new Error('缺少必要参数 startDate / endDate');
+    }
+
+    const rows = await this.qualityService.getAllMeasureDistanceRawData(start, end);
+    if (!rows.length) {
+      const empty = Buffer.from('没有符合条件的数据');
+      return new StreamableFile(empty, {
+        type: 'text/plain; charset=utf-8',
+        disposition: 'inline; filename="empty.txt"',
+      });
+    }
+
+    const headers = Object.keys(rows[0]);
+    const csvRows = [
+      headers.join(','),
+      ...rows.map((r) =>
+        headers
+          .map((h) => {
+            const val = r[h];
+            if (val === null || val === undefined) return '';
+            const str = val.toString().replace(/"/g, '""');
+            return /[",\n]/.test(str) ? `"${str}"` : str;
+          })
+          .join(',')
+      ),
+    ];
+    const csv = csvRows.join('\n');
+    
+    const stream = Readable.from([csv]);
+    return new StreamableFile(stream, {
+      type: 'text/csv; charset=utf-8',
+      disposition: `attachment; filename="dist_measuring_check_${start}_${end}.csv"`,
+    });
   }
 
   @Get('/measure-distance')
@@ -158,14 +200,9 @@ export class QualityManagementController {
               stepNo: item.step_no,
               startTime,
               endTime,
-            });
+            })
           } else if (item.step_no === STEP_NO.S315FQC) {
-            res = await this.qualityService.getFQCErrorCodes({
-              material_code,
-              stepNo: item.step_no,
-              startTime,
-              endTime,
-            });
+            res = await this.qualityService.getFQCErrorCodes({ material_code, stepNo: item.step_no, startTime, endTime })
           } else {
             res = await this.qualityService.getErrorCodes({
               material_code: material_code,

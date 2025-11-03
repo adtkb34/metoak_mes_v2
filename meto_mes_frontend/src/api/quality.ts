@@ -34,6 +34,14 @@ export const getMeasureDistanceData = (params) => {
   });
 };
 
+// 导出测距 CSV 数据
+export async function exportMeasureDistanceData(params) {
+  return http.get('/quality-management/measure-distance/export', {
+    params,
+    responseType: 'blob', // 返回文件流
+  })
+}
+
 export const getStereoCalibrationData = (params) => {
   return http.request("get", "/quality-management/stereo-calibration", {
     params: params

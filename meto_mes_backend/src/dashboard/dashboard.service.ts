@@ -1360,7 +1360,6 @@ export class DashboardService {
         unique.set(key, row);
       }
     }
-
     return [...unique.values()];
   }
 

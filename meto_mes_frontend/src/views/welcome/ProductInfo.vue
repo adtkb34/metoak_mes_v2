@@ -38,7 +38,7 @@ const error = ref('');
 
 const fetchData = async () => {
   try {
-    const result = await getProductInfo(selectedTable.value.value);
+    const result = await getProductInfo(selectedTable.value);
     hourlyData.value = result;
     error.value = '';
   } catch (e: any) {
