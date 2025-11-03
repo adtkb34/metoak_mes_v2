@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, onMounted } from "vue";
+import { computed, reactive, ref, onMounted, watch } from "vue";
 import { Loading as LoadingIcon } from "@element-plus/icons-vue";
 import {
   getTraceabilityBase,
@@ -62,6 +62,10 @@ const baseInfoItems = ref<TraceabilityBaseOption[]>([]);
 const materialItems = ref<TraceabilityMaterialInfo[]>([]);
 const flowSummary = ref<TraceabilityFlowSummary | null>(null);
 const stepDataMap = ref<Record<string, TraceabilityProcessRecord[]>>({});
+const derivedProcessCode = ref<string | null>(null);
+const isProcessCodeManuallySet = ref(false);
+
+let serialResolveRequestId = 0;
 
 const processOptions = computed(() => processStore.processFlow.list ?? []);
 const baseInfo = computed(() => baseInfoItems.value);
@@ -78,6 +82,86 @@ const tableData = computed(() => {
   return buildTreeData(steps);
 });
 const recordColumns = computed(() => deriveRecordColumns(tableData.value));
+
+watch(
+  () => query.processCode,
+  newValue => {
+    const normalizedProcessCode = normalizeStringValue(newValue);
+    const normalizedDerived = normalizeStringValue(derivedProcessCode.value);
+
+    if (!normalizedProcessCode) {
+      isProcessCodeManuallySet.value = false;
+      return;
+    }
+
+    if (normalizedDerived && normalizedProcessCode === normalizedDerived) {
+      isProcessCodeManuallySet.value = false;
+      return;
+    }
+
+    isProcessCodeManuallySet.value = true;
+  }
+);
+
+watch(
+  () => query.serialNumber,
+  async (newValue, oldValue) => {
+    const normalizedNew = normalizeStringValue(newValue);
+    const normalizedOld = normalizeStringValue(oldValue);
+
+    if (normalizedNew === normalizedOld) {
+      return;
+    }
+
+    const requestId = ++serialResolveRequestId;
+
+    if (!normalizedNew) {
+      derivedProcessCode.value = null;
+      isProcessCodeManuallySet.value = false;
+      if (query.processCode) {
+        query.processCode = "";
+      }
+      return;
+    }
+
+    isProcessCodeManuallySet.value = false;
+
+    try {
+      const resolved = await resolveDefaultProcessCodeBySerial(normalizedNew);
+
+      if (requestId !== serialResolveRequestId) {
+        return;
+      }
+
+      const previousDerived = derivedProcessCode.value;
+      const normalizedResolved = normalizeStringValue(resolved);
+      derivedProcessCode.value = normalizedResolved;
+
+      const normalizedCurrentProcess = normalizeStringValue(query.processCode);
+
+      if (
+        !isProcessCodeManuallySet.value ||
+        !normalizedCurrentProcess ||
+        normalizedCurrentProcess === previousDerived ||
+        normalizedCurrentProcess === normalizedResolved
+      ) {
+        query.processCode = normalizedResolved ?? "";
+      }
+    } catch (error) {
+      console.error(error);
+
+      if (requestId !== serialResolveRequestId) {
+        return;
+      }
+
+      derivedProcessCode.value = null;
+
+      if (!isProcessCodeManuallySet.value) {
+        query.processCode = "";
+      }
+    }
+  }
+);
 
 const stageColumns: TraceabilityColumn[] = [
   { prop: "stageName", label: "工段名称" }
