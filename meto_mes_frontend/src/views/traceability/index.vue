@@ -5,12 +5,14 @@ import {
   getTraceabilityBase,
   getTraceabilityMaterials,
   getTraceabilityProcess,
+  getTraceabilityMaterialCode,
   type TraceabilityBaseOption,
   type TraceabilityFlowSummary,
   type TraceabilityMaterialInfo,
   type TraceabilityProcessRecord,
   type TraceabilityProcessStepSummary
 } from "@/api/traceability";
+import { getFlowCodeByMaterial } from "@/api/quality";
 import { useProcessStore } from "@/store/modules/processFlow";
 import { message } from "@/utils/message";
 import dayjs from "dayjs";
@@ -87,7 +89,7 @@ onMounted(async () => {
 
 async function handleSearch() {
   const serialNumber = query.serialNumber.trim();
-  const processCode = query.processCode.trim();
+  let processCode = query.processCode.trim();
 
   if (!serialNumber) {
     message("请输入序列号", { type: "error" });
@@ -104,6 +106,17 @@ async function handleSearch() {
   stepDataMap.value = {};
 
   try {
+    if (!processCode) {
+      const derivedProcessCode =
+        await resolveDefaultProcessCodeBySerial(serialNumber);
+      if (derivedProcessCode) {
+        query.processCode = derivedProcessCode;
+        processCode = derivedProcessCode;
+      } else {
+        query.processCode = "";
+      }
+    }
+
     const [baseResponse, materialsResponse] = await Promise.all([
       getTraceabilityBase({
         serialNumber,
@@ -192,6 +205,89 @@ async function handleSearch() {
     loading.value = false;
     baseLoading.value = false;
     processLoading.value = false;
+  }
+}
+
+function normalizeStringValue(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const stringified = String(value).trim();
+  return stringified.length > 0 ? stringified : null;
+}
+
+function extractFlowCodes(response: any): string[] {
+  const source = Array.isArray(response?.data)
+    ? response.data
+    : Array.isArray(response)
+      ? response
+      : [];
+
+  const codes = source
+    .map((item: any) =>
+      normalizeStringValue(
+        item?.flow_code ??
+          item?.flowCode ??
+          item?.process_code ??
+          item?.processCode
+      )
+    )
+    .filter((code): code is string => Boolean(code));
+
+  return Array.from(new Set(codes));
+}
+
+function selectPreferredProcessCode(codes: string[]): string | null {
+  if (!codes.length) {
+    return null;
+  }
+
+  const options = Array.isArray(processOptions.value)
+    ? processOptions.value
+    : [];
+  const availableCodes = new Set(
+    options
+      .map(option => normalizeStringValue(option?.process_code))
+      .filter((code): code is string => Boolean(code))
+  );
+
+  if (availableCodes.size > 0) {
+    for (const code of codes) {
+      if (availableCodes.has(code)) {
+        return code;
+      }
+    }
+    return null;
+  }
+
+  return codes[0] ?? null;
+}
+
+async function resolveDefaultProcessCodeBySerial(
+  serialNumber: string
+): Promise<string | null> {
+  try {
+    const materialResponse = await getTraceabilityMaterialCode({
+      serialNumber
+    });
+
+    const materialCode = normalizeStringValue(materialResponse?.materialCode);
+    if (!materialCode) {
+      return null;
+    }
+
+    const flowResponse = await getFlowCodeByMaterial(materialCode);
+    const candidateCodes = extractFlowCodes(flowResponse);
+    return selectPreferredProcessCode(candidateCodes);
+  } catch (error) {
+    console.error(error);
+    return null;
   }
 }
 
