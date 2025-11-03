@@ -82,4 +82,20 @@ export class ProductionManagementService {
       data: { work_order_code: `del_${work_order_code}` }
     })
   }
+
+  async getLatestProcessCodeByMaterial(
+    materialCode: string,
+  ): Promise<string | null> {
+    const order = await this.prisma.mo_produce_order.findFirst({
+      where: { material_code: materialCode },
+      orderBy: [
+        { order_date: 'desc' },
+        { added_time: 'desc' },
+        { id: 'desc' },
+      ],
+      select: { flow_code: true },
+    });
+
+    return order?.flow_code?.trim() || null;
+  }
 }
