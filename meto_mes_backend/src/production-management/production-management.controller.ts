@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Patch, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ProductionManagementService } from './production-management.service';
 import { UpdateMoProduceOrderDto } from './update-order.dto';
 
@@ -70,5 +80,26 @@ export class ProductionManagementController {
     this.validate(user_level);
 
     return this.productionService.deleteProduceOrder(order_code);
+  }
+
+  @Get('latest-process-code')
+  async getLatestProcessCode(
+    @Query('material_code') materialCode: string,
+  ) {
+    const normalizedMaterialCode = materialCode?.trim();
+
+    if (!normalizedMaterialCode) {
+      throw new BadRequestException('material_code is required');
+    }
+
+    const processCode =
+      await this.productionService.getLatestProcessCodeByMaterial(
+        normalizedMaterialCode,
+      );
+
+    return {
+      material_code: normalizedMaterialCode,
+      process_code: processCode,
+    };
   }
 }
