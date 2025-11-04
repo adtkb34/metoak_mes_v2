@@ -62,7 +62,14 @@ let parameterConfigs: ParameterConfig[] = [
   }
 ];
 
-export default defineFakeRoute([
+const shouldUseParameterMock = (() => {
+  const flag = process.env.VITE_USE_PARAMETER_MOCK;
+  if (flag === undefined) return false;
+  return String(flag).toLowerCase() === "true";
+})();
+
+export default shouldUseParameterMock
+  ? defineFakeRoute([
   {
     url: "/parameter/configs",
     method: "get",
@@ -132,4 +139,5 @@ export default defineFakeRoute([
       }
     })
   }
-]);
+  ])
+  : [];
