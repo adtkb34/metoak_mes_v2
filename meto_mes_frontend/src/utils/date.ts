@@ -14,6 +14,9 @@ export function useDateToString(date: DateRangeRef): DateRangeString {
 }
 
 export function formatToUTC8(input: string | number | Date): string {
+  if (input == null || input === "") return "";
+
+  // --- 1️⃣ 预处理字符串 ---
   if (typeof input === "string") {
     const normalized = input.trim();
     if (!normalized) return "";
@@ -27,16 +30,22 @@ export function formatToUTC8(input: string | number | Date): string {
     }
   }
 
+  // --- 2️⃣ 统一转为 Date ---
   const date = input instanceof Date ? input : new Date(input);
 
   if (Number.isNaN(date.getTime())) {
     return typeof input === "string" ? input : "";
   }
 
+  // --- 3️⃣ 使用 UTC 方法取值，彻底避免时区偏移 ---
   const pad = (n: number) => n.toString().padStart(2, "0");
 
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
-    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-  );
+  const year = date.getUTCFullYear();
+  const month = pad(date.getUTCMonth() + 1);
+  const day = pad(date.getUTCDate());
+  const hour = pad(date.getUTCHours());
+  const minute = pad(date.getUTCMinutes());
+  const second = pad(date.getUTCSeconds());
+
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }

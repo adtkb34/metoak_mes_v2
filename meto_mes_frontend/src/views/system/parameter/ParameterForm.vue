@@ -13,81 +13,76 @@
         </div>
       </template>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
-      <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="名称" prop="name">
-            <el-input v-model="form.name" placeholder="请输入参数配置名称" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="类型" prop="type">
-            <el-select v-model="form.type" placeholder="请选择类型">
-              <el-option
-                v-for="item in typeOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </el-form-item>
-        </el-col>
-      </el-row>
-      <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="产品" prop="product">
-            <el-select v-model="form.product" placeholder="请选择产品">
-              <el-option
-                v-for="item in productOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="工序" prop="process">
-            <el-select v-model="form.process" placeholder="请选择工序">
-              <el-option
-                v-for="item in processOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </el-form-item>
-        </el-col>
-      </el-row>
-      <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="版本" prop="version">
-            <el-input v-model="form.version" placeholder="请输入版本信息" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="状态" prop="status">
-            <el-select v-model="form.status" placeholder="请选择状态">
-              <el-option
-                v-for="item in statusOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </el-form-item>
-        </el-col>
-      </el-row>
-      <el-form-item label="描述" prop="description">
-        <el-input
-          v-model="form.description"
-          type="textarea"
-          :rows="4"
-          placeholder="请输入描述"
-          maxlength="200"
-          show-word-limit
-        />
-      </el-form-item>
-    </el-form>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="类型" prop="type">
+              <el-select v-model="form.type" placeholder="请选择类型">
+                <el-option
+                  v-for="item in typeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="名称" prop="name">
+              <el-input v-model="form.name" placeholder="请输入参数配置名称" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="产品" prop="product">
+              <el-select v-model="form.product" placeholder="请选择产品">
+                <el-option
+                  v-for="item in productOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="工序" prop="process">
+              <el-select v-model="form.process" placeholder="请选择工序">
+                <el-option
+                  v-for="item in processOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-select v-model="form.status" placeholder="请选择状态">
+                <el-option
+                  v-for="item in statusOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="描述" prop="description">
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入描述"
+            maxlength="200"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
 
       <el-divider>参数配置</el-divider>
       <div class="parameter-tree__toolbar">
@@ -95,7 +90,9 @@
           <el-button type="primary" @click="openParameterDialog('add')"
             >添加</el-button
           >
-          <el-button :disabled="!currentNode" @click="openParameterDialog('edit')"
+          <el-button
+            :disabled="!currentNode"
+            @click="openParameterDialog('edit')"
             >编辑</el-button
           >
           <el-button
@@ -165,12 +162,17 @@
           <el-input v-model="parameterForm.unit" placeholder="请输入单位" />
         </el-form-item>
         <el-form-item label="数值" prop="value">
-          <el-input v-model="parameterForm.value" placeholder="请输入参数数值" />
+          <el-input
+            v-model="parameterForm.value"
+            placeholder="请输入参数数值"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="parameterDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleParameterConfirm">确认</el-button>
+        <el-button type="primary" @click="handleParameterConfirm"
+          >确认</el-button
+        >
       </template>
     </el-dialog>
   </div>
@@ -217,8 +219,9 @@ const typeOptions = [
 ] as const;
 
 const statusOptions = [
-  { label: "启用", value: 1 },
-  { label: "停用", value: 2 }
+  { label: "草稿", value: 1 },
+  { label: "启用", value: 2 },
+  { label: "停用", value: 3 }
 ] as const;
 
 const rules = reactive<FormRules>({

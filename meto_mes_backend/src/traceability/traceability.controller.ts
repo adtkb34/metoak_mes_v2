@@ -16,6 +16,12 @@ export class TraceabilityController {
     @Query('serialNumber') serialNumber: string,
     @Query('processCode') processCode?: string,
   ): Promise<TraceabilityBaseResponse> {
+    console.log(
+      await this.traceabilityService.getBaseInformation(
+        serialNumber,
+        processCode,
+      ),
+    );
     return this.traceabilityService.getBaseInformation(
       serialNumber,
       processCode,
