@@ -62,11 +62,6 @@ let parameterConfigs: ParameterConfig[] = [
   }
 ];
 
-const parseIdFromUrl = (url: string) => {
-  const match = url.match(/\/parameter\/configs\/([\w-]+)/);
-  return match ? match[1] : "";
-};
-
 export default defineFakeRoute([
   {
     url: "/parameter/configs",
@@ -77,10 +72,10 @@ export default defineFakeRoute([
     })
   },
   {
-    url: /^\/parameter\/configs\/([\w-]+)$/,
+    url: "/parameter/configs/:id",
     method: "get",
-    response: ({ url }) => {
-      const id = parseIdFromUrl(url);
+    response: ({ params }) => {
+      const id = typeof params?.id === "string" ? params.id : "";
       const target = parameterConfigs.find(item => item.id === id);
       if (!target) {
         return {
@@ -113,10 +108,10 @@ export default defineFakeRoute([
     }
   },
   {
-    url: /^\/parameter\/configs\/([\w-]+)$/,
+    url: "/parameter/configs/:id",
     method: "put",
-    response: ({ body, url }) => {
-      const id = parseIdFromUrl(url);
+    response: ({ body, params }) => {
+      const id = typeof params?.id === "string" ? params.id : "";
       const payload = body as ParameterConfig;
       parameterConfigs = parameterConfigs.map(item =>
         item.id === id ? { ...payload, id } : item

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { QualityFormData } from "types/quality";
+import type { QualityFormData } from "types/quality";
 import { computed } from "vue";
 
 defineOptions({

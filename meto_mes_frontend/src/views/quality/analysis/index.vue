@@ -3,7 +3,7 @@ import { getMachine, getQualityData, getQualityErrorData } from "@/api/quality";
 import { onMounted, ref } from "vue";
 import QualityDataForm from "../components/QualityDataForm.vue";
 import QualityErrorChart from "../components/QualityErrorChart.vue";
-import { NormalizedItemWithDesc, QualityFormData } from "types/quality";
+import type { NormalizedItemWithDesc, QualityFormData } from "types/quality";
 import ErrorAnalysisForm from "../components/ErrorAnalysisForm.vue";
 import { normalizeData, sortData } from "../utils";
 import { isDateEmpty } from "@/utils/date";
@@ -71,8 +71,6 @@ const updateErrorList = async () => {
 
 onMounted(async () => {
   updateListDate();
-  console.log(res);
-  
   // if (res && res?.data) {
   //   machine.value = res.data
   // }
