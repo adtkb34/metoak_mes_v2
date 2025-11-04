@@ -1,17 +1,18 @@
 <template>
-  <el-card class="parameter-form">
-    <template #header>
-      <div class="parameter-form__header">
-        <span>{{ pageTitle }}</span>
-        <div class="parameter-form__header-actions">
-          <el-button @click="handleBack">返回</el-button>
-          <el-button type="primary" :loading="saving" @click="handleSave"
-            >保存</el-button
-          >
+  <div class="parameter-form-page">
+    <el-card class="parameter-form">
+      <template #header>
+        <div class="parameter-form__header">
+          <span>{{ pageTitle }}</span>
+          <div class="parameter-form__header-actions">
+            <el-button @click="handleBack">返回</el-button>
+            <el-button type="primary" :loading="saving" @click="handleSave"
+              >保存</el-button
+            >
+          </div>
         </div>
-      </div>
-    </template>
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+      </template>
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
       <el-row :gutter="20">
         <el-col :span="12">
           <el-form-item label="名称" prop="name">
@@ -88,90 +89,91 @@
       </el-form-item>
     </el-form>
 
-    <el-divider>参数配置</el-divider>
-    <div class="parameter-tree__toolbar">
-      <el-space>
-        <el-button type="primary" @click="openParameterDialog('add')"
-          >添加</el-button
+      <el-divider>参数配置</el-divider>
+      <div class="parameter-tree__toolbar">
+        <el-space>
+          <el-button type="primary" @click="openParameterDialog('add')"
+            >添加</el-button
+          >
+          <el-button :disabled="!currentNode" @click="openParameterDialog('edit')"
+            >编辑</el-button
+          >
+          <el-button
+            type="danger"
+            :disabled="!currentNode"
+            @click="handleDeleteNode"
+            >删除</el-button
+          >
+        </el-space>
+        <span class="parameter-tree__tip"
+          >请选择一行进行编辑或删除，支持新增子节点</span
         >
-        <el-button :disabled="!currentNode" @click="openParameterDialog('edit')"
-          >编辑</el-button
-        >
-        <el-button
-          type="danger"
-          :disabled="!currentNode"
-          @click="handleDeleteNode"
-          >删除</el-button
-        >
-      </el-space>
-      <span class="parameter-tree__tip"
-        >请选择一行进行编辑或删除，支持新增子节点</span
+      </div>
+      <el-table
+        :data="form.parameters"
+        row-key="id"
+        border
+        default-expand-all
+        highlight-current-row
+        style="width: 100%"
+        :tree-props="{ children: 'children' }"
+        @current-change="handleNodeChange"
       >
-    </div>
-    <el-table
-      :data="form.parameters"
-      row-key="id"
-      border
-      default-expand-all
-      highlight-current-row
-      style="width: 100%"
-      :tree-props="{ children: 'children' }"
-      @current-change="handleNodeChange"
-    >
-      <el-table-column prop="name" label="名称" min-width="200" />
-      <el-table-column
-        prop="description"
-        label="描述"
-        min-width="220"
-        show-overflow-tooltip
-      />
-      <el-table-column prop="unit" label="单位" min-width="120" />
-      <el-table-column prop="value" label="数值" min-width="160" />
-    </el-table>
-  </el-card>
+        <el-table-column prop="name" label="名称" min-width="200" />
+        <el-table-column
+          prop="description"
+          label="描述"
+          min-width="220"
+          show-overflow-tooltip
+        />
+        <el-table-column prop="unit" label="单位" min-width="120" />
+        <el-table-column prop="value" label="数值" min-width="160" />
+      </el-table>
+    </el-card>
 
-  <el-dialog
-    v-model="parameterDialogVisible"
-    :title="parameterDialogTitle"
-    width="480px"
-  >
-    <el-form
-      ref="parameterFormRef"
-      :model="parameterForm"
-      :rules="parameterRules"
-      label-width="100px"
+    <el-dialog
+      v-model="parameterDialogVisible"
+      :title="parameterDialogTitle"
+      width="480px"
     >
-      <el-form-item
-        v-if="parameterDialogMode === 'add' && pendingParentId"
-        label="添加方式"
+      <el-form
+        ref="parameterFormRef"
+        :model="parameterForm"
+        :rules="parameterRules"
+        label-width="100px"
       >
-        <el-switch
-          v-model="addAsChild"
-          active-text="添加为子参数"
-          inactive-text="添加为根参数"
-        />
-      </el-form-item>
-      <el-form-item label="名称" prop="name">
-        <el-input v-model="parameterForm.name" placeholder="请输入参数名称" />
-      </el-form-item>
-      <el-form-item label="描述" prop="description">
-        <el-input
-          v-model="parameterForm.description"
-          placeholder="请输入参数描述"
-        />
-      </el-form-item>
-      <el-form-item label="单位" prop="unit">
-        <el-input v-model="parameterForm.unit" placeholder="请输入单位" />
-      </el-form-item>
-      <el-form-item label="数值" prop="value">
-        <el-input v-model="parameterForm.value" placeholder="请输入参数数值" />
-      </el-form-item>
-    </el-form>
-    <template #footer>
-      <el-button @click="parameterDialogVisible = false">取消</el-button>
-      <el-button type="primary" @click="handleParameterConfirm">确认</el-button>
-    </template>
-  </el-dialog>
+        <el-form-item
+          v-if="parameterDialogMode === 'add' && pendingParentId"
+          label="添加方式"
+        >
+          <el-switch
+            v-model="addAsChild"
+            active-text="添加为子参数"
+            inactive-text="添加为根参数"
+          />
+        </el-form-item>
+        <el-form-item label="名称" prop="name">
+          <el-input v-model="parameterForm.name" placeholder="请输入参数名称" />
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input
+            v-model="parameterForm.description"
+            placeholder="请输入参数描述"
+          />
+        </el-form-item>
+        <el-form-item label="单位" prop="unit">
+          <el-input v-model="parameterForm.unit" placeholder="请输入单位" />
+        </el-form-item>
+        <el-form-item label="数值" prop="value">
+          <el-input v-model="parameterForm.value" placeholder="请输入参数数值" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="parameterDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleParameterConfirm">确认</el-button>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -491,7 +493,7 @@ const handleSave = () => {
 };
 
 const handleBack = () => {
-  router.push("/system/parameter-configs");
+  router.push({ name: "ParameterConfigs" });
 };
 
 onMounted(async () => {
@@ -522,6 +524,20 @@ watch(
 </script>
 
 <style scoped>
+.parameter-form-page {
+  padding: 16px 24px;
+}
+
+.parameter-form {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.parameter-form :deep(.el-card__body) {
+  padding: 24px;
+}
+
 .parameter-form__header {
   display: flex;
   align-items: center;
