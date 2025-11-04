@@ -224,7 +224,11 @@ const statusOptions = [
 const rules = reactive<FormRules>({
   name: [
     { required: true, message: "请输入名称", trigger: "blur" },
-    { pattern: /^[A-Za-z_]+$/, message: "仅支持英文和下划线", trigger: "blur" }
+    {
+      pattern: /^[A-Za-z0-9_]+$/,
+      message: "仅支持英文、数字和下划线",
+      trigger: "blur"
+    }
   ],
   type: [{ required: true, message: "请选择类型", trigger: "change" }],
   product: [{ required: true, message: "请选择产品", trigger: "change" }],
@@ -248,7 +252,14 @@ const parameterForm = reactive<ParameterNode>({
   children: []
 });
 const parameterRules = reactive<FormRules>({
-  name: [{ required: true, message: "请输入名称", trigger: "blur" }],
+  name: [
+    { required: true, message: "请输入名称", trigger: "blur" },
+    {
+      pattern: /^[A-Za-z0-9_]+$/,
+      message: "仅支持英文、数字和下划线",
+      trigger: "blur"
+    }
+  ],
   value: [{ required: true, message: "请输入数值", trigger: "blur" }]
 });
 
