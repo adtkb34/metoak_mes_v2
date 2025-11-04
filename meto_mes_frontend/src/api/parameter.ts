@@ -3,20 +3,74 @@ import { fetchDashboardProducts } from "@/api/dashboard";
 import { getProcessSteps } from "@/api/processFlow";
 import type { ParameterConfig, ParameterOptions } from "types/parameter";
 
-export function getParameterConfigs() {
-  return http.request<ParameterConfig[]>("get", "/parameter/configs");
+interface ParameterApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
 }
 
-export function getParameterConfigDetail(id: string) {
-  return http.request<ParameterConfig>("get", `/parameter/configs/${id}`);
+type ParameterApiResult<T> = T | ParameterApiResponse<T>;
+
+function isWrappedResponse<T>(value: ParameterApiResult<T>): value is ParameterApiResponse<T> {
+  return typeof value === "object" && value !== null && "success" in value;
 }
 
-export function createParameterConfig(data: ParameterConfig) {
-  return http.request("post", "/parameter/configs", { data });
+function unwrapParameterResponse<T>(
+  response: ParameterApiResult<T>,
+  defaultMessage: string,
+  requireData = true
+): T {
+  if (isWrappedResponse(response)) {
+    if (!response.success) {
+      throw new Error(response.message ?? defaultMessage);
+    }
+
+    if (requireData && response.data === undefined) {
+      throw new Error(defaultMessage);
+    }
+
+    return (response.data ?? undefined) as T;
+  }
+
+  return response as T;
 }
 
-export function updateParameterConfig(id: string, data: ParameterConfig) {
-  return http.request("put", `/parameter/configs/${id}`, { data });
+export async function getParameterConfigs() {
+  const response = await http.request<ParameterApiResult<ParameterConfig[]>>(
+    "get",
+    "/parameter/configs"
+  );
+
+  return unwrapParameterResponse(response, "获取参数配置失败");
+}
+
+export async function getParameterConfigDetail(id: string) {
+  const response = await http.request<ParameterApiResult<ParameterConfig>>(
+    "get",
+    `/parameter/configs/${id}`
+  );
+
+  return unwrapParameterResponse(response, "获取参数配置详情失败");
+}
+
+export async function createParameterConfig(data: ParameterConfig) {
+  const response = await http.request<ParameterApiResult<void>>(
+    "post",
+    "/parameter/configs",
+    { data }
+  );
+
+  return unwrapParameterResponse(response, "创建参数配置失败", false);
+}
+
+export async function updateParameterConfig(id: string, data: ParameterConfig) {
+  const response = await http.request<ParameterApiResult<void>>(
+    "put",
+    `/parameter/configs/${id}`,
+    { data }
+  );
+
+  return unwrapParameterResponse(response, "更新参数配置失败", false);
 }
 
 export async function getParameterOptions() {
