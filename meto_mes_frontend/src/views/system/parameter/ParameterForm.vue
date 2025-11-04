@@ -35,11 +35,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="产品" prop="product">
-              <el-select
-                v-model="form.product"
-                placeholder="请选择产品"
-                :disabled="form.type !== 1"
-              >
+              <el-select v-model="form.product" placeholder="请选择产品">
                 <el-option
                   v-for="item in productOptions"
                   :key="item.value"
@@ -51,11 +47,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="工序" prop="process">
-              <el-select
-                v-model="form.process"
-                placeholder="请选择工序"
-                :disabled="form.type !== 1"
-              >
+              <el-select v-model="form.process" placeholder="请选择工序">
                 <el-option
                   v-for="item in processOptions"
                   :key="item.value"
