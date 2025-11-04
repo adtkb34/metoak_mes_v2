@@ -15,7 +15,7 @@ import {
 import { getFlowCodeByMaterial } from "@/api/quality";
 import { useProcessStore } from "@/store/modules/processFlow";
 import { message } from "@/utils/message";
-import dayjs from "dayjs";
+import { formatToUTC8 } from "@/utils/date";
 
 defineOptions({ name: "Traceability" });
 
@@ -536,11 +536,6 @@ function createTreeRow(
     ...formatted
   };
 }
-function formatToUTC8(value: number | string): string {
-  console.log(value);
-  return dayjs(value).format("YYYY-MM-DD HH:mm:ss");
-}
-
 function formatRecord(
   record: TraceabilityProcessRecord
 ): TraceabilityProcessRecord {
@@ -556,9 +551,13 @@ function formatRecord(
 
     if (isTimeKey(key)) {
       const parsed = Date.parse(value as string);
-      formatted[key] = Number.isNaN(parsed)
-        ? String(value)
-        : formatToUTC8(parsed);
+      if (Number.isNaN(parsed)) {
+        formatted[key] = String(value);
+        return;
+      }
+
+      const formattedTime = formatToUTC8(parsed);
+      formatted[key] = formattedTime || String(value);
       return;
     }
 
