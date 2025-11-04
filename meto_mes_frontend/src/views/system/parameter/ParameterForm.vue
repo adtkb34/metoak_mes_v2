@@ -246,15 +246,23 @@ const validateProcess: NonNullable<FormRules["process"]>[number] = {
   trigger: "change"
 };
 
-const rules = reactive<FormRules>({
-  name: [
-    { required: true, message: "请输入名称", trigger: "blur" },
-    {
-      pattern: /^[A-Za-z0-9_]+$/,
-      message: "仅支持英文、数字和下划线",
-      trigger: "blur"
+const validateName: NonNullable<FormRules["name"]>[number] = {
+  validator: (_, value, callback) => {
+    if (form.type !== 1 && !value) {
+      callback(new Error("请输入名称"));
+      return;
     }
-  ],
+    if (value && !/^[A-Za-z0-9_]+$/.test(value)) {
+      callback(new Error("仅支持英文、数字和下划线"));
+      return;
+    }
+    callback();
+  },
+  trigger: "blur"
+};
+
+const rules = reactive<FormRules>({
+  name: [validateName],
   type: [{ required: true, message: "请选择类型", trigger: "change" }],
   product: [validateProduct],
   process: [validateProcess],
@@ -322,6 +330,15 @@ watch(
       form.process = "";
       nextTick(() => {
         formRef.value?.clearValidate(["product", "process"]);
+      });
+      if (!form.name) {
+        nextTick(() => {
+          formRef.value?.validateField("name");
+        });
+      }
+    } else {
+      nextTick(() => {
+        formRef.value?.clearValidate(["name"]);
       });
     }
   }
@@ -458,9 +475,76 @@ const removeNode = (nodes: ParameterNode[], nodeId: string): boolean => {
   return false;
 };
 
+const findNodeById = (
+  nodes: ParameterNode[],
+  nodeId: string
+): ParameterNode | null => {
+  for (const item of nodes) {
+    if (item.id === nodeId) {
+      return item;
+    }
+    if (item.children) {
+      const target = findNodeById(item.children, nodeId);
+      if (target) {
+        return target;
+      }
+    }
+  }
+  return null;
+};
+
+const findParentId = (
+  nodes: ParameterNode[],
+  nodeId: string,
+  parentId: string | null = null
+): string | null => {
+  for (const item of nodes) {
+    if (item.id === nodeId) {
+      return parentId;
+    }
+    if (item.children) {
+      const result = findParentId(item.children, nodeId, item.id);
+      if (result !== null) {
+        return result;
+      }
+    }
+  }
+  return null;
+};
+
+const hasDuplicateSiblingName = (
+  nodes: ParameterNode[],
+  parentId: string | null,
+  name: string,
+  excludeId?: string
+) => {
+  if (!name) return false;
+  const siblings = parentId
+    ? findNodeById(nodes, parentId)?.children ?? []
+    : nodes;
+  return siblings.some(item => item.name === name && item.id !== excludeId);
+};
+
 const handleParameterConfirm = () => {
   parameterFormRef.value?.validate(valid => {
     if (!valid) return;
+    const parentId =
+      parameterDialogMode.value === "add"
+        ? addAsChild.value && pendingParentId.value
+          ? pendingParentId.value
+          : null
+        : currentNode.value
+        ? findParentId(form.parameters, currentNode.value.id)
+        : null;
+
+    const excludeId =
+      parameterDialogMode.value === "edit" ? currentNode.value?.id : undefined;
+
+    if (hasDuplicateSiblingName(form.parameters, parentId, parameterForm.name, excludeId)) {
+      ElMessage.error("同一级参数名称不能重复");
+      return;
+    }
+
     if (parameterDialogMode.value === "add") {
       const newNode: ParameterNode = {
         id: generateId(),
@@ -469,10 +553,6 @@ const handleParameterConfirm = () => {
         unit: parameterForm.unit,
         value: parameterForm.value
       };
-      const parentId =
-        addAsChild.value && pendingParentId.value
-          ? pendingParentId.value
-          : null;
       appendNode(form.parameters, parentId, newNode);
       currentNode.value = newNode;
     } else if (currentNode.value) {

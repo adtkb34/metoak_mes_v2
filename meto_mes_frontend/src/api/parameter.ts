@@ -1,6 +1,6 @@
 import { http } from "@/utils/http";
 import { fetchDashboardProducts } from "@/api/dashboard";
-import { getProcessFlow } from "@/api/processFlow";
+import { getProcessSteps } from "@/api/processFlow";
 import type { ParameterConfig, ParameterOptions } from "types/parameter";
 
 export function getParameterConfigs() {
@@ -20,9 +20,9 @@ export function updateParameterConfig(id: string, data: ParameterConfig) {
 }
 
 export async function getParameterOptions() {
-  const [productOptions, processOptions] = await Promise.all([
+  const [productOptions, processSteps] = await Promise.all([
     fetchDashboardProducts({}),
-    getProcessFlow()
+    getProcessSteps()
   ]);
 
   const products: ParameterOptions["products"] = productOptions.map(item => ({
@@ -30,19 +30,10 @@ export async function getParameterOptions() {
     value: item.code
   }));
 
-  const processMap = new Map<string, string>();
-  processOptions.forEach(item => {
-    if (!item.process_code) return;
-    if (processMap.has(item.process_code)) return;
-    processMap.set(
-      item.process_code,
-      item.process_name ?? item.process_code
-    );
-  });
-
-  const processes: ParameterOptions["processes"] = Array.from(processMap).map(
-    ([value, label]) => ({ label, value })
-  );
+  const processes: ParameterOptions["processes"] = processSteps.map(item => ({
+    label: item.stage_name ?? item.stage_code,
+    value: item.stage_code
+  }));
 
   return {
     products,
