@@ -35,7 +35,11 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="产品" prop="product">
-              <el-select v-model="form.product" placeholder="请选择产品">
+              <el-select
+                v-model="form.product"
+                placeholder="请选择产品"
+                :disabled="form.type !== 1"
+              >
                 <el-option
                   v-for="item in productOptions"
                   :key="item.value"
@@ -47,7 +51,11 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="工序" prop="process">
-              <el-select v-model="form.process" placeholder="请选择工序">
+              <el-select
+                v-model="form.process"
+                placeholder="请选择工序"
+                :disabled="form.type !== 1"
+              >
                 <el-option
                   v-for="item in processOptions"
                   :key="item.value"
@@ -224,6 +232,28 @@ const statusOptions = [
   { label: "停用", value: 3 }
 ] as const;
 
+const validateProduct: NonNullable<FormRules["product"]>[number] = {
+  validator: (_, value, callback) => {
+    if (form.type === 1 && !value) {
+      callback(new Error("请选择产品"));
+      return;
+    }
+    callback();
+  },
+  trigger: "change"
+};
+
+const validateProcess: NonNullable<FormRules["process"]>[number] = {
+  validator: (_, value, callback) => {
+    if (form.type === 1 && !value) {
+      callback(new Error("请选择工序"));
+      return;
+    }
+    callback();
+  },
+  trigger: "change"
+};
+
 const rules = reactive<FormRules>({
   name: [
     { required: true, message: "请输入名称", trigger: "blur" },
@@ -234,8 +264,8 @@ const rules = reactive<FormRules>({
     }
   ],
   type: [{ required: true, message: "请选择类型", trigger: "change" }],
-  product: [{ required: true, message: "请选择产品", trigger: "change" }],
-  process: [{ required: true, message: "请选择工序", trigger: "change" }],
+  product: [validateProduct],
+  process: [validateProcess],
   version: [{ required: true, message: "请输入版本信息", trigger: "blur" }],
   status: [{ required: true, message: "请选择状态", trigger: "change" }],
   description: [{ required: true, message: "请输入描述", trigger: "blur" }]
@@ -291,6 +321,19 @@ const fetchOptions = async () => {
     ElMessage.error("获取下拉选项失败");
   }
 };
+
+watch(
+  () => form.type,
+  newType => {
+    if (newType !== 1) {
+      form.product = "";
+      form.process = "";
+      nextTick(() => {
+        formRef.value?.clearValidate(["product", "process"]);
+      });
+    }
+  }
+);
 
 const resetForm = () => {
   form.id = "";
