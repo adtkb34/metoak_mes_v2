@@ -32,7 +32,7 @@ interface TraceabilityTreeRow extends TraceabilityProcessRecord {
   processName: string | null;
   stageName: string | null;
   stepTypeNo: string;
-  children?: TraceabilityTreeRow[];
+  children?: TraceabilityTreeRow[] | null;
   __isLatest?: boolean;
   __statusTag?: TraceabilityStatusTag;
   __statusText?: string;
@@ -413,7 +413,7 @@ function buildTreeData(
         stepTypeNo: step.stepTypeNo,
         __isLatest: true,
         __statusText: "暂无数据",
-        children: []
+        children: null
       });
       return;
     }
@@ -424,14 +424,30 @@ function buildTreeData(
     const [latest, ...rest] = sorted;
 
     const latestRow = createTreeRow(latest, step, stepIndex, 0, true);
-    latestRow.children = rest.map((record, recordIndex) =>
+    const childRows = rest.map((record, recordIndex) =>
       createTreeRow(record, step, stepIndex, recordIndex + 1, false)
     );
+    latestRow.children = normalizeTreeChildren(childRows);
 
     rows.push(latestRow);
   });
 
   return rows;
+}
+
+function normalizeTreeChildren(
+  children: TraceabilityTreeRow[] | null | undefined
+): TraceabilityTreeRow[] | null {
+  if (!Array.isArray(children)) {
+    return null;
+  }
+
+  const [, ...restChildren] = children;
+  restChildren.forEach(child => {
+    child.children = normalizeTreeChildren(child.children);
+  });
+
+  return restChildren.length > 0 ? restChildren : null;
 }
 
 function deriveRecordColumns(
