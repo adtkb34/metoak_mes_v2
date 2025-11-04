@@ -30,10 +30,22 @@ export async function getParameterOptions() {
     value: item.code
   }));
 
-  const processes: ParameterOptions["processes"] = processSteps.map(item => ({
-    label: item.stage_name ?? item.stage_code,
-    value: item.stage_code
-  }));
+  const processes: ParameterOptions["processes"] = processSteps
+    .map(item => {
+      const stepTypeNo = item.step_type_no?.trim();
+
+      if (!stepTypeNo) {
+        return null;
+      }
+
+      return {
+        label: item.stage_name ?? item.stage_code,
+        value: stepTypeNo
+      };
+    })
+    .filter(
+      (item): item is ParameterOptions["processes"][number] => item !== null
+    );
 
   return {
     products,
