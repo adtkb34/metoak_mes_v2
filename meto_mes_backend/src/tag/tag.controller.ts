@@ -27,6 +27,16 @@ export class TagController {
     return this.tagService.getBeamMaterialCode(work_order_code);
   }
 
+  @Get('/shellSN')
+  async getShellSN(@Query('work_order_code') work_order_code: string) {
+    const result = await this.tagService.getShellSN(work_order_code);
+
+    return {
+      data: result,
+      length: result.length,
+    };
+  }
+
   @Post('/beamSN')
   generateBeamSN(@Body() dto: BeamInfoDTO) {
     if (dto.user_level > 1) {
