@@ -143,7 +143,7 @@ export class TagService {
   }
 
   private prefixValidator(prefixStr: string): boolean {
-    const regex = /^[A-Z]C(1[1-9]|[1-4][0-9]|5[0-3])[A-Z]{2}$/;
+    const regex = /^[A-Z0-9]+$/;
     return regex.test(prefixStr);
   }
 }
