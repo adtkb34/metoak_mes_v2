@@ -3,7 +3,7 @@ import { store } from "@/store";
 import { useTagStore } from "@/store/modules/tag";
 import { computed, onMounted, ref, watch } from "vue";
 import { exportToCSV, getCurrentYearCode, spliceFields } from "./utils";
-import { generatebeamSN, getBeamMaterialCode } from "@/api/tag";
+import { generateShellSN, getShellSN, getBeamMaterialCode } from "@/api/tag";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
 import { useUserListStore } from "@/store/modules/system";
@@ -24,7 +24,7 @@ const weekNum = ref(dayjs().week().toString().padStart(2, "0"));
 const serialPrefix = ref("");
 
 const tagStore = useTagStore(store);
-const snList = ref<{ beam_sn: string }[]>([]);
+const snList = ref<{ tag_sn: string }[]>([]);
 
 const shellSnPrefix = computed(() => {
   const segments = [
@@ -41,32 +41,33 @@ const shellSnPrefix = computed(() => {
 });
 
 const isExportDisabled = computed(() => snList.value.length === 0);
+const generatedCount = computed(() => snList.value.length);
+
+async function fetchShellSerialNumbers(workOrderCode: string) {
+  const response = await getShellSN(workOrderCode);
+  snList.value = response?.data ?? [];
+}
 
 async function handleGenerate() {
   if (total.value === 0 || !shellSnPrefix.value) {
     return;
   }
 
-  const result = await generatebeamSN(
-    total.value,
-    tagStore.getOrderCode,
-    tagStore.getProduceID,
-    shellSnPrefix.value
-  );
+  await generateShellSN({
+    total: total.value,
+    work_order_code: tagStore.getOrderCode,
+    produce_order_id: Number(tagStore.getProduceID) || undefined,
+    shell_sn_prefix: shellSnPrefix.value
+  });
 
-  if (result) {
-    snList.value = result.data ?? [];
-  }
-  if (currentOrderCode.value) {
-    const workOrderCode = currentOrderCode.value.split(" (")[0];
-    await tagStore.setSNList(workOrderCode);
-    snList.value = tagStore.getBeamSN;
+  if (tagStore.getOrderCode) {
+    await fetchShellSerialNumbers(tagStore.getOrderCode);
   }
 }
 
 function handleExport() {
   if (isExportDisabled.value) return;
-  const rows = snList.value.map(item => ({ 序列号: item.beam_sn }));
+  const rows = snList.value.map(item => ({ 序列号: item.tag_sn }));
   exportToCSV(rows, `${tagStore.getOrderCode || "shell"}_shell_tags.csv`);
 }
 
@@ -81,8 +82,7 @@ watch(currentOrderCode, async newVal => {
     total.value = 0;
     snList.value = [];
     const workOrderCode = newVal.split(" (")[0];
-    await tagStore.setSNList(workOrderCode);
-    snList.value = tagStore.getBeamSN;
+    await fetchShellSerialNumbers(workOrderCode);
     machineCode.value = null;
     processCode.value = null;
     getBeamMaterialCode(workOrderCode).then(res => {
@@ -121,7 +121,7 @@ watch(currentOrderCode, async newVal => {
       </div>
       <div>
         <span>已生成数量: </span>
-        <el-tag type="info">{{ tagStore.getBeamListLength }}</el-tag>
+        <el-tag type="info">{{ generatedCount }}</el-tag>
       </div>
     </div>
     <div class="flex flex-col mr-5 w-full justify-center items-end">
@@ -240,7 +240,7 @@ watch(currentOrderCode, async newVal => {
           </template>
           <el-table :data="snList" max-height="595" style="width: 100%" border>
             <el-table-column fixed type="index" />
-            <el-table-column prop="beam_sn" label="序列号" />
+            <el-table-column prop="tag_sn" label="序列号" />
           </el-table>
         </el-card>
       </div>

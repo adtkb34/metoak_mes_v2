@@ -71,6 +71,22 @@ export class TagService {
     return result;
   }
 
+  async getShellSN(work_order_code: string) {
+    const result = await this.prisma.mo_tag_info.findMany({
+      select: {
+        tag_sn: true,
+      },
+      where: {
+        work_order_code,
+      },
+      orderBy: {
+        create_time: 'asc',
+      },
+    });
+
+    return result;
+  }
+
   async insertSerialRange(dto: BeamInfoDTO) {
     const { total, work_order_code, produce_order_id, beam_sn_prefix } = dto;
 
