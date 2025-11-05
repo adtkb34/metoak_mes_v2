@@ -1,5 +1,5 @@
 import { getAllOrders } from "@/api/order";
-import { getBeamMaterialCode, getBeamSN } from "@/api/tag";
+import { getBeamSN } from "@/api/tag";
 import { spliceFields } from "@/views/tag/utils";
 import { defineStore } from "pinia";
 

@@ -2,34 +2,37 @@
 import { store } from "@/store";
 import { useTagStore } from "@/store/modules/tag";
 import { computed, onMounted, ref, watch } from "vue";
-import { getCurrentYearCode, spliceFields, exportToCSV } from "./utils";
-import { getBeamMaterialCode } from "@/api/tag";
+import { exportToCSV, getCurrentYearCode, spliceFields } from "./utils";
+import { generateSN, getBeamMaterialCode } from "@/api/tag";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
-import { generateSN } from "@/api/tag";
 import { useUserListStore } from "@/store/modules/system";
 
 defineOptions({
-  name: "TagManagement"
+  name: "ShellTagManagement"
 });
 
 const userStore = useUserListStore(store);
-const selectMaterialCode = ref<string | null>(null);
+const machineCode = ref<string | null>(null);
+const processCode = ref<string | null>(null);
 const total = ref(0);
 const currentOrderCode = ref<string | null>(null);
 const selectAddr = ref("M");
 const selectOperate = ref("Z");
 const isWeekInputDisabled = ref(true);
 const weekNum = ref(dayjs().week().toString().padStart(2, "0"));
+const serialPrefix = ref("");
 
 const tagStore = useTagStore(store);
 const snList = ref<{ beam_sn: string }[]>([]);
 
-const beamSnPrefix = computed(() => {
+const shellSnPrefix = computed(() => {
   const segments = [
-    selectMaterialCode.value ?? "",
+    machineCode.value ?? "",
+    processCode.value ?? "",
     getCurrentYearCode(),
     weekNum.value ?? "",
+    serialPrefix.value ?? "",
     selectAddr.value,
     selectOperate.value
   ];
@@ -41,7 +44,7 @@ const beamSnPrefix = computed(() => {
 const isExportDisabled = computed(() => snList.value.length === 0);
 
 async function handleGenerate() {
-  if (total.value === 0 || !beamSnPrefix.value) {
+  if (total.value === 0 || !shellSnPrefix.value) {
     return;
   }
 
@@ -49,7 +52,7 @@ async function handleGenerate() {
     total.value,
     tagStore.getOrderCode,
     tagStore.getProduceID,
-    beamSnPrefix.value
+    shellSnPrefix.value
   );
 
   if (result) {
@@ -65,7 +68,7 @@ async function handleGenerate() {
 function handleExport() {
   if (isExportDisabled.value) return;
   const rows = snList.value.map(item => ({ 序列号: item.beam_sn }));
-  exportToCSV(rows, `${tagStore.getOrderCode || "beam"}_tags.csv`);
+  exportToCSV(rows, `${tagStore.getOrderCode || "shell"}_shell_tags.csv`);
 }
 
 onMounted(() => {
@@ -81,9 +84,10 @@ watch(currentOrderCode, async newVal => {
     const workOrderCode = newVal.split(" (")[0];
     await tagStore.setSNList(workOrderCode);
     snList.value = tagStore.getBeamSN;
-    selectMaterialCode.value = null;
+    machineCode.value = null;
+    processCode.value = null;
     getBeamMaterialCode(workOrderCode).then(res => {
-      selectMaterialCode.value = res.material_letter;
+      machineCode.value = res.material_letter;
     });
   }
 });
@@ -92,7 +96,6 @@ watch(currentOrderCode, async newVal => {
 <template>
   <div class="flex flex-col h-full">
     <div class="flex flex-row justify-start items-center w-full mb-5">
-      <!-- head -->
       <div class="flex flex-row items-center justify-between w-[20rem] mr-5">
         <p>工单列表</p>
         <el-select
@@ -128,9 +131,16 @@ watch(currentOrderCode, async newVal => {
           <template #header> 自动生成 </template>
           <el-row :gutter="20">
             <el-col :span="24" class="mb-5">
-              <span>编码</span>
+              <span>整机代码</span>
               <div class="inline-flex w-1/2 ml-5">
-                <el-input v-model="selectMaterialCode" />
+                <el-input v-model="machineCode" />
+              </div>
+            </el-col>
+
+            <el-col :span="24" class="mb-5">
+              <span>工艺代码</span>
+              <div class="inline-flex w-1/2 ml-5">
+                <el-input v-model="processCode" />
               </div>
             </el-col>
 
@@ -179,6 +189,13 @@ watch(currentOrderCode, async newVal => {
             </el-col>
 
             <el-col :span="24" class="mb-5">
+              <span>流水号前缀</span>
+              <div class="inline-flex w-1/2 ml-5">
+                <el-input v-model="serialPrefix" />
+              </div>
+            </el-col>
+
+            <el-col :span="24" class="mb-5">
               <span>数量</span>
               <div class="inline-flex ml-5">
                 <el-input-number
@@ -192,7 +209,7 @@ watch(currentOrderCode, async newVal => {
             <el-col :span="24" class="mb-5">
               <el-alert type="info" :closable="false" show-icon>
                 <template #title>
-                  当前序列号前缀: {{ beamSnPrefix || "-" }}
+                  当前序列号前缀: {{ shellSnPrefix || "-" }}
                 </template>
               </el-alert>
             </el-col>
@@ -200,9 +217,7 @@ watch(currentOrderCode, async newVal => {
             <el-col :span="24">
               <el-button
                 v-if="
-                  userStore.getUserLevel < 2 &&
-                  currentOrderCode &&
-                  selectMaterialCode
+                  userStore.getUserLevel < 2 && currentOrderCode && machineCode
                 "
                 @click="handleGenerate"
                 >生成</el-button
@@ -221,7 +236,7 @@ watch(currentOrderCode, async newVal => {
           <template #header>
             <div class="flex justify-between items-center">
               <span>序列号列表</span>
-              <el-tag type="info">前缀: {{ beamSnPrefix || "-" }}</el-tag>
+              <el-tag type="info">前缀: {{ shellSnPrefix || "-" }}</el-tag>
             </div>
           </template>
           <el-table :data="snList" max-height="595" style="width: 100%" border>
