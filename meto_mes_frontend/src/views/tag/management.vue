@@ -6,7 +6,7 @@ import { getCurrentYearCode, spliceFields, exportToCSV } from "./utils";
 import { getBeamMaterialCode } from "@/api/tag";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
-import { generateSN } from "@/api/tag";
+import { generatebeamSN } from "@/api/tag";
 import { useUserListStore } from "@/store/modules/system";
 
 defineOptions({
@@ -45,7 +45,7 @@ async function handleGenerate() {
     return;
   }
 
-  const result = await generateSN(
+  const result = await generatebeamSN(
     total.value,
     tagStore.getOrderCode,
     tagStore.getProduceID,

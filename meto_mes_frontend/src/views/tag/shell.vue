@@ -3,7 +3,7 @@ import { store } from "@/store";
 import { useTagStore } from "@/store/modules/tag";
 import { computed, onMounted, ref, watch } from "vue";
 import { exportToCSV, getCurrentYearCode, spliceFields } from "./utils";
-import { generateSN, getBeamMaterialCode } from "@/api/tag";
+import { generatebeamSN, getBeamMaterialCode } from "@/api/tag";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
 import { useUserListStore } from "@/store/modules/system";
@@ -47,7 +47,7 @@ async function handleGenerate() {
     return;
   }
 
-  const result = await generateSN(
+  const result = await generatebeamSN(
     total.value,
     tagStore.getOrderCode,
     tagStore.getProduceID,
