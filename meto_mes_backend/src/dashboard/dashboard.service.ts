@@ -800,14 +800,22 @@ export class DashboardService {
       'beam_sn',
     );
 
-    const tagRows = await this.queryTagInfoProducts(
-      client,
-      baseSql,
-      tableAlias,
-      product,
-      filterClause,
-      'beam_sn',
-    );
+    const shellSerialNumbers =
+      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
+
+    const tagRows = shellSerialNumbers.length
+      ? await this.queryTagInfoProducts(
+          client,
+          baseSql,
+          tableAlias,
+          product,
+          this.buildTagFilterClauseWithShellSerials(
+            filterClause,
+            shellSerialNumbers,
+          ),
+          'beam_sn',
+        )
+      : [];
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -869,14 +877,22 @@ export class DashboardService {
       'camera_sn',
     );
 
-    const tagRows = await this.queryTagInfoProducts(
-      client,
-      baseSql,
-      tableAlias,
-      product,
-      filterClause,
-      'camera_sn',
-    );
+    const shellSerialNumbers =
+      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
+
+    const tagRows = shellSerialNumbers.length
+      ? await this.queryTagInfoProducts(
+          client,
+          baseSql,
+          tableAlias,
+          product,
+          this.buildTagFilterClauseWithShellSerials(
+            filterClause,
+            shellSerialNumbers,
+          ),
+          'camera_sn',
+        )
+      : [];
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -938,14 +954,22 @@ export class DashboardService {
       'camera_sn',
     );
 
-    const tagRows = await this.queryTagInfoProducts(
-      client,
-      baseSql,
-      tableAlias,
-      product,
-      filterClause,
-      'camera_sn',
-    );
+    const shellSerialNumbers =
+      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
+
+    const tagRows = shellSerialNumbers.length
+      ? await this.queryTagInfoProducts(
+          client,
+          baseSql,
+          tableAlias,
+          product,
+          this.buildTagFilterClauseWithShellSerials(
+            filterClause,
+            shellSerialNumbers,
+          ),
+          'camera_sn',
+        )
+      : [];
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1007,14 +1031,22 @@ export class DashboardService {
       'camera_sn',
     );
 
-    const tagRows = await this.queryTagInfoProducts(
-      client,
-      baseSql,
-      tableAlias,
-      product,
-      filterClause,
-      'camera_sn',
-    );
+    const shellSerialNumbers =
+      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
+
+    const tagRows = shellSerialNumbers.length
+      ? await this.queryTagInfoProducts(
+          client,
+          baseSql,
+          tableAlias,
+          product,
+          this.buildTagFilterClauseWithShellSerials(
+            filterClause,
+            shellSerialNumbers,
+          ),
+          'camera_sn',
+        )
+      : [];
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1075,14 +1107,22 @@ export class DashboardService {
       'sn',
     );
 
-    const tagRows = await this.queryTagInfoProducts(
-      client,
-      baseSql,
-      tableAlias,
-      product,
-      filterClause,
-      'sn',
-    );
+    const shellSerialNumbers =
+      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
+
+    const tagRows = shellSerialNumbers.length
+      ? await this.queryTagInfoProducts(
+          client,
+          baseSql,
+          tableAlias,
+          product,
+          this.buildTagFilterClauseWithShellSerials(
+            filterClause,
+            shellSerialNumbers,
+          ),
+          'sn',
+        )
+      : [];
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1143,14 +1183,22 @@ export class DashboardService {
       'sn',
     );
 
-    const tagRows = await this.queryTagInfoProducts(
-      client,
-      baseSql,
-      tableAlias,
-      product,
-      filterClause,
-      'sn',
-    );
+    const shellSerialNumbers =
+      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
+
+    const tagRows = shellSerialNumbers.length
+      ? await this.queryTagInfoProducts(
+          client,
+          baseSql,
+          tableAlias,
+          product,
+          this.buildTagFilterClauseWithShellSerials(
+            filterClause,
+            shellSerialNumbers,
+          ),
+          'sn',
+        )
+      : [];
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1211,14 +1259,22 @@ export class DashboardService {
       'camera_sn',
     );
 
-    const tagRows = await this.queryTagInfoProducts(
-      client,
-      baseSql,
-      tableAlias,
-      product,
-      filterClause,
-      'camera_sn',
-    );
+    const shellSerialNumbers =
+      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
+
+    const tagRows = shellSerialNumbers.length
+      ? await this.queryTagInfoProducts(
+          client,
+          baseSql,
+          tableAlias,
+          product,
+          this.buildTagFilterClauseWithShellSerials(
+            filterClause,
+            shellSerialNumbers,
+          ),
+          'camera_sn',
+        )
+      : [];
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1298,6 +1354,61 @@ export class DashboardService {
     return rows;
   }
 
+  private async fetchShellSerialNumbersFromBeamRows(
+    client: PrismaClient,
+    rows: ProcessMetricRow[],
+  ): Promise<string[]> {
+    const beamSerialNumbers = rows
+      .map((row) => row.product_sn?.trim())
+      .filter((sn): sn is string => Boolean(sn));
+
+    if (!beamSerialNumbers.length) {
+      return [];
+    }
+
+    const shellRecords = await client.mo_tag_shell_info.findMany({
+      where: {
+        camera_sn: {
+          in: beamSerialNumbers,
+        },
+      },
+      orderBy: {
+        id: 'desc',
+      },
+      select: {
+        shell_sn: true,
+      },
+    });
+
+    const uniqueShellSerials = new Set<string>();
+    for (const record of shellRecords) {
+      const shellSn = record.shell_sn?.trim();
+      if (shellSn) {
+        uniqueShellSerials.add(shellSn);
+      }
+    }
+
+    return Array.from(uniqueShellSerials);
+  }
+
+  private buildTagFilterClauseWithShellSerials(
+    existingFilter: Prisma.Sql | null | undefined,
+    shellSerialNumbers: string[],
+  ): Prisma.Sql {
+    const serialLiterals = Prisma.join(
+      shellSerialNumbers.map((sn) => Prisma.sql`${sn}`),
+      ', ',
+    );
+
+    const shellFilterClause = Prisma.sql`AND mti.tag_sn IN (${serialLiterals})`;
+
+    if (!existingFilter) {
+      return shellFilterClause;
+    }
+
+    return Prisma.sql`${existingFilter} ${shellFilterClause}`;
+  }
+
   private async fetchGenericProcessMetricData(
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
@@ -1340,13 +1451,21 @@ export class DashboardService {
       filterClause,
     );
 
-    const tagRows = await this.queryTagInfoProducts(
-      client,
-      baseSql,
-      tableAlias,
-      product,
-      filterClause,
-    );
+    const shellSerialNumbers =
+      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
+
+    const tagRows = shellSerialNumbers.length
+      ? await this.queryTagInfoProducts(
+          client,
+          baseSql,
+          tableAlias,
+          product,
+          this.buildTagFilterClauseWithShellSerials(
+            filterClause,
+            shellSerialNumbers,
+          ),
+        )
+      : [];
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
