@@ -32,9 +32,8 @@ const shellSnPrefix = computed(() => {
     processCode.value ?? "",
     getCurrentYearCode(),
     weekNum.value ?? "",
-    serialPrefix.value ?? "",
     selectAddr.value,
-    selectOperate.value
+    serialPrefix.value ?? ""
   ];
 
   const prefix = segments.filter(Boolean).join("");
@@ -162,7 +161,7 @@ watch(currentOrderCode, async newVal => {
               </div>
             </el-col>
 
-            <el-col :span="24" class="mb-5">
+            <!-- <el-col :span="24" class="mb-5">
               <span>方式</span>
               <div class="inline-flex w-1/2 ml-5">
                 <el-select v-model="selectOperate" placeholder="生产方式">
@@ -170,7 +169,7 @@ watch(currentOrderCode, async newVal => {
                   <el-option label="Z_自动" value="Z" />
                 </el-select>
               </div>
-            </el-col>
+            </el-col> -->
 
             <el-col :span="24" class="mb-5">
               <span class="mr-5">周数</span>
