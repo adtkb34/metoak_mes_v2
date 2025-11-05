@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { TagService } from './tag.service';
 import { BeamInfoDTO } from './beamInfo.dto';
+import { ShellInfoDTO } from './shellInfo.dto';
 
 @Controller('tag')
 export class TagController {
@@ -35,7 +36,7 @@ export class TagController {
   }
 
   @Post('/shellSN')
-  generateShellSN(@Body() dto: shellInfoDTO) {
+  generateShellSN(@Body() dto: ShellInfoDTO) {
     if (dto.user_level > 1) {
       return null;
     }

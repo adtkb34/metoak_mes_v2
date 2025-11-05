@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { BeamInfoDTO } from './beamInfo.dto';
+import { ShellInfoDTO } from './shellInfo.dto';
 
 @Injectable()
 export class TagService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async getAllOrders() {
     const result = await this.prisma.mo_produce_order.findMany({
@@ -136,6 +137,86 @@ export class TagService {
         type: 'success',
         ...result,
         data
+      };
+    } catch (e) {
+      throw new Error(e);
+    }
+  }
+
+  async getShellMaxSerialNumber(shellSnPrefix: string): Promise<number> {
+    const result = await this.prisma.mo_tag_info.aggregate({
+      _max: {
+        serial_number: true,
+      },
+      where: {
+        tag_sn: {
+          startsWith: shellSnPrefix,
+        },
+      },
+    });
+
+    return result._max.serial_number ?? 0;
+  }
+
+  async insertShellSerialRange(dto: ShellInfoDTO) {
+    const {
+      total,
+      work_order_code,
+      produce_order_id,
+      shell_sn_prefix,
+      front_section,
+      operator,
+    } = dto;
+
+    if (!this.prefixValidator(shell_sn_prefix)) {
+      return {
+        type: 'error',
+        message: 'prefix error',
+      };
+    }
+
+    const currentMax = await this.getShellMaxSerialNumber(shell_sn_prefix);
+    const create_time = new Date();
+    const data: Prisma.mo_tag_infoCreateManyInput[] = [];
+
+    for (let index = 1; index <= total; index++) {
+      const serial_number = currentMax + index;
+      const tag_sn = `${shell_sn_prefix}${serial_number
+        .toString()
+        .padStart(5, '0')}`;
+
+      const record: Prisma.mo_tag_infoCreateManyInput = {
+        tag_sn,
+        work_order_code,
+        serial_number,
+        create_time,
+      };
+
+      if (typeof produce_order_id === 'number') {
+        record.produce_order_id = produce_order_id;
+      }
+
+      if (front_section) {
+        record.front_section = front_section;
+      }
+
+      if (operator) {
+        record.operator = operator;
+      }
+
+      data.push(record);
+    }
+
+    try {
+      const result = await this.prisma.mo_tag_info.createMany({
+        data,
+        skipDuplicates: true,
+      });
+
+      return {
+        type: 'success',
+        ...result,
+        data,
       };
     } catch (e) {
       throw new Error(e);
