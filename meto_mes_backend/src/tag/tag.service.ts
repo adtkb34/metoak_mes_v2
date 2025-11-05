@@ -25,18 +25,40 @@ export class TagService {
   }
 
   async getMaxSerialNumber(beamSnPrefix: string): Promise<number> {
-    const result = await this.prisma.mo_beam_info.aggregate({
-      _max: {
-        serial_number: true,
-      },
-      where: {
-        beam_sn: {
-          contains: beamSnPrefix,
+    const [beamResult, tagResult] = await this.prisma.$transaction([
+      this.prisma.mo_beam_info.aggregate({
+        _max: {
+          serial_number: true,
         },
-      },
-    });
+        where: {
+          beam_sn: {
+            startsWith: beamSnPrefix,
+          },
+        },
+      }),
+      this.prisma.mo_tag_info.aggregate({
+        _max: {
+          serial_number: true,
+        },
+        where: {
+          OR: [
+            { front_section: beamSnPrefix },
+            {
+              tag_sn: {
+                startsWith: beamSnPrefix,
+              },
+            },
+          ],
+        },
+      }),
+    ]);
 
-    return result._max.serial_number ?? 0;
+    const maxCandidates = [
+      beamResult._max.serial_number ?? 0,
+      tagResult._max.serial_number ?? 0,
+    ];
+
+    return Math.max(...maxCandidates);
   }
 
   async getBeamMaterialCode(work_order_code: string) {
@@ -58,16 +80,36 @@ export class TagService {
   }
 
   async getBeamSN(work_order_code: string) {
-    const result = await this.prisma.mo_beam_info.findMany({
-      select: {
-        beam_sn: true
-      },
-      where: {
-        work_order_code: work_order_code
-      }
-    })
+    const [tagRecords, beamRecords] = await this.prisma.$transaction([
+      this.prisma.mo_tag_info.findMany({
+        select: {
+          tag_sn: true,
+        },
+        where: {
+          work_order_code,
+        },
+        orderBy: {
+          serial_number: 'asc',
+        },
+      }),
+      this.prisma.mo_beam_info.findMany({
+        select: {
+          beam_sn: true,
+        },
+        where: {
+          work_order_code,
+        },
+        orderBy: {
+          serial_number: 'asc',
+        },
+      }),
+    ]);
 
-    return result;
+    if (tagRecords.length > 0) {
+      return tagRecords.map(record => ({ beam_sn: record.tag_sn }));
+    }
+
+    return beamRecords;
   }
 
   async insertSerialRange(dto: BeamInfoDTO) {
@@ -113,9 +155,11 @@ export class TagService {
     const create_time = new Date();
 
     const data: Prisma.mo_beam_infoCreateManyInput[] = [];
+    const tagInfoData: Prisma.mo_tag_infoCreateManyInput[] = [];
     for (let index = 1; index <= total; index++) {
       let serial_number = currentMax + index;
-      const beam_sn = `${beam_sn_prefix}${serial_number.toString().padStart(5, '0')}`;
+      const serialPart = serial_number.toString().padStart(5, '0');
+      const beam_sn = `${beam_sn_prefix}${serialPart}`;
 
       data.push({
         beam_sn,
@@ -124,17 +168,32 @@ export class TagService {
         create_time,
         produce_order_id,
       });
+
+      tagInfoData.push({
+        tag_sn: beam_sn,
+        work_order_code,
+        front_section: beam_sn_prefix,
+        serial_number,
+        create_time,
+        produce_order_id,
+      });
     }
 
     try {
-      const result = await this.prisma.mo_beam_info.createMany({
-        data,
-        skipDuplicates: true, // 防止重复
-      });
+      const [beamResult] = await this.prisma.$transaction([
+        this.prisma.mo_beam_info.createMany({
+          data,
+          skipDuplicates: true, // 防止重复
+        }),
+        this.prisma.mo_tag_info.createMany({
+          data: tagInfoData,
+          skipDuplicates: true,
+        }),
+      ]);
 
       return {
         type: 'success',
-        ...result,
+        ...beamResult,
         data
       };
     } catch (e) {
