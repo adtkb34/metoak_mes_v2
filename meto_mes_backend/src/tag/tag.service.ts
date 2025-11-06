@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { BeamInfoDTO } from './beamInfo.dto';
 import { ShellInfoDTO } from './shellInfo.dto';
+import { ShellConfigDTO } from './shellConfig.dto';
 
 @Injectable()
 export class TagService {
@@ -14,6 +15,7 @@ export class TagService {
         id: true,
         work_order_code: true,
         material_code: true,
+        material_name: true,
         produce_count: true,
         completed_count: true
       },
@@ -58,7 +60,21 @@ export class TagService {
     return result;
   }
 
-  async getBeamSN(work_order_code: string) {
+  async getBeamSN(work_order_code: string, label_type = 'beam') {
+    if (label_type === 'shell') {
+      return this.prisma.mo_tag_info.findMany({
+        select: {
+          tag_sn: true,
+        },
+        where: {
+          work_order_code: work_order_code,
+        },
+        orderBy: {
+          create_time: 'asc',
+        },
+      });
+    }
+
     const result = await this.prisma.mo_beam_info.findMany({
       select: {
         beam_sn: true
@@ -242,5 +258,87 @@ export class TagService {
   private prefixValidator(prefixStr: string): boolean {
     const regex = /^[A-Z0-9]+$/;
     return regex.test(prefixStr);
+  }
+
+  async getShellConfig(material_code: string, project_name?: string) {
+    if (!material_code) {
+      return null;
+    }
+
+    const record = await this.prisma.mo_tag_material_code.findFirst({
+      where: {
+        material_code,
+        ...(project_name ? { project_name } : {}),
+      },
+      orderBy: {
+        updated_time: 'desc',
+      },
+    });
+
+    if (record) {
+      return record;
+    }
+
+    if (project_name) {
+      return this.prisma.mo_tag_material_code.findFirst({
+        where: {
+          material_code,
+        },
+        orderBy: {
+          updated_time: 'desc',
+        },
+      });
+    }
+
+    return null;
+  }
+
+  async saveShellConfig(dto: ShellConfigDTO) {
+    const { material_code, project_name, whole_machine_code, process_code, serial_prefix } = dto;
+
+    if (!material_code) {
+      throw new Error('material_code is required');
+    }
+
+    let resolvedProjectName = project_name;
+
+    if (!resolvedProjectName) {
+      const order = await this.prisma.mo_produce_order.findFirst({
+        where: {
+          material_code,
+        },
+        select: {
+          material_name: true,
+        },
+      });
+
+      resolvedProjectName = order?.material_name ?? material_code;
+    }
+
+    const timestamp = new Date();
+
+    return this.prisma.mo_tag_material_code.upsert({
+      where: {
+        project_name_material_code: {
+          project_name: resolvedProjectName,
+          material_code,
+        },
+      },
+      update: {
+        whole_machine_code: whole_machine_code ?? null,
+        process_code: process_code ?? null,
+        serial_prefix: serial_prefix ?? null,
+        updated_time: timestamp,
+      },
+      create: {
+        project_name: resolvedProjectName,
+        material_code,
+        whole_machine_code: whole_machine_code ?? null,
+        process_code: process_code ?? null,
+        serial_prefix: serial_prefix ?? null,
+        created_time: timestamp,
+        updated_time: timestamp,
+      },
+    });
   }
 }

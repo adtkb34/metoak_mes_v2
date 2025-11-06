@@ -3,7 +3,13 @@ import { store } from "@/store";
 import { useTagStore } from "@/store/modules/tag";
 import { computed, onMounted, ref, watch } from "vue";
 import { exportToCSV, getCurrentYearCode, spliceFields } from "./utils";
-import { generateShellSN, getShellSN, getBeamMaterialCode } from "@/api/tag";
+import {
+  generateShellSN,
+  getShellSN,
+  getBeamMaterialCode,
+  getShellTagConfig,
+  saveShellTagConfig
+} from "@/api/tag";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
 import { useUserListStore } from "@/store/modules/system";
@@ -13,8 +19,8 @@ defineOptions({
 });
 
 const userStore = useUserListStore(store);
-const machineCode = ref<string | null>(null);
-const processCode = ref<string | null>(null);
+const machineCode = ref<string>("");
+const processCode = ref<string>("");
 const total = ref(0);
 const currentOrderCode = ref<string | null>(null);
 const selectAddr = ref("M");
@@ -53,6 +59,17 @@ async function handleGenerate() {
     return;
   }
 
+  const currentOrder = tagStore.getOrder;
+  if (currentOrder?.material_code) {
+    await saveShellTagConfig({
+      material_code: currentOrder.material_code,
+      project_name: currentOrder.material_name,
+      whole_machine_code: machineCode.value || undefined,
+      process_code: processCode.value || undefined,
+      serial_prefix: serialPrefix.value || undefined
+    });
+  }
+
   await generateShellSN({
     total: total.value,
     work_order_code: tagStore.getOrderCode,
@@ -83,11 +100,22 @@ watch(currentOrderCode, async newVal => {
     snList.value = [];
     const workOrderCode = newVal.split(" (")[0];
     await fetchShellSerialNumbers(workOrderCode);
-    machineCode.value = null;
-    processCode.value = null;
+    machineCode.value = "";
+    processCode.value = "";
+    serialPrefix.value = "";
     getBeamMaterialCode(workOrderCode).then(res => {
-      machineCode.value = res.material_letter;
+      machineCode.value = res.material_letter ?? "";
     });
+    const currentOrder = tagStore.getOrder;
+    if (currentOrder?.material_code) {
+      const config = await getShellTagConfig({
+        material_code: currentOrder.material_code,
+        project_name: currentOrder.material_name
+      });
+      machineCode.value = config?.whole_machine_code ?? machineCode.value ?? "";
+      processCode.value = config?.process_code ?? "";
+      serialPrefix.value = config?.serial_prefix ?? "";
+    }
   }
 });
 </script>

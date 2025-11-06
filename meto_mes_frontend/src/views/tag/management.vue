@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
 import { generatebeamSN } from "@/api/tag";
 import { useUserListStore } from "@/store/modules/system";
+import type { BeamSerialItem } from "types/tag";
 
 defineOptions({
   name: "TagManagement"
@@ -23,7 +24,7 @@ const isWeekInputDisabled = ref(true);
 const weekNum = ref(dayjs().week().toString().padStart(2, "0"));
 
 const tagStore = useTagStore(store);
-const snList = ref<{ beam_sn: string }[]>([]);
+const snList = ref<BeamSerialItem[]>([]);
 
 const beamSnPrefix = computed(() => {
   const segments = [
@@ -58,7 +59,7 @@ async function handleGenerate() {
   if (currentOrderCode.value) {
     const workOrderCode = currentOrderCode.value.split(" (")[0];
     await tagStore.setSNList(workOrderCode);
-    snList.value = tagStore.getBeamSN;
+    snList.value = tagStore.getBeamSN as BeamSerialItem[];
   }
 }
 
@@ -80,7 +81,7 @@ watch(currentOrderCode, async newVal => {
     snList.value = [];
     const workOrderCode = newVal.split(" (")[0];
     await tagStore.setSNList(workOrderCode);
-    snList.value = tagStore.getBeamSN;
+    snList.value = tagStore.getBeamSN as BeamSerialItem[];
     selectMaterialCode.value = null;
     getBeamMaterialCode(workOrderCode).then(res => {
       selectMaterialCode.value = res.material_letter;
