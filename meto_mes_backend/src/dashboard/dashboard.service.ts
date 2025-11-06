@@ -308,116 +308,6 @@ export class DashboardService {
     }));
   }
 
-  // async getProcessDetail(
-  //   params: ProcessDetailParams,
-  // ): Promise<ProcessDetailData> {
-  //   const stepTypeNo = params.processId?.trim();
-  //   if (!stepTypeNo) {
-  //     throw new Error('缺少工序编号');
-  //   }
-
-  //   const origin = params.origin;
-
-  //   const stage = await this.prisma.mo_workstage.findFirst({
-  //     where: { step_type_no: stepTypeNo },
-  //   });
-
-  //   const { start, end } = this.normalizeDateRange(
-  //     params.startDate,
-  //     params.endDate,
-  //   );
-
-  //   const equipmentDefinitions =
-  //     origin !== undefined
-  //       ? this.getEquipmentDefinitions(stepTypeNo, origin)
-  //       : [];
-
-  //   const equipmentOptions = equipmentDefinitions.map(({ label, value }) => ({
-  //     label,
-  //     value,
-  //   }));
-
-  //   const rows: ProcessDetailRow[] = [];
-
-  //   if (origin !== undefined && equipmentDefinitions.length) {
-  //     const definitionsToUse = this.filterEquipmentDefinitions(
-  //       equipmentDefinitions,
-  //       params.equipmentIds,
-  //     );
-
-  //     const statsList = await Promise.all(
-  //       definitionsToUse.map((definition) =>
-  //         this.calculateStepStatistics({
-  //           origin,
-  //           stepTypeNo,
-  //           range: { start, end },
-  //           equipment: [definition],
-  //         }).then((result) => ({ definition, result })),
-  //       ),
-  //     );
-
-  //     for (const { definition, result } of statsList) {
-  //       rows.push({
-  //         id: `${stepTypeNo}-${definition.value}`,
-  //         product: productCode ?? '',
-  //         origin,
-  //         batch: '',
-  //         date: this.formatDateRange(params.startDate, params.endDate),
-  //         equipment: definition.label,
-  //         station:
-  //           definition.source === 'INFO'
-  //             ? String(definition.stationNum ?? '')
-  //             : 'ST08',
-  //         output: result.totalOutput,
-  //         firstPassRate: result.firstPassRate,
-  //         finalPassRate: result.finalPassRate,
-  //         scrapCount: result.scrapCount,
-  //         reworkCount: result.reworkCount,
-  //         defects: [],
-  //       });
-  //     }
-  //   }
-
-  //   let paretoBreakdown: Array<{ reason: string; count: number }> = [];
-  //   if (origin !== undefined && productCode) {
-  //     try {
-  //       const paretoRows =
-  //         (await this.fetchGenericProcessMetricData({
-  //           product: productCode,
-  //           client: this.prisma.getClientByOrigin(origin),
-  //           stepTypeNo,
-  //           range: { start, end },
-  //         })) ?? [];
-
-  //       if (paretoRows.length) {
-  //         paretoBreakdown = this.buildParetoBreakdown(paretoRows, (row) =>
-  //           this.populateNgReasonFromErrorCode(row),
-  //         );
-  //       }
-  //     } catch (error) {
-  //       const message =
-  //         error instanceof Error ? error.message : String(error ?? '');
-  //       this.logger.warn(
-  //         `Failed to load pareto data for process ${stepTypeNo}: ${message}`,
-  //       );
-  //     }
-  //   }
-
-  //   if (paretoBreakdown.length) {
-  //     for (const row of rows) {
-  //       row.defects = paretoBreakdown.map((item) => ({ ...item }));
-  //     }
-  //   }
-
-  //   return {
-  //     processId: stepTypeNo,
-  //     processName: stage?.stage_name ?? `工序 ${stepTypeNo}`,
-  //     equipmentOptions,
-  //     stationOptions: [],
-  //     rows,
-  //   };
-  // }
-
   async getProcessMetrics(
     params: ProcessMetricsParams,
   ): Promise<ProcessMetricsSummary> {
@@ -443,56 +333,57 @@ export class DashboardService {
           stepTypeNo: normalizedStepTypeNo,
           range: { start, end },
         });
-      } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
-        rows = await this.fetchAssemblePcbaMetricRows({
-          product,
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
-      } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
-        rows = await this.fetchAutoAdjustMetricRows({
-          product,
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
-      } else if (params.stepTypeNo == STEP_NO.S315FQC) {
-        rows = await this.fetchS315FqcMetricRows({
-          product,
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
-      } else if (params.stepTypeNo == STEP_NO.PACKING) {
-        rows = await this.fetchPackingMetricRows({
-          product,
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
-      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
-        rows = await this.fetchStereoPrecheckMetricRows({
-          product,
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
-      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
-        rows = await this.fetchStereoPostCheckMetricRows({
-          product,
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
-      } else {
-        rows = await this.fetchProcessProductionMetricRows({
-          product,
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
       }
+      // else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
+      //   rows = await this.fetchAssemblePcbaMetricRows({
+      //     product,
+      //     client,
+      //     stepTypeNo: normalizedStepTypeNo,
+      //     range: { start, end },
+      //   });
+      // } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
+      //   rows = await this.fetchAutoAdjustMetricRows({
+      //     product,
+      //     client,
+      //     stepTypeNo: normalizedStepTypeNo,
+      //     range: { start, end },
+      //   });
+      // } else if (params.stepTypeNo == STEP_NO.S315FQC) {
+      //   rows = await this.fetchS315FqcMetricRows({
+      //     product,
+      //     client,
+      //     stepTypeNo: normalizedStepTypeNo,
+      //     range: { start, end },
+      //   });
+      // } else if (params.stepTypeNo == STEP_NO.PACKING) {
+      //   rows = await this.fetchPackingMetricRows({
+      //     product,
+      //     client,
+      //     stepTypeNo: normalizedStepTypeNo,
+      //     range: { start, end },
+      //   });
+      // } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
+      //   rows = await this.fetchStereoPrecheckMetricRows({
+      //     product,
+      //     client,
+      //     stepTypeNo: normalizedStepTypeNo,
+      //     range: { start, end },
+      //   });
+      // } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+      //   rows = await this.fetchStereoPostCheckMetricRows({
+      //     product,
+      //     client,
+      //     stepTypeNo: normalizedStepTypeNo,
+      //     range: { start, end },
+      //   });
+      // } else {
+      //   rows = await this.fetchProcessProductionMetricRows({
+      //     product,
+      //     client,
+      //     stepTypeNo: normalizedStepTypeNo,
+      //     range: { start, end },
+      //   });
+      // }
 
       const aggregated = rows
         ? this.aggregateProcessMetricData(rows)
@@ -800,22 +691,14 @@ export class DashboardService {
       'beam_sn',
     );
 
-    const shellSerialNumbers =
-      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
-
-    const tagRows = shellSerialNumbers.length
-      ? await this.queryTagInfoProducts(
-          client,
-          baseSql,
-          tableAlias,
-          product,
-          this.buildTagFilterClauseWithShellSerials(
-            filterClause,
-            shellSerialNumbers,
-          ),
-          'beam_sn',
-        )
-      : [];
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'beam_sn',
+    );
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -877,23 +760,14 @@ export class DashboardService {
       'camera_sn',
     );
 
-    const shellSerialNumbers =
-      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
-
-    const tagRows = shellSerialNumbers.length
-      ? await this.queryTagInfoProducts(
-          client,
-          baseSql,
-          tableAlias,
-          product,
-          this.buildTagFilterClauseWithShellSerials(
-            filterClause,
-            shellSerialNumbers,
-          ),
-          'camera_sn',
-        )
-      : [];
-
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
       return undefined;
@@ -954,22 +828,14 @@ export class DashboardService {
       'camera_sn',
     );
 
-    const shellSerialNumbers =
-      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
-
-    const tagRows = shellSerialNumbers.length
-      ? await this.queryTagInfoProducts(
-          client,
-          baseSql,
-          tableAlias,
-          product,
-          this.buildTagFilterClauseWithShellSerials(
-            filterClause,
-            shellSerialNumbers,
-          ),
-          'camera_sn',
-        )
-      : [];
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1031,22 +897,14 @@ export class DashboardService {
       'camera_sn',
     );
 
-    const shellSerialNumbers =
-      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
-
-    const tagRows = shellSerialNumbers.length
-      ? await this.queryTagInfoProducts(
-          client,
-          baseSql,
-          tableAlias,
-          product,
-          this.buildTagFilterClauseWithShellSerials(
-            filterClause,
-            shellSerialNumbers,
-          ),
-          'camera_sn',
-        )
-      : [];
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1107,22 +965,14 @@ export class DashboardService {
       'sn',
     );
 
-    const shellSerialNumbers =
-      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
-
-    const tagRows = shellSerialNumbers.length
-      ? await this.queryTagInfoProducts(
-          client,
-          baseSql,
-          tableAlias,
-          product,
-          this.buildTagFilterClauseWithShellSerials(
-            filterClause,
-            shellSerialNumbers,
-          ),
-          'sn',
-        )
-      : [];
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'sn',
+    );
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1183,22 +1033,14 @@ export class DashboardService {
       'sn',
     );
 
-    const shellSerialNumbers =
-      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
-
-    const tagRows = shellSerialNumbers.length
-      ? await this.queryTagInfoProducts(
-          client,
-          baseSql,
-          tableAlias,
-          product,
-          this.buildTagFilterClauseWithShellSerials(
-            filterClause,
-            shellSerialNumbers,
-          ),
-          'sn',
-        )
-      : [];
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'sn',
+    );
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1259,22 +1101,14 @@ export class DashboardService {
       'camera_sn',
     );
 
-    const shellSerialNumbers =
-      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
-
-    const tagRows = shellSerialNumbers.length
-      ? await this.queryTagInfoProducts(
-          client,
-          baseSql,
-          tableAlias,
-          product,
-          this.buildTagFilterClauseWithShellSerials(
-            filterClause,
-            shellSerialNumbers,
-          ),
-          'camera_sn',
-        )
-      : [];
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+      'camera_sn',
+    );
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1340,73 +1174,18 @@ export class DashboardService {
     productSnName: string = 'product_sn',
   ): Promise<ProcessMetricRow[]> {
     const query = Prisma.sql`
-    ${baseSql}
-    INNER JOIN mo_tag_info AS mti
-      ON mti.tag_sn = ${Prisma.raw(alias)}.${Prisma.raw(productSnName)}
-    INNER JOIN mo_produce_order AS mpo
-      ON mpo.work_order_code = mti.work_order_code
-    WHERE mpo.material_code = ${materialCode}
-    ${filterClause ?? Prisma.empty}
-  `;
+      ${baseSql}
+      INNER JOIN mo_tag_info AS mti
+        ON mti.tag_sn = ${Prisma.raw(alias)}.${Prisma.raw(productSnName)}
+      INNER JOIN mo_produce_order AS mpo
+        ON mpo.work_order_code = mti.work_order_code
+      WHERE mpo.material_code = ${materialCode}
+        ${filterClause ?? Prisma.empty}
+    `;
 
     // 直接执行并返回结果
     const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
     return rows;
-  }
-
-  private async fetchShellSerialNumbersFromBeamRows(
-    client: PrismaClient,
-    rows: ProcessMetricRow[],
-  ): Promise<string[]> {
-    const beamSerialNumbers = rows
-      .map((row) => row.product_sn?.trim())
-      .filter((sn): sn is string => Boolean(sn));
-
-    if (!beamSerialNumbers.length) {
-      return [];
-    }
-
-    const shellRecords = await client.mo_tag_shell_info.findMany({
-      where: {
-        camera_sn: {
-          in: beamSerialNumbers,
-        },
-      },
-      orderBy: {
-        id: 'desc',
-      },
-      select: {
-        shell_sn: true,
-      },
-    });
-
-    const uniqueShellSerials = new Set<string>();
-    for (const record of shellRecords) {
-      const shellSn = record.shell_sn?.trim();
-      if (shellSn) {
-        uniqueShellSerials.add(shellSn);
-      }
-    }
-
-    return Array.from(uniqueShellSerials);
-  }
-
-  private buildTagFilterClauseWithShellSerials(
-    existingFilter: Prisma.Sql | null | undefined,
-    shellSerialNumbers: string[],
-  ): Prisma.Sql {
-    const serialLiterals = Prisma.join(
-      shellSerialNumbers.map((sn) => Prisma.sql`${sn}`),
-      ', ',
-    );
-
-    const shellFilterClause = Prisma.sql`AND mti.tag_sn IN (${serialLiterals})`;
-
-    if (!existingFilter) {
-      return shellFilterClause;
-    }
-
-    return Prisma.sql`${existingFilter} ${shellFilterClause}`;
   }
 
   private async fetchGenericProcessMetricData(
@@ -1451,21 +1230,13 @@ export class DashboardService {
       filterClause,
     );
 
-    const shellSerialNumbers =
-      await this.fetchShellSerialNumbersFromBeamRows(client, beamRows);
-
-    const tagRows = shellSerialNumbers.length
-      ? await this.queryTagInfoProducts(
-          client,
-          baseSql,
-          tableAlias,
-          product,
-          this.buildTagFilterClauseWithShellSerials(
-            filterClause,
-            shellSerialNumbers,
-          ),
-        )
-      : [];
+    const tagRows = await this.queryTagInfoProducts(
+      client,
+      baseSql,
+      tableAlias,
+      product,
+      filterClause,
+    );
 
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
