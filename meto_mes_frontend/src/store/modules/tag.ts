@@ -1,7 +1,7 @@
-import { getAllOrders } from "@/api/order";
-import { getBeamSN } from "@/api/tag";
+import { getBeamSN, getTagOrders } from "@/api/tag";
 import { spliceFields } from "@/views/tag/utils";
 import { defineStore } from "pinia";
+import type { BeamSerialItem, LabelType, ShellSerialItem, TagListResponse } from "types/tag";
 
 export const useTagStore = defineStore("tag", {
   state: () => ({
@@ -12,7 +12,8 @@ export const useTagStore = defineStore("tag", {
     },
     beamSN: {
       produceOrderID: "",
-      list: null
+      list: null as TagListResponse<BeamSerialItem | ShellSerialItem> | null,
+      labelType: "beam" as LabelType
     },
     materialCode: {
       isLoaded: false,
@@ -25,14 +26,11 @@ export const useTagStore = defineStore("tag", {
     getOrder: state => state.order.current,
     getOrderCode: state => state.order.current?.work_order_code ?? "",
     getProduceID: state => state.order.current?.id ?? "",
-    getBeamSN: state => {
-      if (!state.beamSN.list) {
-        return [];
-      }
-      return state.beamSN.list.data;
-    },
+    getBeamSN: state => state.beamSN.list?.data ?? [],
     getBeamListLength: state => state.beamSN.list?.length ?? 0,
-    getMaterialCode: state => state.materialCode.list
+    getMaterialCode: state => state.materialCode.list,
+    getCurrentLabelType: state => state.beamSN.labelType,
+    getSerialField: state => (state.beamSN.labelType === "shell" ? "tag_sn" : "beam_sn")
   },
 
   actions: {
@@ -43,18 +41,19 @@ export const useTagStore = defineStore("tag", {
     },
 
     async setOrderList() {
-      if (!this.isOrderListLoaded) {
-        this.order.list = await getAllOrders();
+      if (!this.order.isLoaded) {
+        this.order.list = await getTagOrders();
         this.order.isLoaded = true;
       }
     },
 
-    async setSNList(orderCode: string) {
+    async setSNList(orderCode: string, labelType: LabelType = "beam") {
       // const { id } = this.order.list.find(
       //   order => spliceFields(order) === splicedCode
       // );
       // this.beamSN.produceOrderID = id;
-      this.beamSN.list = await getBeamSN(orderCode);
+      this.beamSN.list = await getBeamSN(orderCode, labelType);
+      this.beamSN.labelType = labelType;
     },
 
     async setMaterialCode() {

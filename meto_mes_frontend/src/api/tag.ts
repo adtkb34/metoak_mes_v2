@@ -1,13 +1,26 @@
 import { http } from "@/utils/http";
-import type { ShellSerialItem, TagCreationResponse, TagListResponse } from "types/tag";
-import type { BeamSerialItem } from "types/tag";
+import type {
+  BeamSerialItem,
+  LabelType,
+  OrderListItem,
+  ShellSerialItem,
+  ShellTagConfig,
+  ShellTagConfigPayload,
+  TagCreationResponse,
+  TagListResponse
+} from "types/tag";
 
-export function getBeamSN(work_order_code: string) {
-  return http.request<TagListResponse<BeamSerialItem>>("get", "/tag/beamSN", {
+export function getBeamSN(work_order_code: string, label_type: LabelType = "beam") {
+  return http.request<TagListResponse<BeamSerialItem | ShellSerialItem>>("get", "/tag/beamSN", {
     params: {
-      work_order_code: work_order_code
+      work_order_code,
+      label_type
     }
   });
+}
+
+export function getTagOrders() {
+  return http.request<OrderListItem[]>("get", "/tag/allOrders");
 }
 
 export function getBeamMaterialCode(work_order_code: string) {
@@ -23,6 +36,12 @@ export function getShellSN(work_order_code: string) {
     params: {
       work_order_code
     }
+  });
+}
+
+export function getShellTagConfig(params: ShellTagConfigPayload) {
+  return http.request<ShellTagConfig | null>("get", "/tag/shellConfig", {
+    params
   });
 }
 
@@ -51,6 +70,12 @@ export function generateShellSN(data: {
   operator?: string;
 }): Promise<TagCreationResponse<ShellSerialItem>> {
   return http.request("post", "/tag/shellSN", {
+    data
+  });
+}
+
+export function saveShellTagConfig(data: ShellTagConfigPayload) {
+  return http.request<ShellTagConfig>("post", "/tag/shellConfig", {
     data
   });
 }

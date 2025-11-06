@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { TagService } from './tag.service';
 import { BeamInfoDTO } from './beamInfo.dto';
 import { ShellInfoDTO } from './shellInfo.dto';
+import { ShellConfigDTO } from './shellConfig.dto';
 
 @Controller('tag')
 export class TagController {
@@ -13,8 +14,11 @@ export class TagController {
   }
 
   @Get('/beamSN')
-  async getBeamSN(@Query('work_order_code') work_order_code: string) {
-    const result = await this.tagService.getBeamSN(work_order_code);
+  async getBeamSN(
+    @Query('work_order_code') work_order_code: string,
+    @Query('label_type') label_type = 'beam',
+  ) {
+    const result = await this.tagService.getBeamSN(work_order_code, label_type);
 
     return {
       data: result,
@@ -25,6 +29,14 @@ export class TagController {
   @Get('/beamMaterialCode')
   getBeamMaterialCode(@Query('work_order_code') work_order_code: string) {
     return this.tagService.getBeamMaterialCode(work_order_code);
+  }
+
+  @Get('/shellConfig')
+  getShellConfig(
+    @Query('material_code') material_code: string,
+    @Query('project_name') project_name?: string,
+  ) {
+    return this.tagService.getShellConfig(material_code, project_name);
   }
 
   @Get('/shellSN')
@@ -51,5 +63,10 @@ export class TagController {
       return null;
     }
     return this.tagService.insertShellSerialRange(dto);
+  }
+
+  @Post('/shellConfig')
+  saveShellConfig(@Body() dto: ShellConfigDTO) {
+    return this.tagService.saveShellConfig(dto);
   }
 }
