@@ -680,6 +680,10 @@ const fetchSummary = async () => {
   summaryError.value = null;
   try {
     const params = buildSummaryParams();
+    const currentProduct = filters.product;
+    const preservedProductOption = currentProduct
+      ? productOptions.value.find(option => option.value === currentProduct) ?? null
+      : null;
     const selectedOrigin = filters.origin ?? undefined;
 
     const shouldFetchProducts = Boolean(
@@ -697,6 +701,21 @@ const fetchSummary = async () => {
           label: item.label,
           value: item.code
         }));
+        if (currentProduct) {
+          const hasSelectedProduct = productOptionPayload.some(
+            option => option.value === currentProduct
+          );
+          if (!hasSelectedProduct) {
+            if (preservedProductOption) {
+              productOptionPayload.push({ ...preservedProductOption });
+            } else {
+              productOptionPayload.push({
+                label: String(currentProduct),
+                value: currentProduct
+              });
+            }
+          }
+        }
       } catch (error: any) {
         const message = error?.message ?? "获取产品选项失败";
         ElMessage.warning(message);
