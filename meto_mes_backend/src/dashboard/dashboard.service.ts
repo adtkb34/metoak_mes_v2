@@ -402,7 +402,7 @@ export class DashboardService {
   }
 
   async getParetoData(params: {
-    product: string;
+    products: string[];
     origin: ProductOrigin;
     stepTypeNo: string;
     startDate?: string;
@@ -413,13 +413,12 @@ export class DashboardService {
       counts: [],
       cumulative: [],
     };
-
-    const product = params.product.trim();
+    
     const stepTypeNo = params.stepTypeNo.trim();
 
-    if (!product || !stepTypeNo) {
-      return empty;
-    }
+    // if (!product || !stepTypeNo) {
+    //   return empty;
+    // }
 
     const { start, end } = this.normalizeDateRange(
       params.startDate,
@@ -429,108 +428,113 @@ export class DashboardService {
     try {
       const client = this.prisma.getClientByOrigin(params.origin);
       let rows: ProcessMetricRow[] | undefined;
-      if (params.stepTypeNo == STEP_NO.CALIB) {
-        rows = await this.fetchCalibMetricRows({
-          product,
-          client,
-          stepTypeNo: stepTypeNo,
-          range: { start, end },
-        });
-        if (rows != undefined) {
-          rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
-            this.prisma,
-            rows,
-            'calibration',
-          );
-        }
-      } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
-        rows = await this.fetchAssemblePcbaMetricRows({
-          product,
-          client,
-          stepTypeNo: stepTypeNo,
-          range: { start, end },
-        });
-      } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
-        rows = await this.fetchAutoAdjustMetricRows({
-          product,
-          client,
-          stepTypeNo: stepTypeNo,
-          range: { start, end },
-        });
-        if (params.origin == ProductOrigin.MIANYANG) {
-          if (rows != undefined) {
-            return await populateAiweishiAANgReasonFromErrorCode(
-              rows,
-              this.configService,
-            );
-          }
-        } else {
+      let allRows: ProcessMetricRow[] = [];
+      for (const product of params.products) {
+        if (params.stepTypeNo == STEP_NO.CALIB) {
+          rows = await this.fetchCalibMetricRows({
+            product,
+            client,
+            stepTypeNo: stepTypeNo,
+            range: { start, end },
+          });
           if (rows != undefined) {
             rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
               this.prisma,
               rows,
-              'AA',
+              'calibration',
             );
           }
+        } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
+          rows = await this.fetchAssemblePcbaMetricRows({
+            product,
+            client,
+            stepTypeNo: stepTypeNo,
+            range: { start, end },
+          });
+        } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
+          rows = await this.fetchAutoAdjustMetricRows({
+            product,
+            client,
+            stepTypeNo: stepTypeNo,
+            range: { start, end },
+          });
+          if (params.origin == ProductOrigin.MIANYANG) {
+            if (rows != undefined) {
+              return await populateAiweishiAANgReasonFromErrorCode(
+                rows,
+                this.configService,
+              );
+            }
+          } else {
+            if (rows != undefined) {
+              rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+                this.prisma,
+                rows,
+                'AA',
+              );
+            }
+          }
+        } else if (params.stepTypeNo == STEP_NO.S315FQC) {
+          rows = await this.fetchS315FqcMetricRows({
+            product,
+            client,
+            stepTypeNo: stepTypeNo,
+            range: { start, end },
+          });
+          if (rows != undefined) {
+            rows = await populateFQCNgReasonFromErrorCode(this.prisma, rows);
+          }
+        } else if (params.stepTypeNo == STEP_NO.PACKING) {
+          rows = await this.fetchPackingMetricRows({
+            product,
+            client,
+            stepTypeNo: stepTypeNo,
+            range: { start, end },
+          });
+        } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
+          rows = await this.fetchStereoPrecheckMetricRows({
+            product,
+            client,
+            stepTypeNo: stepTypeNo,
+            range: { start, end },
+          });
+          if (rows != undefined) {
+            rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+              this.prisma,
+              rows,
+              'stereo_precheck',
+            );
+          }
+        } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+          rows = await this.fetchStereoPostCheckMetricRows({
+            product,
+            client,
+            stepTypeNo: stepTypeNo,
+            range: { start, end },
+          });
+          if (rows != undefined) {
+            rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+              this.prisma,
+              rows,
+              'stereo_postcheck',
+            );
+          }
+        } else {
+          rows = await this.fetchGenericProcessMetricData({
+            product,
+            client,
+            stepTypeNo,
+            range: { start, end },
+          });
         }
-      } else if (params.stepTypeNo == STEP_NO.S315FQC) {
-        rows = await this.fetchS315FqcMetricRows({
-          product,
-          client,
-          stepTypeNo: stepTypeNo,
-          range: { start, end },
-        });
-        if (rows != undefined) {
-          rows = await populateFQCNgReasonFromErrorCode(this.prisma, rows);
-        }
-      } else if (params.stepTypeNo == STEP_NO.PACKING) {
-        rows = await this.fetchPackingMetricRows({
-          product,
-          client,
-          stepTypeNo: stepTypeNo,
-          range: { start, end },
-        });
-      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
-        rows = await this.fetchStereoPrecheckMetricRows({
-          product,
-          client,
-          stepTypeNo: stepTypeNo,
-          range: { start, end },
-        });
-        if (rows != undefined) {
-          rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
-            this.prisma,
-            rows,
-            'stereo_precheck',
-          );
-        }
-      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
-        rows = await this.fetchStereoPostCheckMetricRows({
-          product,
-          client,
-          stepTypeNo: stepTypeNo,
-          range: { start, end },
-        });
-        if (rows != undefined) {
-          rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
-            this.prisma,
-            rows,
-            'stereo_postcheck',
-          );
-        }
-      } else {
-        rows = await this.fetchGenericProcessMetricData({
-          product,
-          client,
-          stepTypeNo,
-          range: { start, end },
-        });
+        if (rows) allRows.push(...rows)
       }
-      if (!rows?.length) {
+      
+      if (!allRows?.length) {
         return empty;
       }
       const breakdown = this.buildParetoBreakdown(
-        rows,
+        allRows,
         // this.populateNgReasonFromErrorCode(row),
       );
 

@@ -149,16 +149,16 @@ export class DashboardController {
 
   @Get('pareto')
   async getParetoData(
-    @Query('product') product?: string,
+    @Query('product') products?: string[],
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('origin') originParam?: string,
     @Query('stepTypeNo') stepTypeNo?: string,
   ): Promise<{ success: true; data: ParetoChartData }> {
-    const normalizedProduct = product?.trim();
-    if (!normalizedProduct) {
-      throw new BadRequestException('缺少产品');
-    }
+    // const normalizedProduct = product?.trim();
+    // if (!normalizedProduct) {
+    //   throw new BadRequestException('缺少产品');
+    // }
 
     const normalizedStep = stepTypeNo?.trim();
     if (!normalizedStep) {
@@ -175,7 +175,7 @@ export class DashboardController {
     const normalizedEnd = this.normalizeDateParam('end', endDate) ?? endDate;
 
     const data = await this.dashboardService.getParetoData({
-      product: normalizedProduct,
+      products: typeof products === 'string' ? [products] : products,
       stepTypeNo: normalizedStep,
       origin,
       startDate: normalizedStart,

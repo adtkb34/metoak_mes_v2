@@ -212,7 +212,15 @@ export async function fetchParetoData(
   const response = await http.request<ApiResponse<ParetoChartData>>(
     "get",
     PROCESS_PARETO_URL,
-    { params }
+    { 
+      params,
+      paramsSerializer: (params) => {
+        return qs.stringify(params, { 
+          arrayFormat: 'repeat',  // 使用重复参数名格式
+          indices: false          // 不显示索引
+        });
+      } 
+    }
   );
 
   return unwrapResponse(response, "获取柏拉图数据失败");

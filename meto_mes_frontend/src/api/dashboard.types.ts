@@ -24,7 +24,7 @@ export interface ProcessMetricsParams {
 }
 
 export interface ParetoChartParams {
-  product: string;
+  product: string[];
   origin: ProductOrigin;
   stepTypeNo: string;
   startDate?: string;
