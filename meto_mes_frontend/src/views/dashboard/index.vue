@@ -11,7 +11,8 @@
         :origin-options="originOptions"
         :loading="filtersLoading"
         @update:dateRange="value => (filters.dateRange = value)"
-        @update:product="value => (filters.product = value)"
+        @update:product="value =>
+          (filters.product = Array.isArray(value) ? [...value] : [])"
         @update:origin="value => (filters.origin = value)"
         @update:processCode="value => (filters.processCode = value)"
         @submit="handleFiltersSubmit"
@@ -133,7 +134,7 @@ const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
 
 const filters = reactive<FilterState>({
   dateRange: getDefaultDateRange(),
-  product: null,
+  product: [],
   origin: ProductOrigin.Suzhou,
   processCode: null
 });
@@ -447,8 +448,8 @@ let productOptionsRequestToken = 0;
 const resetProductSelection = () => {
   productOptionsRequestToken++;
   productOptions.value = [];
-  if (filters.product) {
-    filters.product = null;
+  if (filters.product.length) {
+    filters.product = [];
   }
 };
 
@@ -480,11 +481,16 @@ const refreshProductOptions = async () => {
 
     productOptions.value = nextProductOptions;
 
-    if (
-      filters.product &&
-      !nextProductOptions.some(option => option.value === filters.product)
-    ) {
-      filters.product = null;
+    if (filters.product.length) {
+      const availableCodes = new Set(
+        nextProductOptions.map(option => option.value)
+      );
+      const validSelections = filters.product.filter(code =>
+        availableCodes.has(code)
+      );
+      if (validSelections.length !== filters.product.length) {
+        filters.product = [...validSelections];
+      }
     }
   } catch (error: any) {
     if (requestToken !== productOptionsRequestToken) {
@@ -494,8 +500,8 @@ const refreshProductOptions = async () => {
     const message = error?.message ?? "获取产品选项失败";
     ElMessage.warning(message);
     productOptions.value = [];
-    if (filters.product) {
-      filters.product = null;
+    if (filters.product.length) {
+      filters.product = [];
     }
   }
 };
@@ -547,13 +553,18 @@ watch(
 );
 
 watch(
-  () => filters.product,
+  () => filters.product.slice(),
   async value => {
-    const normalizedProduct = normalizeStringValue(value);
     const requestToken = ++productProcessRequestToken;
 
     filters.processCode = null;
     resetProcessDataState();
+
+    if (value.length !== 1) {
+      return;
+    }
+
+    const normalizedProduct = normalizeStringValue(value[0]);
 
     if (!normalizedProduct) {
       return;
@@ -602,10 +613,11 @@ const buildSummaryParams = (): DashboardSummaryParams => {
     filters.dateRange.length === 2 &&
     filters.dateRange[0] &&
     filters.dateRange[1];
+  const hasProducts = filters.product.length > 0;
   return {
     startDate: hasRange ? filters.dateRange[0] : undefined,
     endDate: hasRange ? filters.dateRange[1] : undefined,
-    product: filters.product,
+    product: hasProducts ? [...filters.product] : undefined,
     origin: filters.origin ?? undefined
   };
 };
@@ -617,7 +629,7 @@ const refreshProcessMetrics = async (
   const baseMap = buildEmptyMetricsMap(steps);
   processMetricsMap.value = { ...baseMap };
 
-  if (!params.product || !steps.length) {
+  if (!params.product?.length || !steps.length) {
     return false;
   }
 
@@ -705,15 +717,20 @@ const fetchSummary = async () => {
     const availableProductCodes = new Set(
       productOptionPayload.map(item => item.value)
     );
-    if (filters.product && !availableProductCodes.has(filters.product)) {
-      filters.product = null;
+    if (filters.product.length) {
+      const validSelections = filters.product.filter(code =>
+        availableProductCodes.has(code)
+      );
+      if (validSelections.length !== filters.product.length) {
+        filters.product = [...validSelections];
+      }
     }
 
     originOptions.value = PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }));
     workOrders.value = [];
 
     let metricsAvailable = false;
-    if (params.product) {
+    if (params.product?.length) {
       metricsAvailable = await refreshProcessMetrics(params);
     } else {
       processMetricsMap.value = {
@@ -721,7 +738,11 @@ const fetchSummary = async () => {
       };
     }
 
-    if (!metricsAvailable && !workOrders.value.length && params.product) {
+    if (
+      !metricsAvailable &&
+      !workOrders.value.length &&
+      params.product?.length
+    ) {
       summaryError.value = "当前筛选条件没有匹配的数据";
     }
   } catch (error: any) {
@@ -753,8 +774,14 @@ const handleProcessSelect = async (processId: string) => {
   }
 
   const params = buildSummaryParams();
-  if (!params.product) {
+  const selectedProducts = params.product ?? [];
+  if (!selectedProducts.length) {
     detailError.value = "请选择产品后查看工序详情";
+    return;
+  }
+
+  if (selectedProducts.length > 1) {
+    detailError.value = "请仅选择一个产品后查看工序详情";
     return;
   }
 
@@ -765,7 +792,7 @@ const handleProcessSelect = async (processId: string) => {
 
   detailLoading.value = true;
   try {
-    const product = params.product;
+    const product = selectedProducts[0];
     const origin = params.origin;
     const result = await fetchParetoData({
       product,
@@ -799,7 +826,7 @@ const handleFiltersSubmit = () => {
 
 const handleFiltersReset = () => {
   filters.dateRange = getDefaultDateRange();
-  filters.product = null;
+  filters.product = [];
   filters.origin = ProductOrigin.Suzhou;
   filters.processCode = null;
   syncProcessStepsWithSelection();
