@@ -122,21 +122,16 @@ export class DashboardController {
   @Get('process-metrics')
   async getProcessMetrics(
     @Query()
-    query: {
-      origin?: string | number | null;
-      product: string[];
-      stepTypeNo?: string | null;
-      startDate?: string;
-      endDate?: string;
-      deviceNos?: string[] | string | null;
-      stations?: string[] | string | null;
-    },
+    query: ProcessMetricsQuery,
   ): Promise<{ success: true; data: ProcessMetricsSummary }> {
-    console.log(query)
     const origin = this.parseOrigin(query?.origin);
+    const products =
+      this.normalizeStringArray(query?.product) ??
+      this.extractIndexedQueryArray(query, 'product');
+
     const summary = await this.dashboardService.getProcessMetrics({
       origin,
-      products: query.product,
+      products: products ?? [],
       stepTypeNo: query?.stepTypeNo?.trim(),
       startDate: query.startDate,
       endDate: query.endDate,
@@ -283,4 +278,54 @@ export class DashboardController {
 
     return normalized.length ? normalized : undefined;
   }
+
+  private extractIndexedQueryArray(
+    query: Record<string, unknown>,
+    baseKey: string,
+  ): string[] | undefined {
+    const pattern = new RegExp(`^${baseKey}\\[(\\d+)\\]$`);
+
+    const collected = Object.entries(query)
+      .map(([key, rawValue]) => {
+        const match = pattern.exec(key);
+        if (!match) {
+          return undefined;
+        }
+
+        const index = Number(match[1]);
+        if (!Number.isInteger(index)) {
+          return undefined;
+        }
+
+        const value = Array.isArray(rawValue)
+          ? rawValue[0]
+          : typeof rawValue === 'string'
+            ? rawValue
+            : undefined;
+
+        const trimmed = value?.trim();
+        if (!trimmed) {
+          return undefined;
+        }
+
+        return { index, value: trimmed };
+      })
+      .filter(
+        (item): item is { index: number; value: string } => item !== undefined,
+      )
+      .sort((a, b) => a.index - b.index)
+      .map((item) => item.value);
+
+    return collected.length ? collected : undefined;
+  }
+}
+
+interface ProcessMetricsQuery extends Record<string, unknown> {
+  origin?: string | number | null;
+  product?: string[] | string | null;
+  stepTypeNo?: string | null;
+  startDate?: string;
+  endDate?: string;
+  deviceNos?: string[] | string | null;
+  stations?: string[] | string | null;
 }

@@ -324,8 +324,18 @@ export class DashboardService {
 
     try {
       const client = this.prisma.getClientByOrigin(params.origin);
+      const products = Array.isArray(params.products)
+        ? params.products
+            .map((product) => (product ?? '').trim())
+            .filter((product): product is string => !!product)
+        : [];
+
+      if (!products.length) {
+        return summary;
+      }
+
       let allRows: ProcessMetricRow[] = [];
-      for (const product of params.products) {
+      for (const product of products) {
         let rows: ProcessMetricRow[] | undefined;
         if (params.stepTypeNo == STEP_NO.CALIB) {
           rows = await this.fetchCalibMetricRows({
