@@ -74,7 +74,8 @@ async function handleGenerate() {
     total: total.value,
     work_order_code: tagStore.getOrderCode,
     produce_order_id: Number(tagStore.getProduceID) || undefined,
-    shell_sn_prefix: shellSnPrefix.value
+    shell_sn_prefix: shellSnPrefix.value,
+    serial_prefix: serialPrefix.value
   });
 
   if (tagStore.getOrderCode) {
@@ -127,6 +128,7 @@ watch(currentOrderCode, async newVal => {
         <p>工单列表</p>
         <el-select
           v-model="currentOrderCode"
+          filterable
           placeholder="Select"
           style="width: 240px"
           @change="
@@ -157,22 +159,22 @@ watch(currentOrderCode, async newVal => {
         <el-card class="w-1/3 h-[40rem] mr-5">
           <template #header> 自动生成 </template>
           <el-row :gutter="20">
-            <el-col :span="24" class="mb-5">
-              <span>整机代码</span>
+          <el-col :span="24" class="mb-5 flex items-center">
+              <span class="label-width">整机代码</span>
               <div class="inline-flex w-1/2 ml-5">
                 <el-input v-model="machineCode" />
               </div>
             </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span>工艺代码</span>
+            <el-col :span="24" class="mb-5 flex items-center">
+              <span class="label-width">工艺代码</span>
               <div class="inline-flex w-1/2 ml-5">
                 <el-input v-model="processCode" />
               </div>
             </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span>产地</span>
+            <el-col :span="24" class="mb-5 flex items-center">
+              <span class="label-width">产地</span>
               <div class="inline-flex ml-5 w-1/2">
                 <el-select
                   v-model="selectAddr"
@@ -188,20 +190,10 @@ watch(currentOrderCode, async newVal => {
                 </el-select>
               </div>
             </el-col>
-
-            <!-- <el-col :span="24" class="mb-5">
-              <span>方式</span>
-              <div class="inline-flex w-1/2 ml-5">
-                <el-select v-model="selectOperate" placeholder="生产方式">
-                  <el-option label="S_手工" value="S" />
-                  <el-option label="Z_自动" value="Z" />
-                </el-select>
-              </div>
-            </el-col> -->
-
-            <el-col :span="24" class="mb-5">
-              <span class="mr-5">周数</span>
-              <div class="inline-flex items-center">
+            
+            <el-col :span="24" class="mb-5 flex items-center">
+              <span class="label-width">周数</span>
+              <div class="inline-flex items-center w-1/2 ml-5">
                 <el-input
                   v-model="weekNum"
                   class="mr-5"
@@ -215,30 +207,22 @@ watch(currentOrderCode, async newVal => {
               </div>
             </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span>流水号前缀</span>
+            <el-col :span="24" class="mb-5 flex items-center">
+              <span class="label-width">流水号前缀</span>
               <div class="inline-flex w-1/2 ml-5">
                 <el-input v-model="serialPrefix" />
               </div>
             </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span>数量</span>
-              <div class="inline-flex ml-5">
+            <el-col :span="24" class="mb-5 flex items-center">
+              <span class="label-width">数量</span>
+              <div class="inline-flex w-1/2 ml-5">
                 <el-input-number
                   v-model="total"
                   placeholder="请输入"
                   :min="0"
                 />
               </div>
-            </el-col>
-
-            <el-col :span="24" class="mb-5">
-              <el-alert type="info" :closable="false" show-icon>
-                <template #title>
-                  当前序列号前缀: {{ shellSnPrefix || "-" }}
-                </template>
-              </el-alert>
             </el-col>
 
             <el-col :span="24">
@@ -277,4 +261,10 @@ watch(currentOrderCode, async newVal => {
   </div>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.label-width {
+  width: 80px; /* 根据最长的"流水号前缀"调整宽度 */
+  text-align: right;
+  display: inline-block;
+}
+</style>

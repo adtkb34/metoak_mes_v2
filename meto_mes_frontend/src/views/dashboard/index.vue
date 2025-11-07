@@ -613,6 +613,7 @@ const buildSummaryParams = (): DashboardSummaryParams => {
 const refreshProcessMetrics = async (
   params: DashboardSummaryParams
 ): Promise<boolean> => {
+  console.log(1, params.product)
   const steps = activeProcessSteps.value;
   const baseMap = buildEmptyMetricsMap(steps);
   processMetricsMap.value = { ...baseMap };
@@ -636,8 +637,9 @@ const refreshProcessMetrics = async (
       stepTypeNo: step.code!
     }).then(summary => ({ id: step.id, summary }))
   );
-
+  
   const results = await Promise.allSettled(requests);
+  console.log(results)
   let hasData = false;
   const failedSteps: string[] = [];
   let firstErrorMessage: string | null = null;

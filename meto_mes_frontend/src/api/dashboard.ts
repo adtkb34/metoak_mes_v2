@@ -1,4 +1,5 @@
 import { http } from "@/utils/http";
+import qs from 'qs';
 import type {
   DashboardSummaryResponse,
   ProcessDetailData
@@ -185,13 +186,19 @@ export async function fetchProcessMetrics(
   if (isMockEnabled) {
     return Promise.resolve(buildProcessMetrics(params));
   }
-
   const response = await http.request<ApiResponse<ProcessMetricsSummary>>(
     "get",
     PROCESS_METRICS_URL,
-    { params }
+    {
+      params,
+      paramsSerializer: (params) => {
+        return qs.stringify(params, { 
+          arrayFormat: 'repeat',  // 使用重复参数名格式
+          indices: false          // 不显示索引
+        });
+      } 
+    }
   );
-  console.log(1, response);
   return unwrapResponse(response, "获取工序指标失败");
 }
 
