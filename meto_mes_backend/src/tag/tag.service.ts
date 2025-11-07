@@ -196,10 +196,14 @@ export class TagService {
       work_order_code,
       produce_order_id,
       shell_sn_prefix,
+      serial_prefix,
       front_section,
       operator,
     } = dto;
-
+    let serialPrefixLength = 0
+    if (serial_prefix && typeof serial_prefix === 'string') {
+        serialPrefixLength = serial_prefix.length;
+    }
     if (!this.prefixValidator(shell_sn_prefix)) {
       return {
         type: 'error',
@@ -215,7 +219,7 @@ export class TagService {
       const serial_number = currentMax + index;
       const tag_sn = `${shell_sn_prefix}${serial_number
         .toString()
-        .padStart(5, '0')}`;
+        .padStart(5 - serialPrefixLength, '0')}`;
 
       const record: Prisma.mo_tag_infoCreateManyInput = {
         tag_sn,

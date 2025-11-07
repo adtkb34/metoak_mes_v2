@@ -124,7 +124,7 @@ export class DashboardController {
     @Query()
     query: {
       origin?: string | number | null;
-      product: string;
+      product: string[];
       stepTypeNo?: string | null;
       startDate?: string;
       endDate?: string;
@@ -132,10 +132,11 @@ export class DashboardController {
       stations?: string[] | string | null;
     },
   ): Promise<{ success: true; data: ProcessMetricsSummary }> {
+    console.log(query)
     const origin = this.parseOrigin(query?.origin);
     const summary = await this.dashboardService.getProcessMetrics({
       origin,
-      product: query.product,
+      products: query.product,
       stepTypeNo: query?.stepTypeNo?.trim(),
       startDate: query.startDate,
       endDate: query.endDate,

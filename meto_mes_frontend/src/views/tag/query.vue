@@ -50,11 +50,11 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col">
-    <div class="flex flex-row items-center justify-between mr-5 mb-5">
-      <div class="flex flex-row items-center mr-8">
+    <div class="flex flex-row items-center mr-5 mb-5">
         <p class="mr-3">工单列表</p>
         <el-select
           v-model="currentOrderCode"
+          filterable
           placeholder="Select"
           style="width: 240px"
           @change="handleSelectChange"
@@ -66,9 +66,7 @@ onMounted(() => {
             :value="spliceFields(order)"
           />
         </el-select>
-      </div>
-      <div class="flex flex-row items-center">
-        <p class="mr-3">标签类型</p>
+        <p class="mr-3" style="margin-left: 40px;">标签类型</p>
         <el-select
           v-model="currentLabelType"
           placeholder="标签类型"
@@ -81,7 +79,6 @@ onMounted(() => {
             :value="option.value"
           />
         </el-select>
-      </div>
     </div>
     <el-table :data="serialList" max-height="680" style="width: 100%">
       <el-table-column fixed type="index" width="100" />

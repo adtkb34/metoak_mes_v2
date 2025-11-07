@@ -38,6 +38,7 @@
           class="filter-select"
           clearable
           filterable
+          multiple
           placeholder="选择产品"
           :disabled="loading || !productOptions.length"
           :model-value="product"
@@ -90,7 +91,7 @@ import type { SelectOption } from "../types";
 
 interface Props {
   dateRange: string[];
-  product: string | null;
+  product: string[] | null;
   origin: ProductOrigin | null;
   productOptions: SelectOption[];
   processOptions: SelectOption[];

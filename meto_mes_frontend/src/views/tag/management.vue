@@ -98,6 +98,7 @@ watch(currentOrderCode, async newVal => {
         <p>工单列表</p>
         <el-select
           v-model="currentOrderCode"
+          filterable
           placeholder="Select"
           style="width: 240px"
           @change="

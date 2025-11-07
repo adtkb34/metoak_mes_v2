@@ -95,7 +95,7 @@ interface ProcessDetailParams extends DashboardSummaryParams {
 }
 
 interface ProcessMetricsParams extends DashboardSummaryParams {
-  product: string;
+  products: string[];
   deviceNos?: string[];
   stations?: string[];
 }
@@ -324,71 +324,74 @@ export class DashboardService {
 
     try {
       const client = this.prisma.getClientByOrigin(params.origin);
-      const product = params.product;
-      let rows: ProcessMetricRow[] | undefined;
-      if (params.stepTypeNo == STEP_NO.CALIB) {
-        rows = await this.fetchCalibMetricRows({
-          product,
-          client,
-          stepTypeNo: normalizedStepTypeNo,
-          range: { start, end },
-        });
+      let allRows: ProcessMetricRow[] = [];
+      for (const product of params.products) {
+        let rows: ProcessMetricRow[] | undefined;
+        if (params.stepTypeNo == STEP_NO.CALIB) {
+          rows = await this.fetchCalibMetricRows({
+            product,
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        }
+        else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
+          rows = await this.fetchAssemblePcbaMetricRows({
+            product,
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
+          rows = await this.fetchAutoAdjustMetricRows({
+            product,
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        } else if (params.stepTypeNo == STEP_NO.S315FQC) {
+          rows = await this.fetchS315FqcMetricRows({
+            product,
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        } else if (params.stepTypeNo == STEP_NO.PACKING) {
+          rows = await this.fetchPackingMetricRows({
+            product,
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
+          rows = await this.fetchStereoPrecheckMetricRows({
+            product,
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+          rows = await this.fetchStereoPostCheckMetricRows({
+            product,
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        } else {
+          rows = await this.fetchProcessProductionMetricRows({
+            product,
+            client,
+            stepTypeNo: normalizedStepTypeNo,
+            range: { start, end },
+          });
+        }
+        if (rows)
+        allRows.push(...rows)
+        
       }
-      // else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
-      //   rows = await this.fetchAssemblePcbaMetricRows({
-      //     product,
-      //     client,
-      //     stepTypeNo: normalizedStepTypeNo,
-      //     range: { start, end },
-      //   });
-      // } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
-      //   rows = await this.fetchAutoAdjustMetricRows({
-      //     product,
-      //     client,
-      //     stepTypeNo: normalizedStepTypeNo,
-      //     range: { start, end },
-      //   });
-      // } else if (params.stepTypeNo == STEP_NO.S315FQC) {
-      //   rows = await this.fetchS315FqcMetricRows({
-      //     product,
-      //     client,
-      //     stepTypeNo: normalizedStepTypeNo,
-      //     range: { start, end },
-      //   });
-      // } else if (params.stepTypeNo == STEP_NO.PACKING) {
-      //   rows = await this.fetchPackingMetricRows({
-      //     product,
-      //     client,
-      //     stepTypeNo: normalizedStepTypeNo,
-      //     range: { start, end },
-      //   });
-      // } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
-      //   rows = await this.fetchStereoPrecheckMetricRows({
-      //     product,
-      //     client,
-      //     stepTypeNo: normalizedStepTypeNo,
-      //     range: { start, end },
-      //   });
-      // } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
-      //   rows = await this.fetchStereoPostCheckMetricRows({
-      //     product,
-      //     client,
-      //     stepTypeNo: normalizedStepTypeNo,
-      //     range: { start, end },
-      //   });
-      // } else {
-      //   rows = await this.fetchProcessProductionMetricRows({
-      //     product,
-      //     client,
-      //     stepTypeNo: normalizedStepTypeNo,
-      //     range: { start, end },
-      //   });
-      // }
-
-      const aggregated = rows
-        ? this.aggregateProcessMetricData(rows)
-        : undefined;
-
+      const aggregated = allRows
+          ? this.aggregateProcessMetricData(allRows)
+          : undefined;
       return aggregated ?? summary;
     } catch (error) {
       this.logger.error(
