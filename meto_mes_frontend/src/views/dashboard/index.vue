@@ -133,7 +133,7 @@ const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
 
 const filters = reactive<FilterState>({
   dateRange: getDefaultDateRange(),
-  product: null,
+  product: [] as string[],
   origin: ProductOrigin.Suzhou,
   processCode: null
 });
@@ -447,9 +447,10 @@ let productOptionsRequestToken = 0;
 const resetProductSelection = () => {
   productOptionsRequestToken++;
   productOptions.value = [];
-  if (filters.product) {
-    filters.product = null;
+  if (filters.product.length) {
+    filters.product = [];
   }
+
 };
 
 const refreshProductOptions = async () => {
@@ -481,11 +482,13 @@ const refreshProductOptions = async () => {
     productOptions.value = nextProductOptions;
 
     if (
-      filters.product &&
-      !nextProductOptions.some(option => option.value === filters.product)
+      Array.isArray(filters.product) &&
+      filters.product.length &&
+      !filters.product.some(p => nextProductOptions.some(opt => opt.value === p))
     ) {
-      filters.product = null;
+      filters.product = [];
     }
+
   } catch (error: any) {
     if (requestToken !== productOptionsRequestToken) {
       return;
@@ -549,21 +552,18 @@ watch(
 watch(
   () => filters.product,
   async value => {
-    const normalizedProduct = normalizeStringValue(value);
+    const products = Array.isArray(value) ? value : (value ? [value] : []);
     const requestToken = ++productProcessRequestToken;
-
-    filters.processCode = null;
-    resetProcessDataState();
-
-    if (!normalizedProduct) {
+    if (!products.length) {
+      filters.processCode = null;
+      resetProcessDataState();
       return;
     }
 
+    // 多个产品可按第一个确定工艺
     try {
-      const response = await getFlowCodeByMaterial(normalizedProduct);
-      if (requestToken !== productProcessRequestToken) {
-        return;
-      }
+      const response = await getFlowCodeByMaterial(products[0]);
+      if (requestToken !== productProcessRequestToken) return;
 
       const candidateCodes = extractFlowCodes(response);
       const preferredCode = selectPreferredProcessCode(candidateCodes);
@@ -571,13 +571,11 @@ watch(
         filters.processCode = preferredCode;
       }
     } catch (error) {
-      if (requestToken !== productProcessRequestToken) {
-        return;
-      }
       console.error(error);
     }
   }
 );
+
 
 watch(
   () => filters.processCode,
@@ -605,7 +603,7 @@ const buildSummaryParams = (): DashboardSummaryParams => {
   return {
     startDate: hasRange ? filters.dateRange[0] : undefined,
     endDate: hasRange ? filters.dateRange[1] : undefined,
-    product: filters.product,
+    product: Array.isArray(filters.product) ? filters.product : (filters.product ? [filters.product] : []),
     origin: filters.origin ?? undefined
   };
 };
@@ -613,7 +611,6 @@ const buildSummaryParams = (): DashboardSummaryParams => {
 const refreshProcessMetrics = async (
   params: DashboardSummaryParams
 ): Promise<boolean> => {
-  console.log(1, params.product)
   const steps = activeProcessSteps.value;
   const baseMap = buildEmptyMetricsMap(steps);
   processMetricsMap.value = { ...baseMap };
@@ -639,7 +636,6 @@ const refreshProcessMetrics = async (
   );
   
   const results = await Promise.allSettled(requests);
-  console.log(results)
   let hasData = false;
   const failedSteps: string[] = [];
   let firstErrorMessage: string | null = null;
@@ -726,9 +722,14 @@ const fetchSummary = async () => {
     const availableProductCodes = new Set(
       productOptionPayload.map(item => item.value)
     );
-    if (filters.product && !availableProductCodes.has(filters.product)) {
-      filters.product = null;
+    if (
+      Array.isArray(filters.product) &&
+      filters.product.length &&
+      !filters.product.some(p => availableProductCodes.has(p))
+    ) {
+      filters.product = [];
     }
+
 
     originOptions.value = PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }));
     workOrders.value = [];
@@ -820,7 +821,7 @@ const handleFiltersSubmit = () => {
 
 const handleFiltersReset = () => {
   filters.dateRange = getDefaultDateRange();
-  filters.product = null;
+  filters.product = [];
   filters.origin = ProductOrigin.Suzhou;
   filters.processCode = null;
   syncProcessStepsWithSelection();

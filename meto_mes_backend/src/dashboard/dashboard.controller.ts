@@ -149,7 +149,7 @@ export class DashboardController {
 
   @Get('pareto')
   async getParetoData(
-    @Query('product') products?: string[],
+    @Query('product') products: string[],
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('origin') originParam?: string,
