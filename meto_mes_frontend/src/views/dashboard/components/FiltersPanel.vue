@@ -58,7 +58,7 @@
           clearable
           filterable
           placeholder="选择工艺"
-          :disabled="loading || !product"
+          :disabled="loading || !(product && product.length)"
           :model-value="processCode"
           @update:model-value="onProcessCodeChange"
         >
@@ -91,7 +91,7 @@ import type { SelectOption } from "../types";
 
 interface Props {
   dateRange: string[];
-  product: string[] | null;
+  product: string[];
   origin: ProductOrigin | null;
   productOptions: SelectOption[];
   processOptions: SelectOption[];
@@ -124,8 +124,14 @@ const onDateRangeChange = (value: string[] | null) => {
   emit("update:dateRange", value ?? []);
 };
 
-const onProductChange = (value: string | null) => {
-  emit("update:product", value ?? null);
+const onProductChange = (value: Array<string | number> | null) => {
+  if (!value || value.length === 0) {
+    emit("update:product", []);
+    return;
+  }
+
+  const normalized = value.map(item => String(item));
+  emit("update:product", normalized);
 };
 
 const onOriginChange = (value: ProductOrigin | null) => {

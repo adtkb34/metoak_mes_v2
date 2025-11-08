@@ -450,7 +450,6 @@ const resetProductSelection = () => {
   if (filters.product.length) {
     filters.product = [];
   }
-
 };
 
 const refreshProductOptions = async () => {
@@ -482,13 +481,13 @@ const refreshProductOptions = async () => {
     productOptions.value = nextProductOptions;
 
     if (
-      Array.isArray(filters.product) &&
       filters.product.length &&
-      !filters.product.some(p => nextProductOptions.some(opt => opt.value === p))
+      !filters.product.some(p =>
+        nextProductOptions.some(opt => opt.value === p)
+      )
     ) {
       filters.product = [];
     }
-
   } catch (error: any) {
     if (requestToken !== productOptionsRequestToken) {
       return;
@@ -497,8 +496,8 @@ const refreshProductOptions = async () => {
     const message = error?.message ?? "获取产品选项失败";
     ElMessage.warning(message);
     productOptions.value = [];
-    if (filters.product) {
-      filters.product = null;
+    if (filters.product.length) {
+      filters.product = [];
     }
   }
 };
@@ -550,9 +549,8 @@ watch(
 );
 
 watch(
-  () => filters.product,
-  async value => {
-    const products = Array.isArray(value) ? value : (value ? [value] : []);
+  () => filters.product.slice(),
+  async products => {
     const requestToken = ++productProcessRequestToken;
     if (!products.length) {
       filters.processCode = null;
@@ -560,9 +558,15 @@ watch(
       return;
     }
 
+    const [firstProduct] = products;
+
+    if (!firstProduct) {
+      return;
+    }
+
     // 多个产品可按第一个确定工艺
     try {
-      const response = await getFlowCodeByMaterial(products[0]);
+      const response = await getFlowCodeByMaterial(firstProduct);
       if (requestToken !== productProcessRequestToken) return;
 
       const candidateCodes = extractFlowCodes(response);
@@ -575,7 +579,6 @@ watch(
     }
   }
 );
-
 
 watch(
   () => filters.processCode,
@@ -600,10 +603,13 @@ const buildSummaryParams = (): DashboardSummaryParams => {
     filters.dateRange.length === 2 &&
     filters.dateRange[0] &&
     filters.dateRange[1];
+  const normalizedProducts = filters.product
+    .map(code => (typeof code === "string" ? code.trim() : String(code).trim()))
+    .filter(code => code.length > 0);
   return {
     startDate: hasRange ? filters.dateRange[0] : undefined,
     endDate: hasRange ? filters.dateRange[1] : undefined,
-    product: Array.isArray(filters.product) ? filters.product : (filters.product ? [filters.product] : []),
+    product: normalizedProducts.length ? normalizedProducts : undefined,
     origin: filters.origin ?? undefined
   };
 };
@@ -634,7 +640,7 @@ const refreshProcessMetrics = async (
       stepTypeNo: step.code!
     }).then(summary => ({ id: step.id, summary }))
   );
-  
+
   const results = await Promise.allSettled(requests);
   let hasData = false;
   const failedSteps: string[] = [];
@@ -676,10 +682,24 @@ const fetchSummary = async () => {
   summaryError.value = null;
   try {
     const params = buildSummaryParams();
-    const currentProduct = filters.product;
-    const preservedProductOption = currentProduct
-      ? productOptions.value.find(option => option.value === currentProduct) ?? null
-      : null;
+    const currentProducts = params.product ? [...params.product] : [];
+    const preservedProductOptions = new Map<string, SelectOption>();
+    currentProducts.forEach(code => {
+      const match = productOptions.value.find(
+        option => String(option.value) === code
+      );
+      if (match) {
+        preservedProductOptions.set(code, {
+          label: match.label,
+          value: String(match.value)
+        });
+      } else {
+        preservedProductOptions.set(code, {
+          label: code,
+          value: code
+        });
+      }
+    });
     const selectedOrigin = filters.origin ?? undefined;
 
     const shouldFetchProducts = Boolean(
@@ -697,45 +717,52 @@ const fetchSummary = async () => {
           label: item.label,
           value: item.code
         }));
-        if (currentProduct) {
-          const hasSelectedProduct = productOptionPayload.some(
-            option => option.value === currentProduct
-          );
-          if (!hasSelectedProduct) {
-            if (preservedProductOption) {
-              productOptionPayload.push({ ...preservedProductOption });
-            } else {
-              productOptionPayload.push({
-                label: String(currentProduct),
-                value: currentProduct
-              });
-            }
-          }
-        }
       } catch (error: any) {
         const message = error?.message ?? "获取产品选项失败";
         ElMessage.warning(message);
       }
     }
 
-    productOptions.value = productOptionPayload;
-    const availableProductCodes = new Set(
-      productOptionPayload.map(item => item.value)
+    const mergedProductOptions: SelectOption[] = [];
+    const seenProductValues = new Set<string>();
+    const appendProductOption = (option: SelectOption) => {
+      const value = String(option.value);
+      if (seenProductValues.has(value)) {
+        return;
+      }
+      seenProductValues.add(value);
+      mergedProductOptions.push({
+        label: option.label,
+        value
+      });
+    };
+
+    productOptionPayload.forEach(option =>
+      appendProductOption({ label: option.label, value: option.value })
     );
-    if (
-      Array.isArray(filters.product) &&
-      filters.product.length &&
-      !filters.product.some(p => availableProductCodes.has(p))
-    ) {
-      filters.product = [];
+    preservedProductOptions.forEach(option => appendProductOption(option));
+
+    productOptions.value = mergedProductOptions;
+
+    const availableProductCodes = new Set(seenProductValues);
+    const validProducts = currentProducts.filter(code =>
+      availableProductCodes.has(code)
+    );
+    const hasProductChanged =
+      validProducts.length !== filters.product.length ||
+      validProducts.some((code, index) => filters.product[index] !== code);
+
+    if (hasProductChanged) {
+      filters.product = [...validProducts];
     }
 
+    params.product = validProducts.length ? [...validProducts] : undefined;
 
     originOptions.value = PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }));
     workOrders.value = [];
 
     let metricsAvailable = false;
-    if (params.product) {
+    if (params.product && params.product.length) {
       metricsAvailable = await refreshProcessMetrics(params);
     } else {
       processMetricsMap.value = {
@@ -743,7 +770,12 @@ const fetchSummary = async () => {
       };
     }
 
-    if (!metricsAvailable && !workOrders.value.length && params.product) {
+    if (
+      !metricsAvailable &&
+      !workOrders.value.length &&
+      params.product &&
+      params.product.length
+    ) {
       summaryError.value = "当前筛选条件没有匹配的数据";
     }
   } catch (error: any) {
