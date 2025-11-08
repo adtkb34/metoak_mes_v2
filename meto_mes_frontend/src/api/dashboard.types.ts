@@ -3,7 +3,7 @@ import type { ProductOrigin } from "@/enums/product-origin";
 export interface DashboardSummaryParams {
   startDate?: string;
   endDate?: string;
-  product?: string[] | null;
+  product?: string[];
   origin?: ProductOrigin;
   stepTypeNo?: string;
 }

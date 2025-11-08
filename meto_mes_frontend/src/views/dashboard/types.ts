@@ -11,7 +11,7 @@ export interface SelectOption {
 
 export interface FilterState {
   dateRange: string[];
-  product: string | null;
+  product: string[];
   origin: ProductOrigin | null;
   processCode: string | null;
 }
