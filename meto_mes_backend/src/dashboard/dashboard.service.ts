@@ -313,7 +313,7 @@ export class DashboardService {
   ): Promise<ProcessMetricsSummary> {
     const summary = this.createEmptyProcessMetricsSummary();
     const normalizedStepTypeNo = params.stepTypeNo?.trim();
-
+    
     if (params.origin === undefined || !normalizedStepTypeNo) {
       return summary;
     }
@@ -334,8 +334,7 @@ export class DashboardService {
             stepTypeNo: normalizedStepTypeNo,
             range: { start, end },
           });
-        }
-        else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
+        } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
           rows = await this.fetchAssemblePcbaMetricRows({
             product,
             client,
@@ -378,12 +377,14 @@ export class DashboardService {
             range: { start, end },
           });
         } else {
+          
           rows = await this.fetchProcessProductionMetricRows({
             product,
             client,
             stepTypeNo: normalizedStepTypeNo,
             range: { start, end },
           });
+
         }
         if (rows)
         allRows.push(...rows)
@@ -458,21 +459,12 @@ export class DashboardService {
             stepTypeNo: stepTypeNo,
             range: { start, end },
           });
-          if (params.origin == ProductOrigin.MIANYANG) {
-            if (rows != undefined) {
-              return await populateAiweishiAANgReasonFromErrorCode(
-                rows,
-                this.configService,
-              );
-            }
-          } else {
-            if (rows != undefined) {
-              rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
-                this.prisma,
-                rows,
-                'AA',
-              );
-            }
+          if (params.origin == ProductOrigin.SUZHOU && rows != undefined) {
+            rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
+              this.prisma,
+              rows,
+              'AA',
+            );
           }
         } else if (params.stepTypeNo == STEP_NO.S315FQC) {
           rows = await this.fetchS315FqcMetricRows({
@@ -532,6 +524,13 @@ export class DashboardService {
       
       if (!allRows?.length) {
         return empty;
+      }
+      if (params.origin == ProductOrigin.MIANYANG) {
+          return await populateAiweishiAANgReasonFromErrorCode(
+            allRows,
+            this.configService,
+            stepTypeNo
+          );
       }
       const breakdown = this.buildParetoBreakdown(
         allRows,

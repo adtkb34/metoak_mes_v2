@@ -77,7 +77,8 @@ export async function populateAiweishiAANgReasonFromErrorCode<
     const key = await updateNgReason4Aiweishi(configService, stepNo, attrNo);
     mapAttrKey[key] = mapAttrNo[attrNo];
   }
-  console.log(mapAttrKey);
+  console.log(`mapAttrKey: ${mapAttrKey}`);
+  console.log(`mapAttrNo: ${mapAttrNo}`);
   const sortedEntries = Object.entries(mapAttrKey).sort((a, b) => b[1] - a[1]);
 
   const categories = sortedEntries.map(([key]) => key);

@@ -370,7 +370,6 @@ const syncProcessStepsWithSelection = () => {
       if (requestToken !== processStageRequestToken) {
         return;
       }
-      console.log(result);
       const stages = Array.isArray(result) ? result : [];
       processStagesInfo.value = stages;
       const derived = deriveStepsFromProcessCode(processCode);
@@ -845,6 +844,7 @@ const handleBackToOverview = () => {
 };
 
 const handleFiltersSubmit = () => {
+  console.log("111111111")
   selectedProcessId.value = null;
   detailError.value = null;
   paretoData.value = createEmptyParetoData();
