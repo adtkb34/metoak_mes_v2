@@ -683,7 +683,6 @@ const loadProductOverview = async (stepTypeNo: string) => {
       startDate,
       endDate
     });
-    console.log(materialCodes);
     const uniqueCodes = Array.from(new Set(materialCodes));
 
     if (!uniqueCodes.length) {
