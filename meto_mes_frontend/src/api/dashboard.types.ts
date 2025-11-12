@@ -17,7 +17,7 @@ export interface ProcessMetricsParams {
   startDate?: string;
   endDate?: string;
   origin?: ProductOrigin;
-  product: string[];
+  product?: string[];
   stepTypeNo: string;
   deviceNos?: string[];
   stations?: string[];

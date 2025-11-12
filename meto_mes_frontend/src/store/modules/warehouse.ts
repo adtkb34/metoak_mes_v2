@@ -34,7 +34,9 @@ export const useWarehouseStore = defineStore("warehouse", {
           const result = await getPackingInfo(newParams);
 
           // 将结果存储到数组中
-          results.push(...result);
+          if (Array.isArray(result)) {
+            results.push(...result);
+          }
         }
 
         // // 假设你需要将结果附加到响应中

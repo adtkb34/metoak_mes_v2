@@ -5,7 +5,7 @@ export default {
     icon: "bx:data",
     title: "数据分析"
   },
-  children: [] || [
+  children: [
     {
       path: "/data-analysis/oqc",
       name: "OQC",

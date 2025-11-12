@@ -152,7 +152,7 @@ export class DashboardController {
     @Query()
     query: {
       origin?: string | number | null;
-      product: string[];
+      product?: string[] | string | null;
       stepTypeNo?: string | null;
       startDate?: string;
       endDate?: string;
@@ -163,8 +163,7 @@ export class DashboardController {
     const origin = this.parseOrigin(query?.origin);
     const summary = await this.dashboardService.getProcessMetrics({
       origin,
-      products:
-        typeof query.product === 'string' ? [query.product] : query.product,
+      products: this.normalizeStringArray(query?.product),
       stepTypeNo: query?.stepTypeNo?.trim(),
       startDate: query.startDate,
       endDate: query.endDate,
