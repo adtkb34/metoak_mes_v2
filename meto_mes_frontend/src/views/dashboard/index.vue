@@ -10,6 +10,9 @@
         :process-code="filters.processCode"
         :origin-options="originOptions"
         :loading="filtersLoading"
+        :show-product="showProductFilter"
+        :show-process="showProcessFilter"
+        :product-multiple="allowMultipleProducts"
         @update:dateRange="value => (filters.dateRange = value)"
         @update:product="value => (filters.product = value)"
         @update:origin="value => (filters.origin = value)"
@@ -25,16 +28,27 @@
           <span class="text-base font-medium text-gray-700">
             {{ headerTitle }}
           </span>
-          <el-button
-            v-if="isDetailVisible"
-            link
-            type="primary"
-            @click="handleBackToOverview"
-          >
-            返回工序概览
-          </el-button>
+          <div class="flex items-center gap-2">
+            <el-button
+              v-if="canNavigateBack"
+              link
+              type="primary"
+              @click="handleNavigateBack"
+            >
+              {{ backButtonLabel }}
+            </el-button>
+            <el-button
+              v-if="level === 'process' && isDetailVisible"
+              link
+              type="primary"
+              @click="handleBackToOverview"
+            >
+              返回工序概览
+            </el-button>
+          </div>
         </div>
       </template>
+
       <el-alert
         v-if="isDetailVisible && detailError"
         class="mb-4"
@@ -44,28 +58,38 @@
         :title="detailError"
       />
       <el-alert
-        v-else-if="!isDetailVisible && summaryError"
+        v-else-if="overviewErrorMessage"
         class="mb-4"
         type="error"
         :closable="false"
         show-icon
-        :title="summaryError"
+        :title="overviewErrorMessage"
       />
-      <process-detail
-        v-if="isDetailVisible"
-        :metrics="selectedProcessMetrics"
-        :pareto="paretoData"
-        :loading="detailLoading"
-      />
-      <process-overview
-        v-else
-        :processes="processes"
-        :loading="overviewLoading"
-        @select="handleProcessSelect"
-      />
+
+      <template v-if="level === 'process'">
+        <process-detail
+          v-if="isDetailVisible"
+          :metrics="selectedProcessMetrics"
+          :pareto="paretoData"
+          :loading="detailLoading"
+        />
+        <process-overview
+          v-else
+          :processes="displayedOverviewItems"
+          :loading="overviewLoading"
+          @select="handleOverviewSelect"
+        />
+      </template>
+      <template v-else>
+        <process-overview
+          :processes="displayedOverviewItems"
+          :loading="overviewLoading"
+          @select="handleOverviewSelect"
+        />
+      </template>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card v-if="level === 'process'" shadow="never">
       <template #header>
         <div class="flex items-center justify-between">
           <span class="text-base font-medium text-gray-700">在制工单</span>
@@ -100,7 +124,8 @@ import {
   fetchParetoData,
   fetchDashboardProducts,
   fetchProcessMetrics,
-  fetchProcessStageInfo
+  fetchProcessStageInfo,
+  fetchMaterialCodes
 } from "@/api/dashboard";
 import type { DashboardSummaryParams, ProcessStageInfo } from "@/api/dashboard";
 import { PRODUCT_ORIGIN_OPTIONS, ProductOrigin } from "@/enums/product-origin";
@@ -108,28 +133,24 @@ import { STEP_NO } from "@/enums/step-no";
 import { useProcessStore } from "@/store/modules/processFlow";
 import type { ProcessFlow } from "@/api/processFlow";
 
-const getDefaultDateRange = (): string[] => {
-  const start = dayjs().startOf("day").format("YYYY-MM-DD HH:mm:ss");
-  const end = dayjs().endOf("day").format("YYYY-MM-DD HH:mm:ss");
-  return [start, end];
+type ViewLevel = "step" | "product" | "process";
+
+const STEP_OVERVIEW_CODES: string[] = [
+  STEP_NO.AUTO_ADJUST,
+  STEP_NO.S315FQC,
+  STEP_NO.CALIB
+];
+
+const STEP_TITLE_MAP: Record<string, string> = {
+  [STEP_NO.AUTO_ADJUST]: "AUTO_ADJUST",
+  [STEP_NO.S315FQC]: "S315FQC",
+  [STEP_NO.CALIB]: "CALIB"
 };
 
-const DEFAULT_STEP_TYPE_NOS: string[] = [];
-
-interface ProcessStepInfo {
-  id: string;
-  code: string | null;
-  label?: string;
-}
-
-const buildDefaultActiveSteps = (): ProcessStepInfo[] =>
-  DEFAULT_STEP_TYPE_NOS.map(step => ({ id: step, code: step }));
-
-const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
-  数量: { 良品: "-", 产品: "-", 总体: "-" },
-  良率: { 一次: "-", 最终: "-", 总体: "-" },
-  良品用时: { mean: "-", min: "-", max: "-" }
-});
+const getDefaultDateRange = (): string[] => {
+  const today = dayjs().format("YYYY-MM-DD");
+  return [today, today];
+};
 
 const filters = reactive<FilterState>({
   dateRange: getDefaultDateRange(),
@@ -138,9 +159,21 @@ const filters = reactive<FilterState>({
   processCode: null
 });
 
+const level = ref<ViewLevel>("step");
+const selectedStepTypeNo = ref<string | null>(null);
+const selectedProductCode = ref<string | null>(null);
+
 const processStore = useProcessStore();
 
 const productOptions = ref<SelectOption[]>([]);
+const productOptionMap = computed(() => {
+  const map = new Map<string, string>();
+  productOptions.value.forEach(option => {
+    map.set(String(option.value), option.label);
+  });
+  return map;
+});
+
 const processOptions = computed<SelectOption[]>(() => {
   const list = (processStore.processFlow.list ?? []) as ProcessFlow[];
   if (!Array.isArray(list)) return [];
@@ -156,110 +189,27 @@ const processOptions = computed<SelectOption[]>(() => {
     } as SelectOption;
   });
 });
+
 const originOptions = ref<SelectOption[]>(
   PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }))
 );
-const processStagesInfo = ref<ProcessStageInfo[]>([]);
-let processStageRequestToken = 0;
-const processMetricsMap = ref<Record<string, ProcessMetricsSummary>>({});
-const workOrders = ref<WorkOrderRow[]>([]);
 
-const overviewLoading = ref(false);
-const detailLoading = ref(false);
-const summaryError = ref<string | null>(null);
-const detailError = ref<string | null>(null);
+interface ProcessStepInfo {
+  id: string;
+  code: string | null;
+  label?: string;
+}
 
-const selectedProcessId = ref<string | null>(null);
-const createEmptyParetoData = (): ParetoChartData => ({
-  categories: [],
-  counts: [],
-  cumulative: []
+const DEFAULT_STEP_TYPE_NOS: string[] = [];
+
+const buildDefaultActiveSteps = (): ProcessStepInfo[] =>
+  DEFAULT_STEP_TYPE_NOS.map(step => ({ id: step, code: step }));
+
+const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
+  数量: { 良品: "-", 产品: "-", 总体: "-" },
+  良率: { 一次: "-", 最终: "-", 总体: "-" },
+  良品用时: { mean: "-", min: "-", max: "-" }
 });
-const paretoData = ref<ParetoChartData>(createEmptyParetoData());
-
-let productProcessRequestToken = 0;
-
-function normalizeStringValue(value: unknown): string | null {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-
-  if (value === null || value === undefined) {
-    return null;
-  }
-
-  const stringified = String(value).trim();
-  return stringified.length > 0 ? stringified : null;
-}
-
-function extractFlowCodes(response: any): string[] {
-  const source = Array.isArray(response?.data)
-    ? response.data
-    : Array.isArray(response)
-      ? response
-      : [];
-
-  const codes = source
-    .map((item: any) =>
-      normalizeStringValue(
-        item?.flow_code ??
-          item?.flowCode ??
-          item?.process_code ??
-          item?.processCode
-      )
-    )
-    .filter((code): code is string => Boolean(code));
-
-  return Array.from(new Set(codes));
-}
-
-function selectPreferredProcessCode(codes: string[]): string | null {
-  if (!codes.length) {
-    return null;
-  }
-
-  const availableCodes = new Set(
-    (processOptions.value ?? [])
-      .map(option => normalizeStringValue(option?.value))
-      .filter((code): code is string => Boolean(code))
-  );
-
-  if (availableCodes.size > 0) {
-    for (const code of codes) {
-      if (availableCodes.has(code)) {
-        return code;
-      }
-    }
-    return null;
-  }
-
-  return codes[0] ?? null;
-}
-
-const resetProcessDataState = () => {
-  syncProcessStepsWithSelection();
-  processMetricsMap.value = {
-    ...buildEmptyMetricsMap(activeProcessSteps.value)
-  };
-  selectedProcessId.value = null;
-  detailError.value = null;
-  paretoData.value = createEmptyParetoData();
-};
-
-const getStepDisplayLabel = (step: ProcessStepInfo): string => {
-  const explicitLabel = step.label?.trim?.();
-  if (explicitLabel) {
-    return explicitLabel;
-  }
-
-  const normalizedCode = step.code?.trim?.();
-  if (normalizedCode) {
-    return normalizedCode;
-  }
-
-  return step.id;
-};
 
 const buildEmptyMetricsMap = (
   steps: ProcessStepInfo[]
@@ -284,6 +234,48 @@ const hasMeaningfulMetrics = (summary: ProcessMetricsSummary): boolean => {
   ];
 
   return values.some(value => typeof value === "number");
+};
+
+const processStagesInfo = ref<ProcessStageInfo[]>([]);
+let processStageRequestToken = 0;
+
+const activeProcessSteps = ref<ProcessStepInfo[]>(buildDefaultActiveSteps());
+const processMetricsMap = ref<Record<string, ProcessMetricsSummary>>({
+  ...buildEmptyMetricsMap(activeProcessSteps.value)
+});
+
+const workOrders = ref<WorkOrderRow[]>([]);
+
+const stepOverviewItems = ref<ProcessOverviewItem[]>([]);
+const productOverviewItems = ref<ProcessOverviewItem[]>([]);
+
+const overviewLoading = ref(false);
+const detailLoading = ref(false);
+const topLevelError = ref<string | null>(null);
+const summaryError = ref<string | null>(null);
+const detailError = ref<string | null>(null);
+
+const selectedProcessId = ref<string | null>(null);
+
+const createEmptyParetoData = (): ParetoChartData => ({
+  categories: [],
+  counts: [],
+  cumulative: []
+});
+const paretoData = ref<ParetoChartData>(createEmptyParetoData());
+
+const getStepDisplayLabel = (step: ProcessStepInfo): string => {
+  const explicitLabel = step.label?.trim?.();
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  const normalizedCode = step.code?.trim?.();
+  if (normalizedCode) {
+    return normalizedCode;
+  }
+
+  return step.id;
 };
 
 const deriveStepsFromProcessCode = (code: string | null): ProcessStepInfo[] => {
@@ -334,8 +326,6 @@ const deriveStepsFromProcessCode = (code: string | null): ProcessStepInfo[] => {
   });
 };
 
-const activeProcessSteps = ref<ProcessStepInfo[]>(buildDefaultActiveSteps());
-
 const setActiveProcessSteps = (
   steps: ProcessStepInfo[],
   options: { fallbackToDefault?: boolean } = {}
@@ -352,48 +342,6 @@ const setActiveProcessSteps = (
   }
 };
 
-const syncProcessStepsWithSelection = () => {
-  const requestToken = ++processStageRequestToken;
-  const processCode = filters.processCode?.trim?.() ?? null;
-
-  if (!processCode) {
-    processStagesInfo.value = [];
-    setActiveProcessSteps([], { fallbackToDefault: true });
-    return;
-  }
-
-  fetchProcessStageInfo({
-    processCode,
-    origin: filters.origin ?? undefined
-  })
-    .then(result => {
-      if (requestToken !== processStageRequestToken) {
-        return;
-      }
-      const stages = Array.isArray(result) ? result : [];
-      processStagesInfo.value = stages;
-      const derived = deriveStepsFromProcessCode(processCode);
-      setActiveProcessSteps(derived, {
-        fallbackToDefault: stages.length === 0
-      });
-    })
-    .catch((error: any) => {
-      if (requestToken !== processStageRequestToken) {
-        return;
-      }
-
-      processStagesInfo.value = [];
-      setActiveProcessSteps([], { fallbackToDefault: true });
-
-      const message = error?.message ?? "获取工序信息失败";
-      ElMessage.warning(message);
-    });
-};
-
-processMetricsMap.value = {
-  ...buildEmptyMetricsMap(activeProcessSteps.value)
-};
-
 const processes = computed<ProcessOverviewItem[]>(() =>
   activeProcessSteps.value.map(step => ({
     id: step.id,
@@ -404,17 +352,22 @@ const processes = computed<ProcessOverviewItem[]>(() =>
   }))
 );
 
-const isDetailVisible = computed(() => selectedProcessId.value !== null);
-const filtersLoading = computed(
-  () => overviewLoading.value || detailLoading.value
-);
-
 const activeProcessStepMap = computed(() => {
   const map = new Map<string, ProcessStepInfo>();
   activeProcessSteps.value.forEach(step => {
     map.set(step.id, step);
   });
   return map;
+});
+
+const displayedOverviewItems = computed<ProcessOverviewItem[]>(() => {
+  if (level.value === "process") {
+    return processes.value;
+  }
+  if (level.value === "product") {
+    return productOverviewItems.value;
+  }
+  return stepOverviewItems.value;
 });
 
 const selectedProcessName = computed(() => {
@@ -425,10 +378,6 @@ const selectedProcessName = computed(() => {
   }
   return selectedProcessId.value;
 });
-
-const headerTitle = computed(() =>
-  isDetailVisible.value ? `${selectedProcessName.value} 工序详情` : "工序概览"
-);
 
 const selectedProcessMetrics = computed<ProcessMetricsSummary>(() => {
   if (!selectedProcessId.value) {
@@ -441,173 +390,506 @@ const selectedProcessMetrics = computed<ProcessMetricsSummary>(() => {
   );
 });
 
-let productOptionsRequestToken = 0;
-
-const resetProductSelection = () => {
-  productOptionsRequestToken++;
-  productOptions.value = [];
-  if (filters.product.length) {
-    filters.product = [];
+const selectedStepTitle = computed(() => {
+  if (!selectedStepTypeNo.value) {
+    return "";
   }
+  return STEP_TITLE_MAP[selectedStepTypeNo.value] ?? selectedStepTypeNo.value;
+});
+
+const selectedProductName = computed(() => {
+  if (!selectedProductCode.value) {
+    return "";
+  }
+  return (
+    productOptionMap.value.get(selectedProductCode.value) ??
+    selectedProductCode.value
+  );
+});
+
+const isDetailVisible = computed(
+  () => level.value === "process" && selectedProcessId.value !== null
+);
+
+const headerTitle = computed(() => {
+  if (level.value === "step") {
+    return "关键工序概览";
+  }
+  if (level.value === "product") {
+    return selectedStepTitle.value
+      ? `${selectedStepTitle.value} 产品统计`
+      : "工序产品统计";
+  }
+  if (isDetailVisible.value) {
+    return `${selectedProcessName.value} 工序详情`;
+  }
+  return selectedProductName.value
+    ? `${selectedProductName.value} 工序概览`
+    : "工序概览";
+});
+
+const filtersLoading = computed(
+  () => overviewLoading.value || detailLoading.value
+);
+
+const showProductFilter = computed(() => level.value === "process");
+const showProcessFilter = computed(() => level.value === "process");
+const allowMultipleProducts = computed(() => level.value !== "process");
+
+const canNavigateBack = computed(() => level.value !== "step");
+const backButtonLabel = computed(() =>
+  level.value === "process" ? "返回产品统计" : "返回关键工序"
+);
+
+const overviewErrorMessage = computed(() =>
+  level.value === "process" ? summaryError.value : topLevelError.value
+);
+
+const normalizeStringValue = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const stringified = String(value).trim();
+  return stringified.length > 0 ? stringified : null;
 };
 
-const refreshProductOptions = async () => {
-  const hasValidRange = filters.dateRange.length === 2;
-  const selectedOrigin = filters.origin ?? undefined;
+const extractFlowCodes = (response: any): string[] => {
+  const source = Array.isArray(response?.data)
+    ? response.data
+    : Array.isArray(response)
+      ? response
+      : [];
 
-  if (!hasValidRange || selectedOrigin === undefined) {
+  const codes = source
+    .map((item: any) =>
+      normalizeStringValue(
+        item?.flow_code ??
+          item?.flowCode ??
+          item?.process_code ??
+          item?.processCode
+      )
+    )
+    .filter((code): code is string => Boolean(code));
+
+  return Array.from(new Set(codes));
+};
+
+const selectPreferredProcessCode = (codes: string[]): string | null => {
+  if (!codes.length) {
+    return null;
+  }
+
+  const availableCodes = new Set(
+    (processOptions.value ?? [])
+      .map(option => normalizeStringValue(option?.value))
+      .filter((code): code is string => Boolean(code))
+  );
+
+  if (availableCodes.size > 0) {
+    for (const code of codes) {
+      if (availableCodes.has(code)) {
+        return code;
+      }
+    }
+    return null;
+  }
+
+  return codes[0] ?? null;
+};
+
+const getRequestRange = () => {
+  if (filters.dateRange.length !== 2) {
+    return {
+      startDate: undefined as string | undefined,
+      endDate: undefined as string | undefined
+    };
+  }
+  const [start, end] = filters.dateRange;
+  const startDate = start ? `${start} 00:00:00` : undefined;
+  const endDate = end ? `${end} 23:59:59` : undefined;
+  return { startDate, endDate };
+};
+
+const getProductLabel = (code: string): string => {
+  return productOptionMap.value.get(code) ?? code;
+};
+
+const resetProcessDataState = () => {
+  processMetricsMap.value = {
+    ...buildEmptyMetricsMap(activeProcessSteps.value)
+  };
+  selectedProcessId.value = null;
+  detailError.value = null;
+  paretoData.value = createEmptyParetoData();
+};
+
+const syncProcessStepsWithSelection = async () => {
+  const requestToken = ++processStageRequestToken;
+  const processCode = filters.processCode?.trim?.() ?? null;
+
+  if (!processCode) {
+    processStagesInfo.value = [];
+    setActiveProcessSteps([], { fallbackToDefault: true });
     return;
   }
 
-  const requestToken = ++productOptionsRequestToken;
-
   try {
-    const result = await fetchDashboardProducts({
-      startDate: filters.dateRange[0],
-      endDate: filters.dateRange[1],
-      origin: selectedOrigin
+    const result = await fetchProcessStageInfo({
+      processCode,
+      origin: filters.origin ?? undefined
     });
 
-    if (requestToken !== productOptionsRequestToken) {
+    if (requestToken !== processStageRequestToken) {
       return;
     }
 
-    const nextProductOptions = result.map(item => ({
-      label: item.label,
-      value: item.code
-    }));
-
-    productOptions.value = nextProductOptions;
-
-    if (
-      filters.product.length &&
-      !filters.product.some(p =>
-        nextProductOptions.some(opt => opt.value === p)
-      )
-    ) {
-      filters.product = [];
-    }
+    const stages = Array.isArray(result) ? result : [];
+    processStagesInfo.value = stages;
+    const derived = deriveStepsFromProcessCode(processCode);
+    setActiveProcessSteps(derived, {
+      fallbackToDefault: stages.length === 0
+    });
   } catch (error: any) {
-    if (requestToken !== productOptionsRequestToken) {
+    if (requestToken !== processStageRequestToken) {
       return;
     }
 
-    const message = error?.message ?? "获取产品选项失败";
+    processStagesInfo.value = [];
+    setActiveProcessSteps([], { fallbackToDefault: true });
+
+    const message = error?.message ?? "获取工序信息失败";
     ElMessage.warning(message);
-    productOptions.value = [];
-    if (filters.product.length) {
-      filters.product = [];
-    }
   }
 };
 
-watch(
-  () => filters.origin,
-  async value => {
-    resetProductSelection();
-    try {
-      await processStore.setProcessFlow(true, value ?? null);
-    } catch (error: any) {
-      const message = error?.message ?? "获取工艺流程失败";
-      ElMessage.error(message);
-    }
-    refreshProductOptions();
-    syncProcessStepsWithSelection();
+const ensureProcessCodeForProduct = async (
+  productCode: string
+): Promise<string | null> => {
+  try {
+    const response = await getFlowCodeByMaterial(productCode);
+    const candidateCodes = extractFlowCodes(response);
+    const preferredCode = selectPreferredProcessCode(candidateCodes);
+    return preferredCode;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
-);
+};
 
-watch(
-  () => filters.dateRange.slice(),
-  () => {
-    refreshProductOptions();
+const loadStepOverview = async () => {
+  level.value = "step";
+  selectedStepTypeNo.value = null;
+  selectedProductCode.value = null;
+  topLevelError.value = null;
+  overviewLoading.value = true;
+  stepOverviewItems.value = [];
+
+  const origin = filters.origin;
+  const { startDate, endDate } = getRequestRange();
+
+  if (origin === null || origin === undefined) {
+    topLevelError.value = "请选择产地";
+    overviewLoading.value = false;
+    return;
   }
-);
 
-watch(
-  activeProcessSteps,
-  steps => {
-    const previousMap = processMetricsMap.value;
-    const nextMap = buildEmptyMetricsMap(steps);
-    for (const step of steps) {
-      if (previousMap[step.id]) {
-        nextMap[step.id] = previousMap[step.id];
+  if (!startDate || !endDate) {
+    topLevelError.value = "请选择时间范围";
+    overviewLoading.value = false;
+    return;
+  }
+
+  const items: ProcessOverviewItem[] = [];
+  const failedSteps: string[] = [];
+
+  try {
+    for (const stepTypeNo of STEP_OVERVIEW_CODES) {
+      try {
+        const materialCodes = await fetchMaterialCodes({
+          origin,
+          stepTypeNo
+        });
+        const uniqueCodes = Array.from(new Set(materialCodes));
+
+        if (!uniqueCodes.length) {
+          items.push({
+            id: stepTypeNo,
+            name: STEP_TITLE_MAP[stepTypeNo] ?? stepTypeNo,
+            code: stepTypeNo,
+            metrics: createEmptyProcessMetricsSummary()
+          });
+          continue;
+        }
+
+        const summary = await fetchProcessMetrics({
+          origin,
+          product: uniqueCodes,
+          stepTypeNo,
+          startDate,
+          endDate
+        });
+
+        items.push({
+          id: stepTypeNo,
+          name: STEP_TITLE_MAP[stepTypeNo] ?? stepTypeNo,
+          code: stepTypeNo,
+          metrics: summary
+        });
+      } catch (error) {
+        failedSteps.push(STEP_TITLE_MAP[stepTypeNo] ?? stepTypeNo);
       }
     }
-    processMetricsMap.value = { ...nextMap };
 
-    if (
-      selectedProcessId.value &&
-      !steps.some(step => step.id === selectedProcessId.value)
-    ) {
-      selectedProcessId.value = null;
-      detailError.value = null;
-      paretoData.value = createEmptyParetoData();
+    stepOverviewItems.value = items;
+
+    if (!items.length) {
+      topLevelError.value = "当前筛选条件没有匹配的数据";
+    } else if (failedSteps.length) {
+      ElMessage.error(`获取 ${failedSteps.join("、")} 指标失败`);
     }
-  },
-  { immediate: true, deep: true }
-);
+  } catch (error: any) {
+    const message = error?.message ?? "获取工序统计失败";
+    topLevelError.value = message;
+    ElMessage.error(message);
+  } finally {
+    overviewLoading.value = false;
+  }
+};
 
-watch(
-  () => filters.product.slice(),
-  async products => {
-    const requestToken = ++productProcessRequestToken;
-    if (!products.length) {
-      filters.processCode = null;
-      resetProcessDataState();
+const loadProductOverview = async (stepTypeNo: string) => {
+  level.value = "product";
+  selectedStepTypeNo.value = stepTypeNo;
+  selectedProductCode.value = null;
+  summaryError.value = null;
+  topLevelError.value = null;
+  overviewLoading.value = true;
+  productOverviewItems.value = [];
+
+  const origin = filters.origin;
+  const { startDate, endDate } = getRequestRange();
+
+  if (origin === null || origin === undefined) {
+    topLevelError.value = "请选择产地";
+    overviewLoading.value = false;
+    return;
+  }
+
+  if (!startDate || !endDate) {
+    topLevelError.value = "请选择时间范围";
+    overviewLoading.value = false;
+    return;
+  }
+
+  try {
+    const materialCodes = await fetchMaterialCodes({ origin, stepTypeNo });
+    const uniqueCodes = Array.from(new Set(materialCodes));
+
+    if (!uniqueCodes.length) {
+      topLevelError.value = "该工序暂无产品数据";
       return;
     }
 
-    const [firstProduct] = products;
+    const requests = uniqueCodes.map(code =>
+      fetchProcessMetrics({
+        origin,
+        product: [code],
+        stepTypeNo,
+        startDate,
+        endDate
+      }).then(summary => ({
+        id: code,
+        name: getProductLabel(code),
+        code,
+        metrics: summary
+      }))
+    );
 
-    if (!firstProduct) {
+    const results = await Promise.allSettled(requests);
+    const items: ProcessOverviewItem[] = [];
+    const failedProducts: string[] = [];
+
+    results.forEach((result, index) => {
+      const code = uniqueCodes[index];
+      if (result.status === "fulfilled") {
+        items.push(result.value);
+      } else {
+        failedProducts.push(getProductLabel(code));
+      }
+    });
+
+    productOverviewItems.value = items;
+
+    if (!items.length) {
+      topLevelError.value = "该工序暂无产品统计数据";
+    } else if (failedProducts.length) {
+      ElMessage.error(`获取 ${failedProducts.join("、")} 指标失败`);
+    }
+  } catch (error: any) {
+    const message = error?.message ?? "获取产品统计失败";
+    topLevelError.value = message;
+    ElMessage.error(message);
+  } finally {
+    overviewLoading.value = false;
+  }
+};
+
+const loadProcessOverviewForProduct = async () => {
+  level.value = "process";
+  overviewLoading.value = true;
+  summaryError.value = null;
+  workOrders.value = [];
+
+  const params = buildSummaryParams();
+  if (!params.product || !params.product.length) {
+    summaryError.value = "请选择产品";
+    overviewLoading.value = false;
+    return;
+  }
+
+  try {
+    await syncProcessStepsWithSelection();
+    resetProcessDataState();
+
+    if (!activeProcessSteps.value.length) {
+      summaryError.value = "当前工艺暂无工序配置";
       return;
     }
 
-    // 多个产品可按第一个确定工艺
-    try {
-      const response = await getFlowCodeByMaterial(firstProduct);
-      if (requestToken !== productProcessRequestToken) return;
+    const hasData = await refreshProcessMetrics(params);
 
-      const candidateCodes = extractFlowCodes(response);
-      const preferredCode = selectPreferredProcessCode(candidateCodes);
-      if (preferredCode) {
-        filters.processCode = preferredCode;
-      }
-    } catch (error) {
-      console.error(error);
+    if (!hasData) {
+      summaryError.value = "当前筛选条件没有匹配的数据";
     }
+  } catch (error: any) {
+    const message = error?.message ?? "获取工序指标失败";
+    summaryError.value = message;
+    processMetricsMap.value = {
+      ...buildEmptyMetricsMap(activeProcessSteps.value)
+    };
+    ElMessage.error(message);
+  } finally {
+    overviewLoading.value = false;
   }
-);
+};
 
-watch(
-  () => filters.processCode,
-  () => {
-    syncProcessStepsWithSelection();
-  },
-  { immediate: true }
-);
-
-watch(processOptions, options => {
-  if (
-    filters.processCode &&
-    !options.some(option => String(option.value) === filters.processCode)
-  ) {
-    filters.processCode = null;
-    syncProcessStepsWithSelection();
+const handleStepSelect = async (stepTypeNo: string) => {
+  if (overviewLoading.value) {
+    return;
   }
-});
+  await loadProductOverview(stepTypeNo);
+};
+
+const handleProductSelect = async (productCode: string) => {
+  if (overviewLoading.value) {
+    return;
+  }
+
+  selectedProductCode.value = productCode;
+  filters.product = [productCode];
+
+  const preferredProcess = await ensureProcessCodeForProduct(productCode);
+  filters.processCode = preferredProcess ?? null;
+
+  await loadProcessOverviewForProduct();
+};
+
+const handleProcessSelect = async (processId: string) => {
+  if (level.value !== "process" || detailLoading.value) return;
+  const step = activeProcessStepMap.value.get(processId);
+  selectedProcessId.value = processId;
+  detailError.value = null;
+  paretoData.value = createEmptyParetoData();
+
+  if (!step?.code) {
+    detailError.value = "当前工序缺少编号，无法获取柏拉图数据";
+    return;
+  }
+
+  const params = buildSummaryParams();
+  if (!params.product) {
+    detailError.value = "请选择产品后查看工序详情";
+    return;
+  }
+
+  if (params.origin === undefined) {
+    detailError.value = "请选择产地后查看工序详情";
+    return;
+  }
+
+  detailLoading.value = true;
+  try {
+    const product = params.product;
+    const origin = params.origin;
+    const result = await fetchParetoData({
+      product,
+      origin,
+      stepTypeNo: step.code,
+      startDate: params.startDate,
+      endDate: params.endDate
+    });
+    paretoData.value = result;
+  } catch (error: any) {
+    const message = error?.message ?? "获取柏拉图数据失败";
+    detailError.value = message;
+    ElMessage.error(message);
+  } finally {
+    detailLoading.value = false;
+  }
+};
+
+const handleOverviewSelect = async (id: string) => {
+  if (level.value === "step") {
+    await handleStepSelect(id);
+    return;
+  }
+
+  if (level.value === "product") {
+    await handleProductSelect(id);
+    return;
+  }
+
+  await handleProcessSelect(id);
+};
+
+const handleBackToOverview = () => {
+  selectedProcessId.value = null;
+  detailError.value = null;
+  paretoData.value = createEmptyParetoData();
+};
+
+const handleNavigateBack = async () => {
+  if (level.value === "process") {
+    level.value = "product";
+    summaryError.value = null;
+    selectedProcessId.value = null;
+    detailError.value = null;
+    paretoData.value = createEmptyParetoData();
+    return;
+  }
+
+  if (level.value === "product") {
+    level.value = "step";
+    topLevelError.value = null;
+    selectedStepTypeNo.value = null;
+    selectedProductCode.value = null;
+    return;
+  }
+};
 
 const buildSummaryParams = (): DashboardSummaryParams => {
-  const hasRange =
-    filters.dateRange.length === 2 &&
-    filters.dateRange[0] &&
-    filters.dateRange[1];
+  const { startDate, endDate } = getRequestRange();
   const normalizedProducts = filters.product
     .map(code => (typeof code === "string" ? code.trim() : String(code).trim()))
     .filter(code => code.length > 0);
   return {
-    startDate: hasRange ? filters.dateRange[0] : undefined,
-    endDate: hasRange ? filters.dateRange[1] : undefined,
+    startDate,
+    endDate,
     product: normalizedProducts.length ? normalizedProducts : undefined,
     origin: filters.origin ?? undefined
   };
@@ -676,193 +958,149 @@ const refreshProcessMetrics = async (
   return hasData;
 };
 
-const fetchSummary = async () => {
-  overviewLoading.value = true;
-  summaryError.value = null;
-  try {
-    const params = buildSummaryParams();
-    const currentProducts = params.product ? [...params.product] : [];
-    const preservedProductOptions = new Map<string, SelectOption>();
-    currentProducts.forEach(code => {
-      const match = productOptions.value.find(
-        option => String(option.value) === code
-      );
-      if (match) {
-        preservedProductOptions.set(code, {
-          label: match.label,
-          value: String(match.value)
-        });
-      } else {
-        preservedProductOptions.set(code, {
-          label: code,
-          value: code
-        });
-      }
-    });
-    const selectedOrigin = filters.origin ?? undefined;
-
-    const shouldFetchProducts = Boolean(
-      params.startDate && params.endDate && selectedOrigin !== undefined
-    );
-    let productOptionPayload: SelectOption[] = [];
-    if (shouldFetchProducts) {
-      try {
-        const result = await fetchDashboardProducts({
-          startDate: params.startDate,
-          endDate: params.endDate,
-          origin: selectedOrigin
-        });
-        productOptionPayload = result.map(item => ({
-          label: item.label,
-          value: item.code
-        }));
-      } catch (error: any) {
-        const message = error?.message ?? "获取产品选项失败";
-        ElMessage.warning(message);
-      }
-    }
-
-    const mergedProductOptions: SelectOption[] = [];
-    const seenProductValues = new Set<string>();
-    const appendProductOption = (option: SelectOption) => {
-      const value = String(option.value);
-      if (seenProductValues.has(value)) {
-        return;
-      }
-      seenProductValues.add(value);
-      mergedProductOptions.push({
-        label: option.label,
-        value
-      });
-    };
-
-    productOptionPayload.forEach(option =>
-      appendProductOption({ label: option.label, value: option.value })
-    );
-    preservedProductOptions.forEach(option => appendProductOption(option));
-
-    productOptions.value = mergedProductOptions;
-
-    const availableProductCodes = new Set(seenProductValues);
-    const validProducts = currentProducts.filter(code =>
-      availableProductCodes.has(code)
-    );
-    const hasProductChanged =
-      validProducts.length !== filters.product.length ||
-      validProducts.some((code, index) => filters.product[index] !== code);
-
-    if (hasProductChanged) {
-      filters.product = [...validProducts];
-    }
-
-    params.product = validProducts.length ? [...validProducts] : undefined;
-
-    originOptions.value = PRODUCT_ORIGIN_OPTIONS.map(option => ({ ...option }));
-    workOrders.value = [];
-
-    let metricsAvailable = false;
-    if (params.product && params.product.length) {
-      metricsAvailable = await refreshProcessMetrics(params);
-    } else {
-      processMetricsMap.value = {
-        ...buildEmptyMetricsMap(activeProcessSteps.value)
-      };
-    }
-
-    if (
-      !metricsAvailable &&
-      !workOrders.value.length &&
-      params.product &&
-      params.product.length
-    ) {
-      summaryError.value = "当前筛选条件没有匹配的数据";
-    }
-  } catch (error: any) {
-    const message = error?.message ?? "获取仪表盘数据失败";
-    summaryError.value = message;
-    processMetricsMap.value = {
-      ...buildEmptyMetricsMap(activeProcessSteps.value)
-    };
-    workOrders.value = [];
-    selectedProcessId.value = null;
-    paretoData.value = createEmptyParetoData();
-    detailError.value = null;
-    ElMessage.error(message);
-  } finally {
-    overviewLoading.value = false;
-  }
-};
-
-const handleProcessSelect = async (processId: string) => {
-  if (detailLoading.value) return;
-  const step = activeProcessStepMap.value.get(processId);
-  selectedProcessId.value = processId;
-  detailError.value = null;
-  paretoData.value = createEmptyParetoData();
-
-  if (!step?.code) {
-    detailError.value = "当前工序缺少编号，无法获取柏拉图数据";
-    return;
-  }
-
-  const params = buildSummaryParams();
-  if (!params.product) {
-    detailError.value = "请选择产品后查看工序详情";
-    return;
-  }
-
-  if (params.origin === undefined) {
-    detailError.value = "请选择产地后查看工序详情";
-    return;
-  }
-
-  detailLoading.value = true;
-  try {
-    const product = params.product;
-    const origin = params.origin;
-    const result = await fetchParetoData({
-      product,
-      origin,
-      stepTypeNo: step.code,
-      startDate: params.startDate,
-      endDate: params.endDate
-    });
-    paretoData.value = result;
-  } catch (error: any) {
-    const message = error?.message ?? "获取柏拉图数据失败";
-    detailError.value = message;
-    ElMessage.error(message);
-  } finally {
-    detailLoading.value = false;
-  }
-};
-
-const handleBackToOverview = () => {
+const handleFiltersSubmit = async () => {
   selectedProcessId.value = null;
   detailError.value = null;
   paretoData.value = createEmptyParetoData();
+
+  if (level.value === "step") {
+    await loadStepOverview();
+    return;
+  }
+
+  if (level.value === "product") {
+    if (!selectedStepTypeNo.value) {
+      topLevelError.value = "请选择工序";
+      return;
+    }
+    await loadProductOverview(selectedStepTypeNo.value);
+    return;
+  }
+
+  const product = filters.product[0] ?? selectedProductCode.value;
+  if (!product) {
+    summaryError.value = "请选择产品";
+    return;
+  }
+
+  selectedProductCode.value = product;
+  filters.product = [product];
+  const preferredProcess = await ensureProcessCodeForProduct(product);
+  filters.processCode = preferredProcess ?? filters.processCode;
+
+  await loadProcessOverviewForProduct();
 };
 
-const handleFiltersSubmit = () => {
-  console.log("111111111")
-  selectedProcessId.value = null;
-  detailError.value = null;
-  paretoData.value = createEmptyParetoData();
-  fetchSummary();
-};
+const getDefaultOrigin = () => ProductOrigin.Suzhou;
 
-const handleFiltersReset = () => {
+const handleFiltersReset = async () => {
   filters.dateRange = getDefaultDateRange();
   filters.product = [];
-  filters.origin = ProductOrigin.Suzhou;
+  filters.origin = getDefaultOrigin();
   filters.processCode = null;
-  syncProcessStepsWithSelection();
-  processMetricsMap.value = {
-    ...buildEmptyMetricsMap(activeProcessSteps.value)
-  };
+  topLevelError.value = null;
+  summaryError.value = null;
+  detailError.value = null;
+  selectedProcessId.value = null;
   paretoData.value = createEmptyParetoData();
-  handleFiltersSubmit();
+  await loadStepOverview();
 };
+
+let productOptionsRequestToken = 0;
+
+const resetProductSelection = () => {
+  productOptionsRequestToken++;
+  productOptions.value = [];
+  if (filters.product.length) {
+    filters.product = [];
+  }
+  selectedProductCode.value = null;
+};
+
+const refreshProductOptions = async () => {
+  const { startDate, endDate } = getRequestRange();
+  const selectedOrigin = filters.origin ?? undefined;
+
+  if (!startDate || !endDate || selectedOrigin === undefined) {
+    productOptions.value = [];
+    return;
+  }
+
+  const requestToken = ++productOptionsRequestToken;
+
+  try {
+    const result = await fetchDashboardProducts({
+      startDate,
+      endDate,
+      origin: selectedOrigin
+    });
+
+    if (requestToken !== productOptionsRequestToken) {
+      return;
+    }
+
+    const nextProductOptions = result.map(item => ({
+      label: item.label,
+      value: item.code
+    }));
+
+    productOptions.value = nextProductOptions;
+
+    if (
+      filters.product.length &&
+      !filters.product.some(p =>
+        nextProductOptions.some(opt => opt.value === p)
+      )
+    ) {
+      filters.product = [];
+    }
+  } catch (error: any) {
+    if (requestToken !== productOptionsRequestToken) {
+      return;
+    }
+
+    const message = error?.message ?? "获取产品选项失败";
+    ElMessage.warning(message);
+    productOptions.value = [];
+    if (filters.product.length) {
+      filters.product = [];
+    }
+  }
+};
+
+watch(
+  () => filters.origin,
+  async value => {
+    resetProductSelection();
+    selectedStepTypeNo.value = null;
+    selectedProductCode.value = null;
+    level.value = "step";
+    try {
+      await processStore.setProcessFlow(true, value ?? null);
+    } catch (error: any) {
+      const message = error?.message ?? "获取工艺流程失败";
+      ElMessage.error(message);
+    }
+    await refreshProductOptions();
+    await loadStepOverview();
+  }
+);
+
+watch(
+  () => filters.dateRange.slice(),
+  () => {
+    refreshProductOptions();
+  }
+);
+
+watch(processOptions, options => {
+  if (
+    filters.processCode &&
+    !options.some(option => String(option.value) === filters.processCode)
+  ) {
+    filters.processCode = null;
+  }
+});
 
 onMounted(async () => {
   try {
@@ -871,8 +1109,9 @@ onMounted(async () => {
     const message = error?.message ?? "获取工艺流程失败";
     ElMessage.error(message);
   }
-  syncProcessStepsWithSelection();
-  fetchSummary();
+
+  await refreshProductOptions();
+  await loadStepOverview();
 });
 </script>
 
