@@ -1,7 +1,6 @@
 <template>
   <div class="filters-panel">
     <el-form :inline="true" label-width="80px" class="filter-form">
-      
       <el-form-item label="时间">
         <el-date-picker
           class="filter-select"
@@ -34,12 +33,12 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="产品">
+      <el-form-item v-if="showProduct" label="产品">
         <el-select
           class="filter-select"
           clearable
           filterable
-          multiple
+          :multiple="productMultiple"
           placeholder="选择产品"
           :disabled="loading || !productOptions.length"
           :model-value="product"
@@ -53,7 +52,7 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="工艺">
+      <el-form-item v-if="showProcess" label="工艺">
         <el-select
           class="filter-select"
           clearable
@@ -99,9 +98,16 @@ interface Props {
   processCode: string | null;
   originOptions: SelectOption[];
   loading?: boolean;
+  showProduct?: boolean;
+  showProcess?: boolean;
+  productMultiple?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  showProduct: true,
+  showProcess: true,
+  productMultiple: true
+});
 const {
   dateRange,
   product,
@@ -110,7 +116,10 @@ const {
   processOptions,
   processCode,
   originOptions,
-  loading
+  loading,
+  showProduct,
+  showProcess,
+  productMultiple
 } = toRefs(props);
 const emit = defineEmits([
   "update:dateRange",
@@ -125,14 +134,26 @@ const onDateRangeChange = (value: string[] | null) => {
   emit("update:dateRange", value ?? []);
 };
 
-const onProductChange = (value: Array<string | number> | null) => {
-  if (!value || value.length === 0) {
+const onProductChange = (
+  value: Array<string | number> | string | number | null
+) => {
+  if (Array.isArray(value)) {
+    if (!value.length) {
+      emit("update:product", []);
+      return;
+    }
+
+    const normalized = value.map(item => String(item));
+    emit("update:product", normalized);
+    return;
+  }
+
+  if (value === null || value === undefined || value === "") {
     emit("update:product", []);
     return;
   }
 
-  const normalized = value.map(item => String(item));
-  emit("update:product", normalized);
+  emit("update:product", [String(value)]);
 };
 
 const onOriginChange = (value: ProductOrigin | null) => {

@@ -76,3 +76,8 @@ export interface ProcessStageInfo {
   stageName: string | null;
   sysStepTypeNo: string | null;
 }
+
+export interface MaterialCodeParams {
+  origin: ProductOrigin;
+  stepTypeNo: string;
+}
