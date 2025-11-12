@@ -308,6 +308,75 @@ export class DashboardService {
     }));
   }
 
+  async getStepTypeProcessMetrics(
+    origin: number,
+    stepTypeNo: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<ProcessMetricsSummary> {
+    const summary = this.createEmptyProcessMetricsSummary();
+    const normalizedStepTypeNo = stepTypeNo?.trim();
+
+    if (origin === undefined || !normalizedStepTypeNo) {
+      return summary;
+    }
+
+    try {
+      const client = this.prisma.getClientByOrigin(origin);
+      let allRows: ProcessMetricRow[] = [];
+
+      const tableMap: Record<
+        string,
+        { table: string; timeField: string; productSnField: string }
+      > = {
+        [STEP_NO.CALIB]: {
+          table: 'mo_calibration',
+          timeField: 'start_time',
+          productSnField: 'camera_sn',
+        },
+        [STEP_NO.AUTO_ADJUST]: {
+          table: 'mo_auto_adjust_info',
+          timeField: 'add_time',
+          productSnField: 'beam_sn',
+        },
+        [STEP_NO.S315FQC]: {
+          table: 'mo_final_result',
+          timeField: 'check_time',
+          productSnField: 'camera_sn',
+        },
+      };
+
+      const config = tableMap[stepTypeNo];
+      if (!config) {
+        throw new Error(`Unknown stepTypeNo: ${stepTypeNo}`);
+      }
+
+      const { table, timeField, productSnField } = config;
+
+      // ✅ 使用 Prisma.sql 参数绑定避免 SQL 注入
+      const query = Prisma.sql`
+        SELECT ${Prisma.raw(productSnField)} AS product_sn, error_code
+        FROM ${Prisma.raw(table)}
+        WHERE ${Prisma.raw(timeField)} BETWEEN ${startDate} AND ${endDate}
+      `;
+
+      const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
+
+      allRows.push(...rows);
+      // }
+      const aggregated = allRows
+        ? this.aggregateProcessMetricData(allRows)
+        : undefined;
+      return aggregated ?? summary;
+    } catch (error) {
+      this.logger.error(
+        `Failed to load process metrics from mo_process_step_production_result: ${error.message}`,
+        error.stack,
+      );
+      return summary;
+    }
+  }
+
   async getProcessMetrics(
     params: ProcessMetricsParams,
   ): Promise<ProcessMetricsSummary> {
@@ -327,16 +396,11 @@ export class DashboardService {
         ?.map((item) => item?.trim())
         .filter((item): item is string => !!item);
 
-      if (!products?.length) {
-        products = await this.queryMaterialCodes(
-          params.origin,
-          normalizedStepTypeNo,
-        );
-      }
+      products = products?.length ? products : [''];
 
-      if (!products?.length) {
-        return summary;
-      }
+      // if (!products?.length) {
+      //   return summary;
+      // }
 
       const client = this.prisma.getClientByOrigin(params.origin);
       let allRows: ProcessMetricRow[] = [];
@@ -363,6 +427,7 @@ export class DashboardService {
             stepTypeNo: normalizedStepTypeNo,
             range: { start, end },
           });
+          console.log(`rows: ${rows}`);
         } else if (params.stepTypeNo == STEP_NO.S315FQC) {
           rows = await this.fetchS315FqcMetricRows({
             product,
@@ -1189,8 +1254,11 @@ export class DashboardService {
   async queryMaterialCodes(
     origin: number,
     stepTypeNo: string,
+    startDate: string,
+    endDate: string,
   ): Promise<string[]> {
     const client = this.prisma.getClientByOrigin(origin);
+
     // 定义要循环的来源表和连接字段
     const sources = [
       { table: 'mo_beam_info', joinField: 'beam_sn' },
@@ -1199,41 +1267,50 @@ export class DashboardService {
 
     const results: string[] = [];
     let targetTable;
+    let timeField = 'start_time';
     let productSnName = 'camera_sn';
+
+    // ✅ 根据工序号选择表与字段
     if (stepTypeNo === STEP_NO.CALIB) {
       targetTable = 'mo_calibration';
-    }
-    if (stepTypeNo === STEP_NO.S315FQC) {
+    } else if (stepTypeNo === STEP_NO.S315FQC) {
       targetTable = 'mo_final_result';
-    }
-    if (stepTypeNo === STEP_NO.AUTO_ADJUST) {
-      productSnName = 'beam_sn';
+      timeField = 'check_time';
+    } else if (stepTypeNo === STEP_NO.AUTO_ADJUST) {
       targetTable = 'mo_auto_adjust_info';
-    }
-    if (targetTable === undefined) {
-      return [];
+      productSnName = 'beam_sn';
+      timeField = 'add_time';
     }
 
+    if (!targetTable) return [];
+
+    // ✅ 循环查询不同来源表（mo_beam_info, mo_tag_info）
     for (const src of sources) {
       const safeTargetTable = Prisma.raw(`\`${targetTable}\``);
       const safeSourceTable = Prisma.raw(`\`${src.table}\``);
       const safeJoinField = Prisma.raw(`\`${src.joinField}\``);
       const safeProductSnName = Prisma.raw(`\`${productSnName}\``);
+      const safeTimeField = Prisma.raw(`\`${timeField}\``);
 
+      // ✅ 参数化查询，防 SQL 注入
       const query = Prisma.sql`
-        SELECT 
-          mpo.material_code
-        FROM 
-          ${safeTargetTable} AS t
-          LEFT JOIN ${safeSourceTable} AS s
-            ON s.${safeJoinField} = t.${safeProductSnName}
-          LEFT JOIN mo_produce_order AS mpo
-            ON s.work_order_code = mpo.work_order_code
-        GROUP BY mpo.material_code
-      `;
+      SELECT 
+        mpo.material_code
+      FROM 
+        ${safeTargetTable} AS t
+        LEFT JOIN ${safeSourceTable} AS s
+          ON s.${safeJoinField} = t.${safeProductSnName}
+        LEFT JOIN mo_produce_order AS mpo
+          ON s.work_order_code = mpo.work_order_code
+      WHERE 
+        t.${safeTimeField} BETWEEN ${startDate} AND ${endDate}
+      GROUP BY 
+        mpo.material_code
+    `;
 
       const rows =
         await client.$queryRaw<{ material_code: string | null }[]>(query);
+
       results.push(...rows.map((r) => r.material_code?.trim() ?? ''));
     }
 

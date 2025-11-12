@@ -124,6 +124,7 @@ import {
   fetchParetoData,
   fetchDashboardProducts,
   fetchProcessMetrics,
+  fetchStepTypeProcessMetrics,
   fetchProcessStageInfo,
   fetchMaterialCodes
 } from "@/api/dashboard";
@@ -137,8 +138,8 @@ type ViewLevel = "step" | "product" | "process";
 
 const STEP_OVERVIEW_CODES: string[] = [
   STEP_NO.AUTO_ADJUST,
-  STEP_NO.S315FQC,
-  STEP_NO.CALIB
+  STEP_NO.CALIB,
+  STEP_NO.S315FQC
 ];
 
 const STEP_TITLE_MAP: Record<string, string> = {
@@ -611,7 +612,7 @@ const loadStepOverview = async () => {
   try {
     for (const stepTypeNo of STEP_OVERVIEW_CODES) {
       try {
-        const summary = await fetchProcessMetrics({
+        const summary = await fetchStepTypeProcessMetrics({
           origin,
           stepTypeNo,
           startDate,
@@ -676,14 +677,19 @@ const loadProductOverview = async (stepTypeNo: string) => {
   }
 
   try {
-    const materialCodes = await fetchMaterialCodes({ origin, stepTypeNo });
+    const materialCodes = await fetchMaterialCodes({
+      origin,
+      stepTypeNo,
+      startDate,
+      endDate
+    });
+    console.log(materialCodes);
     const uniqueCodes = Array.from(new Set(materialCodes));
 
     if (!uniqueCodes.length) {
       topLevelError.value = "该工序暂无产品数据";
       return;
     }
-
     const requests = uniqueCodes.map(code =>
       fetchProcessMetrics({
         origin,

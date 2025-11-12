@@ -80,4 +80,6 @@ export interface ProcessStageInfo {
 export interface MaterialCodeParams {
   origin: ProductOrigin;
   stepTypeNo: string;
+  startDate: string;
+  endDate: string;
 }

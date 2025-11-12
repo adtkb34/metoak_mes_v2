@@ -125,12 +125,16 @@ export class DashboardController {
     query: {
       origin: number;
       stepTypeNo: string;
+      startDate: string;
+      endDate: string;
     },
   ) {
     try {
       const rows = await this.dashboardService.queryMaterialCodes(
         query.origin,
         query.stepTypeNo,
+        query.startDate,
+        query.endDate,
       );
       return {
         success: true,
@@ -145,6 +149,26 @@ export class DashboardController {
         error: error.message,
       };
     }
+  }
+
+  @Get('step-type-process-metrics')
+  async getStepTypeProcessMetrics(
+    @Query()
+    query: {
+      origin: number;
+      stepTypeNo: string;
+      startDate: string;
+      endDate: string;
+    },
+  ): Promise<{ success: true; data: ProcessMetricsSummary }> {
+    const summary = await this.dashboardService.getStepTypeProcessMetrics(
+      query?.origin,
+      query?.stepTypeNo?.trim(),
+      query.startDate,
+      query.endDate,
+    );
+
+    return { success: true, data: summary };
   }
 
   @Get('process-metrics')

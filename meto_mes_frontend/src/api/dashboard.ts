@@ -36,6 +36,7 @@ const DASHBOARD_SUMMARY_URL = "/dashboard/summary";
 const PROCESS_DETAIL_URL = "/dashboard/process-detail";
 const DASHBOARD_PRODUCTS_URL = "/dashboard/products";
 const PROCESS_METRICS_URL = "/dashboard/process-metrics";
+const STEP_TYPE_PROCESS_METRICS_URL = "/dashboard/step-type-process-metrics";
 const PROCESS_STAGE_INFO_URL = "/dashboard/process-stage-info";
 const PROCESS_PARETO_URL = "/dashboard/pareto";
 const MATERIAL_CODES_URL = "/dashboard/material-codes";
@@ -204,17 +205,17 @@ export async function fetchMaterialCodes(
   >("get", MATERIAL_CODES_URL, {
     params
   });
+  // console.log(`response: ${response.data}`);
+  // const payload = unwrapResponse(response, "获取产品编码失败");
+  // const codes = response.data;
 
-  const payload = unwrapResponse(response, "获取产品编码失败");
-  const codes = Array.isArray(payload?.data) ? payload.data : [];
+  // const normalized = codes
+  //   .map(code =>
+  //     typeof code === "string" ? code.trim() : code ? String(code).trim() : ""
+  //   )
+  //   .filter(code => code.length > 0);
 
-  const normalized = codes
-    .map(code =>
-      typeof code === "string" ? code.trim() : code ? String(code).trim() : ""
-    )
-    .filter(code => code.length > 0);
-
-  return Array.from(new Set(normalized));
+  return response.data;
 }
 
 export async function fetchProcessMetrics(
@@ -226,6 +227,28 @@ export async function fetchProcessMetrics(
   const response = await http.request<ApiResponse<ProcessMetricsSummary>>(
     "get",
     PROCESS_METRICS_URL,
+    {
+      params,
+      paramsSerializer: params => {
+        return qs.stringify(params, {
+          arrayFormat: "repeat", // 使用重复参数名格式
+          indices: false // 不显示索引
+        });
+      }
+    }
+  );
+  return unwrapResponse(response, "获取工序指标失败");
+}
+
+export async function fetchStepTypeProcessMetrics(
+  params: ProcessMetricsParams
+): Promise<ProcessMetricsSummary> {
+  if (isMockEnabled) {
+    return Promise.resolve(buildProcessMetrics(params));
+  }
+  const response = await http.request<ApiResponse<ProcessMetricsSummary>>(
+    "get",
+    STEP_TYPE_PROCESS_METRICS_URL,
     {
       params,
       paramsSerializer: params => {

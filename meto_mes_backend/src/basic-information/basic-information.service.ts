@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ProductOrigin } from 'src/common/enums/product-origin.enum';
 import { ProcessStep } from './type';
@@ -7,7 +11,7 @@ import { CreateProcessDto } from './create-flow.dto';
 
 @Injectable()
 export class BasicInformationService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async getProcessManagement() {
     const result = await this.prisma.mo_workstage.findMany({
@@ -27,16 +31,16 @@ export class BasicInformationService {
     const dependentFlows = await this.prisma.mo_process_flow.findMany({
       where: {
         stage_code: {
-          in: stage_codes
-        }
+          in: stage_codes,
+        },
       },
       select: {
-        process_code: true
-      }
-    })
+        process_code: true,
+      },
+    });
 
     if (dependentFlows.length > 0) {
-      const codes = dependentFlows.map(d => d.process_code).join(', ');
+      const codes = dependentFlows.map((d) => d.process_code).join(', ');
       throw new Error(`以下工序被流程依赖, 无法删除: ${codes}`);
     }
 
@@ -44,11 +48,11 @@ export class BasicInformationService {
       this.prisma.mo_workstage.deleteMany({
         where: {
           stage_code: {
-            in: stage_codes
-          }
-        }
-      })
-    ])
+            in: stage_codes,
+          },
+        },
+      }),
+    ]);
   }
 
   async addProcessStep({ stage_name, stage_desc, target_table }: ProcessStep) {
@@ -63,42 +67,42 @@ export class BasicInformationService {
     // }
     const steps = await this.prisma.mo_workstage.findMany({
       select: {
-        stage_code: true
+        stage_code: true,
       },
     });
 
     const maxStepNumber = Math.max(
       ...steps
-        .map(item => {
+        .map((item) => {
           // 使用可选链操作符和默认值
           const stageCode = item.stage_code?.replace('Step ', '') || '';
           return parseInt(stageCode, 10);
         })
-        .filter(num => !isNaN(num))
+        .filter((num) => !isNaN(num)),
     );
-    const stage_code = "Step " + (maxStepNumber + 1)
-    
+    const stage_code = 'Step ' + (maxStepNumber + 1);
+
     const result = await this.prisma.mo_workstage.create({
       data: {
         stage_code,
         stage_name,
         stage_desc,
         target_table: target_table,
-        add_time: new Date()
-      }
-    })
+        add_time: new Date(),
+      },
+    });
 
     if (result) {
       return {
-        massage: 'success'
-      }
+        massage: 'success',
+      };
     }
   }
 
   async updateProcessStep(stage_code: string, dto: UpdateStageDto) {
     const stage = await this.prisma.mo_workstage.findUnique({
-      where: { stage_code }
-    })
+      where: { stage_code },
+    });
 
     if (!stage) {
       throw new NotFoundException('Stage not found');
@@ -106,8 +110,8 @@ export class BasicInformationService {
 
     return this.prisma.mo_workstage.update({
       where: { stage_code },
-      data: dto
-    })
+      data: dto,
+    });
   }
 
   async deleteProcessFlow(process_code: string) {
@@ -124,7 +128,7 @@ export class BasicInformationService {
 
     // 第二步：删除工艺流程
     return await this.prisma.mo_process_flow.deleteMany({
-      where: { process_code }
+      where: { process_code },
     });
   }
 
@@ -146,16 +150,15 @@ export class BasicInformationService {
       });
     }
     return this.prisma.mo_process_flow.createMany({
-      data: processes.map(item => ({
+      data: processes.map((item) => ({
         ...item,
         process_code: process_code,
-        add_time: new Date()
+        add_time: new Date(),
       })),
     });
   }
 
   async getProcessFlow(origin?: ProductOrigin) {
-    console.log(111111111, origin)
     const client = this.prisma.getClientByOrigin(origin);
 
     const result = await client.mo_process_flow.findMany({
