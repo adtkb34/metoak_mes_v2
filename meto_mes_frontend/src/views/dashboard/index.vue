@@ -153,10 +153,16 @@ const getDefaultDateRange = (): string[] => {
   return [today, today];
 };
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL ?? "";
+const getDefaultOrigin = (): ProductOrigin =>
+  backendUrl.includes("11.11.11.15")
+    ? ProductOrigin.Suzhou
+    : ProductOrigin.Mianyang;
+
 const filters = reactive<FilterState>({
   dateRange: getDefaultDateRange(),
   product: [] as string[],
-  origin: ProductOrigin.Suzhou,
+  origin: getDefaultOrigin(),
   processCode: null
 });
 
@@ -979,13 +985,14 @@ const handleFiltersSubmit = async () => {
 
   selectedProductCode.value = product;
   filters.product = [product];
-  const preferredProcess = await ensureProcessCodeForProduct(product);
-  filters.processCode = preferredProcess ?? filters.processCode;
+  const selectedProcessCode = normalizeStringValue(filters.processCode);
+  if (!selectedProcessCode) {
+    const preferredProcess = await ensureProcessCodeForProduct(product);
+    filters.processCode = preferredProcess ?? null;
+  }
 
   await loadProcessOverviewForProduct();
 };
-
-const getDefaultOrigin = () => ProductOrigin.Suzhou;
 
 const handleFiltersReset = async () => {
   filters.dateRange = getDefaultDateRange();
