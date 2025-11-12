@@ -313,7 +313,7 @@ export class DashboardService {
   ): Promise<ProcessMetricsSummary> {
     const summary = this.createEmptyProcessMetricsSummary();
     const normalizedStepTypeNo = params.stepTypeNo?.trim();
-    
+
     if (params.origin === undefined || !normalizedStepTypeNo) {
       return summary;
     }
@@ -377,21 +377,18 @@ export class DashboardService {
             range: { start, end },
           });
         } else {
-          
           rows = await this.fetchProcessProductionMetricRows({
             product,
             client,
             stepTypeNo: normalizedStepTypeNo,
             range: { start, end },
           });
-
         }
-        if (rows)
-        allRows.push(...rows)
+        if (rows) allRows.push(...rows);
       }
       const aggregated = allRows
-          ? this.aggregateProcessMetricData(allRows)
-          : undefined;
+        ? this.aggregateProcessMetricData(allRows)
+        : undefined;
       return aggregated ?? summary;
     } catch (error) {
       this.logger.error(
@@ -414,7 +411,7 @@ export class DashboardService {
       counts: [],
       cumulative: [],
     };
-    
+
     const stepTypeNo = params.stepTypeNo.trim();
 
     // if (!product || !stepTypeNo) {
@@ -519,18 +516,18 @@ export class DashboardService {
             range: { start, end },
           });
         }
-        if (rows) allRows.push(...rows)
+        if (rows) allRows.push(...rows);
       }
-      
+
       if (!allRows?.length) {
         return empty;
       }
       if (params.origin == ProductOrigin.MIANYANG) {
-          return await populateAiweishiAANgReasonFromErrorCode(
-            allRows,
-            this.configService,
-            stepTypeNo
-          );
+        return await populateAiweishiAANgReasonFromErrorCode(
+          allRows,
+          this.configService,
+          stepTypeNo,
+        );
       }
       const breakdown = this.buildParetoBreakdown(
         allRows,
@@ -661,9 +658,6 @@ export class DashboardService {
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
-    if (!product) {
-      return undefined;
-    }
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
@@ -730,9 +724,6 @@ export class DashboardService {
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
-    if (!product) {
-      return undefined;
-    }
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
@@ -798,9 +789,6 @@ export class DashboardService {
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
-    if (!product) {
-      return undefined;
-    }
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
@@ -867,9 +855,6 @@ export class DashboardService {
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
-    if (!product) {
-      return undefined;
-    }
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
@@ -935,9 +920,6 @@ export class DashboardService {
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
-    if (!product) {
-      return undefined;
-    }
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
@@ -1003,9 +985,6 @@ export class DashboardService {
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
-    if (!product) {
-      return undefined;
-    }
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
@@ -1071,9 +1050,6 @@ export class DashboardService {
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
-    if (!product) {
-      return undefined;
-    }
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
@@ -1159,7 +1135,8 @@ export class DashboardService {
       ON mbi.beam_sn = ${Prisma.raw(alias)}.${Prisma.raw(productSnName)}
     INNER JOIN mo_produce_order AS mpo
       ON mpo.work_order_code = mbi.work_order_code
-    WHERE mpo.material_code = ${materialCode}
+    WHERE  1=1
+    ${materialCode ? Prisma.sql`AND mpo.material_code = ${materialCode}` : Prisma.empty}
     ${filterClause ?? Prisma.empty}
   `;
     const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
@@ -1184,7 +1161,8 @@ export class DashboardService {
         ON mti.tag_sn = ${Prisma.raw(alias)}.${Prisma.raw(productSnName)}
       INNER JOIN mo_produce_order AS mpo
         ON mpo.work_order_code = mti.work_order_code
-      WHERE mpo.material_code = ${materialCode}
+      WHERE  1=1
+    ${materialCode ? Prisma.sql`AND mpo.material_code = ${materialCode}` : Prisma.empty}
         ${filterClause ?? Prisma.empty}
     `;
 
@@ -1193,13 +1171,64 @@ export class DashboardService {
     return rows;
   }
 
+  async queryMaterialCodes(
+    origin: number,
+    stepTypeNo: string,
+  ): Promise<string[]> {
+    const client = this.prisma.getClientByOrigin(origin);
+    // 定义要循环的来源表和连接字段
+    const sources = [
+      { table: 'mo_beam_info', joinField: 'beam_sn' },
+      { table: 'mo_tag_info', joinField: 'tag_sn' },
+    ];
+
+    const results: string[] = [];
+    let targetTable;
+    let productSnName = 'camera_sn';
+    if (stepTypeNo === STEP_NO.CALIB) {
+      targetTable = 'mo_calibration';
+    }
+    if (stepTypeNo === STEP_NO.S315FQC) {
+      targetTable = 'mo_final_result';
+    }
+    if (stepTypeNo === STEP_NO.AUTO_ADJUST) {
+      productSnName = 'beam_sn';
+      targetTable = 'mo_auto_adjust_info';
+    }
+    if (targetTable === undefined) {
+      return [];
+    }
+
+    for (const src of sources) {
+      const safeTargetTable = Prisma.raw(`\`${targetTable}\``);
+      const safeSourceTable = Prisma.raw(`\`${src.table}\``);
+      const safeJoinField = Prisma.raw(`\`${src.joinField}\``);
+      const safeProductSnName = Prisma.raw(`\`${productSnName}\``);
+
+      const query = Prisma.sql`
+        SELECT 
+          mpo.material_code
+        FROM 
+          ${safeTargetTable} AS t
+          LEFT JOIN ${safeSourceTable} AS s
+            ON s.${safeJoinField} = t.${safeProductSnName}
+          LEFT JOIN mo_produce_order AS mpo
+            ON s.work_order_code = mpo.work_order_code
+        GROUP BY mpo.material_code
+      `;
+
+      const rows =
+        await client.$queryRaw<{ material_code: string | null }[]>(query);
+      results.push(...rows.map((r) => r.material_code?.trim() ?? ''));
+    }
+
+    return results;
+  }
+
   private async fetchGenericProcessMetricData(
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
     const { product, client, stepTypeNo, range } = params;
-    if (!product) {
-      return undefined;
-    }
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`

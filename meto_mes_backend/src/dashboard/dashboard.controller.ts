@@ -119,6 +119,34 @@ export class DashboardController {
   //   return { success: true, data };
   // }
 
+  @Get('material-codes')
+  async getMaterialCodes(
+    @Query()
+    query: {
+      origin: number;
+      stepTypeNo: string;
+    },
+  ) {
+    try {
+      const rows = await this.dashboardService.queryMaterialCodes(
+        query.origin,
+        query.stepTypeNo,
+      );
+      return {
+        success: true,
+        count: rows.length,
+        data: rows,
+      };
+    } catch (error) {
+      console.error('❌ Error in getMaterialCodes:', error);
+      return {
+        success: false,
+        message: 'Database query failed',
+        error: error.message,
+      };
+    }
+  }
+
   @Get('process-metrics')
   async getProcessMetrics(
     @Query()
@@ -132,11 +160,11 @@ export class DashboardController {
       stations?: string[] | string | null;
     },
   ): Promise<{ success: true; data: ProcessMetricsSummary }> {
-    
     const origin = this.parseOrigin(query?.origin);
     const summary = await this.dashboardService.getProcessMetrics({
       origin,
-      products: typeof query.product === 'string' ? [query.product] : query.product,
+      products:
+        typeof query.product === 'string' ? [query.product] : query.product,
       stepTypeNo: query?.stepTypeNo?.trim(),
       startDate: query.startDate,
       endDate: query.endDate,
