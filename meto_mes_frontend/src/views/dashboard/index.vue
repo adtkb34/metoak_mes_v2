@@ -611,25 +611,8 @@ const loadStepOverview = async () => {
   try {
     for (const stepTypeNo of STEP_OVERVIEW_CODES) {
       try {
-        const materialCodes = await fetchMaterialCodes({
-          origin,
-          stepTypeNo
-        });
-        const uniqueCodes = Array.from(new Set(materialCodes));
-
-        if (!uniqueCodes.length) {
-          items.push({
-            id: stepTypeNo,
-            name: STEP_TITLE_MAP[stepTypeNo] ?? stepTypeNo,
-            code: stepTypeNo,
-            metrics: createEmptyProcessMetricsSummary()
-          });
-          continue;
-        }
-
         const summary = await fetchProcessMetrics({
           origin,
-          product: uniqueCodes,
           stepTypeNo,
           startDate,
           endDate
@@ -642,13 +625,19 @@ const loadStepOverview = async () => {
           metrics: summary
         });
       } catch (error) {
+        items.push({
+          id: stepTypeNo,
+          name: STEP_TITLE_MAP[stepTypeNo] ?? stepTypeNo,
+          code: stepTypeNo,
+          metrics: createEmptyProcessMetricsSummary()
+        });
         failedSteps.push(STEP_TITLE_MAP[stepTypeNo] ?? stepTypeNo);
       }
     }
 
     stepOverviewItems.value = items;
 
-    if (!items.length) {
+    if (!items.some(item => hasMeaningfulMetrics(item.metrics))) {
       topLevelError.value = "当前筛选条件没有匹配的数据";
     } else if (failedSteps.length) {
       ElMessage.error(`获取 ${failedSteps.join("、")} 指标失败`);

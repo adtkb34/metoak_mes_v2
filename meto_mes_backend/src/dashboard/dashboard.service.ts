@@ -95,7 +95,7 @@ interface ProcessDetailParams extends DashboardSummaryParams {
 }
 
 interface ProcessMetricsParams extends DashboardSummaryParams {
-  products: string[];
+  products?: string[];
   deviceNos?: string[];
   stations?: string[];
 }
@@ -323,9 +323,24 @@ export class DashboardService {
     );
 
     try {
+      let products = params.products
+        ?.map((item) => item?.trim())
+        .filter((item): item is string => !!item);
+
+      if (!products?.length) {
+        products = await this.queryMaterialCodes(
+          params.origin,
+          normalizedStepTypeNo,
+        );
+      }
+
+      if (!products?.length) {
+        return summary;
+      }
+
       const client = this.prisma.getClientByOrigin(params.origin);
       let allRows: ProcessMetricRow[] = [];
-      for (const product of params.products) {
+      for (const product of products) {
         let rows: ProcessMetricRow[] | undefined;
         if (params.stepTypeNo == STEP_NO.CALIB) {
           rows = await this.fetchCalibMetricRows({

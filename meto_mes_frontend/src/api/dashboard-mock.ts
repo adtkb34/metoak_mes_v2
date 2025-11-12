@@ -191,8 +191,19 @@ export function buildProcessMetrics(
     return createEmptyProcessMetricsSummary();
   }
 
-  const product = params.product?.trim?.() ?? "";
-  if (product && !seed.products.includes(product)) {
+  const productList = Array.isArray(params.product)
+    ? params.product
+    : params.product
+      ? [params.product]
+      : [];
+  const normalizedProducts = productList
+    .map(code => (typeof code === "string" ? code.trim() : ""))
+    .filter((code): code is string => code.length > 0);
+
+  if (
+    normalizedProducts.length &&
+    !normalizedProducts.some(code => seed.products.includes(code))
+  ) {
     return createEmptyProcessMetricsSummary();
   }
 
@@ -653,7 +664,12 @@ export function buildDashboardSummary(
   params: DashboardSummaryParams
 ): DashboardSummaryResponse {
   const { startDate, endDate } = params;
-  const product = params.product ?? null;
+  const productList = Array.isArray(params.product)
+    ? params.product
+    : params.product
+      ? [params.product]
+      : [];
+  const product = productList[0] ?? null;
   const origins = normalizeOrigins(params.origin);
   const stepProcessId = params.stepTypeNo
     ? STEP_NO_TO_PROCESS_ID[params.stepTypeNo]
@@ -661,7 +677,8 @@ export function buildDashboardSummary(
 
   const filteredProcesses = processMetricsSeed.filter(item => {
     const matchStep = !stepProcessId || item.id === stepProcessId;
-    const matchProduct = !product || item.products.includes(product);
+    const matchProduct =
+      !product || item.products.includes(product!);
     const matchOrigin =
       !origins.length || origins.some(origin => item.origins.includes(origin));
     const matchDate = inDateRange(item.lastUpdated, startDate, endDate);
@@ -723,7 +740,12 @@ export function buildProcessDetail(
     throw new Error("未找到对应的工序数据");
   }
 
-  const product = params.product ?? null;
+  const productList = Array.isArray(params.product)
+    ? params.product
+    : params.product
+      ? [params.product]
+      : [];
+  const product = productList[0] ?? null;
   const origins = normalizeOrigins(params.origin);
 
   let rows = base.rows.filter(row => {
