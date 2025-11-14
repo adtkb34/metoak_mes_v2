@@ -215,7 +215,7 @@ export async function fetchMaterialCodes(
   //   )
   //   .filter(code => code.length > 0);
 
-  return response.data;
+  return (response.data ?? []).filter(Boolean);
 }
 
 export async function fetchProcessMetrics(

@@ -1143,6 +1143,9 @@ export class QualityManagementService {
     // 1. 先查生产订单
     const orders = await this.prisma.mo_produce_order.findMany({
       where: { material_code },
+      orderBy: {
+        id: 'desc'
+      }
     });
 
     // 2. 遍历每条记录，查找对应流程描述/名称

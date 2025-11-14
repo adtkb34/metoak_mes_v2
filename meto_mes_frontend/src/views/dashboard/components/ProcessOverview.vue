@@ -71,8 +71,8 @@ const METRIC_GROUPS = [
     label: "产量",
     items: [
       { key: "良品", label: "良品" },
-      { key: "产品", label: "产品" },
-      { key: "总体", label: "总体" }
+      { key: "产品", label: "产品" }
+      // { key: "总体", label: "总体" }
     ]
   },
   {
@@ -80,8 +80,8 @@ const METRIC_GROUPS = [
     label: "良率",
     items: [
       { key: "一次", label: "一次" },
-      { key: "最终", label: "最终" },
-      { key: "总体", label: "总体" }
+      { key: "最终", label: "最终" }
+      // { key: "总体", label: "总体" }
     ]
   }
   // {

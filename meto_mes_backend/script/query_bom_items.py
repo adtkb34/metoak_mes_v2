@@ -23,8 +23,8 @@ def PRD_MO_ExecuteBillQuery(mo_number):
         "Limit": 0
     })
     res = json.loads(response)
-    for x in list(set([f'{item[0]}: {item[1]}' for item in res])):
-        print(x)
+#    for x in list(set([f'{item[0]}: {item[1]}' for item in res])):
+ #       print(x)
     materials = list(set([item[1] for item in res]))
     print(json.dumps(materials, ensure_ascii=False))  # stdout 方式返回结果
 

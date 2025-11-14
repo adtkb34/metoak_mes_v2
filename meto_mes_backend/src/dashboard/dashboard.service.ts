@@ -427,7 +427,6 @@ export class DashboardService {
             stepTypeNo: normalizedStepTypeNo,
             range: { start, end },
           });
-          console.log(`rows: ${rows}`);
         } else if (params.stepTypeNo == STEP_NO.S315FQC) {
           rows = await this.fetchS315FqcMetricRows({
             product,

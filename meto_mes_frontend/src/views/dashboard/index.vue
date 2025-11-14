@@ -143,9 +143,9 @@ const STEP_OVERVIEW_CODES: string[] = [
 ];
 
 const STEP_TITLE_MAP: Record<string, string> = {
-  [STEP_NO.AUTO_ADJUST]: "AUTO_ADJUST",
-  [STEP_NO.S315FQC]: "S315FQC",
-  [STEP_NO.CALIB]: "CALIB"
+  [STEP_NO.AUTO_ADJUST]: "AA",
+  [STEP_NO.S315FQC]: "FQC",
+  [STEP_NO.CALIB]: "标定"
 };
 
 const getDefaultDateRange = (): string[] => {
