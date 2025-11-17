@@ -164,8 +164,8 @@ export class DashboardController {
     @Query()
     query: {
       origin?: string | number | null;
-      product?: string[] | string | null;
       workOrderCode?: string | null;
+      stepTypeNo?: string | null;
       startDate?: string;
       endDate?: string;
       deviceNos?: string[] | string | null;
@@ -175,8 +175,8 @@ export class DashboardController {
     const origin = this.parseOrigin(query?.origin);
     const summary = await this.dashboardService.getWorkOrderProcessMetrics({
       origin,
-      products: this.normalizeStringArray(query?.product),
       workOrderCode: query?.workOrderCode?.trim(),
+      stepTypeNo: query?.stepTypeNo?.trim(),
       startDate: query.startDate,
       endDate: query.endDate,
       deviceNos: this.normalizeStringArray(query?.deviceNos),

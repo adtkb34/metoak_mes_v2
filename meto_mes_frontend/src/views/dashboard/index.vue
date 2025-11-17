@@ -129,7 +129,6 @@ import {
   fetchProcessMetrics,
   fetchStepTypeProcessMetrics,
   fetchProcessStageInfo,
-  fetchMaterialCodes,
   fetchWorkOrderCodes,
   fetchWorkOrderProcessMetrics
 } from "@/api/dashboard";
@@ -580,8 +579,8 @@ const loadWorkOrderMetricsForStep = async (
       return;
     }
 
-    const entries = Object.entries(codeMap ?? {}).filter(
-      ([code]) => Boolean(normalizeStringValue(code))
+    const entries = Object.entries(codeMap ?? {}).filter(([code]) =>
+      Boolean(normalizeStringValue(code))
     );
 
     if (!entries.length) {

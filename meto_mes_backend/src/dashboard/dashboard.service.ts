@@ -329,46 +329,53 @@ export class DashboardService {
 
       const tableMap: Record<
         string,
-        { table: string; timeField: string; productSnField: string }
+        { table: string; timeField: string; productSnField: string }[]
       > = {
-        [STEP_NO.CALIB]: {
+        [STEP_NO.CALIB]: [{
           table: 'mo_calibration',
           timeField: 'start_time',
           productSnField: 'camera_sn',
-        },
-        [STEP_NO.AUTO_ADJUST]: {
+        }],
+        [STEP_NO.AUTO_ADJUST]: [{
           table: 'mo_auto_adjust_info',
           timeField: 'add_time',
           productSnField: 'beam_sn',
-        },
-        [STEP_NO.S315FQC]: {
+        }],
+        [STEP_NO.S315FQC]: [{
           table: 'mo_final_result',
           timeField: 'check_time',
           productSnField: 'camera_sn',
         },
+        {
+          table: 'mo_stereo_postcheck',
+          timeField: 'datetime',
+          productSnField: 'sn',
+        }]
       };
 
-      const config = tableMap[stepTypeNo];
-      if (!config) {
+      const configList = tableMap[stepTypeNo];
+      if (!configList) {
         throw new Error(`Unknown stepTypeNo: ${stepTypeNo}`);
       }
 
-      const { table, timeField, productSnField } = config;
+      for (const { table, timeField, productSnField } of configList) {
+        // ✅ 安全构造 SQL，字段名用反引号包裹
+        const query = Prisma.sql`
+          SELECT 
+            ${Prisma.raw(`\`${productSnField}\``)} AS product_sn,
+            error_code
+          FROM 
+            ${Prisma.raw(`\`${table}\``)}
+          WHERE 
+            ${Prisma.raw(`\`${timeField}\``)} BETWEEN ${startDate} AND ${endDate}
+        `;
 
-      // ✅ 使用 Prisma.sql 参数绑定避免 SQL 注入
-      const query = Prisma.sql`
-        SELECT ${Prisma.raw(productSnField)} AS product_sn, error_code
-        FROM ${Prisma.raw(table)}
-        WHERE ${Prisma.raw(timeField)} BETWEEN ${startDate} AND ${endDate}
-      `;
+        const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
+        allRows.push(...rows);
+      }
 
-      const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
-
-      allRows.push(...rows);
-      // }
-      const aggregated = allRows
-        ? this.aggregateProcessMetricData(allRows)
-        : undefined;
+      // ✅ 聚合处理
+      const aggregated = this.aggregateProcessMetricData(allRows);
       return aggregated ?? summary;
     } catch (error) {
       this.logger.error(
