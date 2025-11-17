@@ -41,6 +41,16 @@ export default {
       }
     },
     {
+      path: "/system/version-info",
+      name: "VersionInfo",
+      component: () => import("@/views/system/version/index.vue"),
+      meta: {
+        title: "版本信息",
+        showParent: true,
+        authLevel: 1
+      }
+    },
+    {
       path: "/system/users",
       name: "Users",
       component: () => import("@/views/system/user/index.vue"),

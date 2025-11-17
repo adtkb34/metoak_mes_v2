@@ -24,6 +24,7 @@ import { TransferBoxModule } from './transfer-box/transfer-box.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SerialNumberDataModule } from './serial-number-data/serial-number-data.module';
 import { TraceabilityModule } from './traceability/traceability.module';
+import { VersionModule } from './version/version.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { TraceabilityModule } from './traceability/traceability.module';
     DashboardModule,
     SerialNumberDataModule,
     TraceabilityModule,
+    VersionModule,
   ],
   controllers: [AppController, ImuController],
   providers: [AppService],
