@@ -238,64 +238,69 @@ export function buildParetoData(params: ParetoChartParams): ParetoChartData {
 
 const workOrderSeed: WorkOrderRow[] = [
   {
-    orderId: "WO-202501-001",
-    description: "XT-1 激光模组",
-    expectedQuantity: 600,
-    aaPass: 420,
-    calibrationPass: 410,
-    finalPass: 398,
-    product: "XT-1",
+    workOrderCode: "WO-202501-001",
+    productCodes: ["800.00012"],
+    products: ["XT-1"],
+    metrics: {
+      数量: { 良品: 420, 产品: 450, 总体: 460 },
+      良率: { 一次: 0.94, 最终: 0.98, 总体: 0.99 },
+      良品用时: { mean: 180, min: 120, max: 240 }
+    },
     origin: ProductOrigin.Suzhou,
     startDate: "2025-01-06",
-    dueDate: "2025-01-12"
+    endDate: "2025-01-12"
   },
   {
-    orderId: "WO-202501-002",
-    description: "XT-Pro 标定批次",
-    expectedQuantity: 480,
-    aaPass: 300,
-    calibrationPass: 288,
-    finalPass: 279,
-    product: "XT-Pro",
+    workOrderCode: "WO-202501-002",
+    productCodes: ["800.00052"],
+    products: ["XT-Pro"],
+    metrics: {
+      数量: { 良品: 300, 产品: 320, 总体: 330 },
+      良率: { 一次: 0.91, 最终: 0.97, 总体: 0.98 },
+      良品用时: { mean: 210, min: 150, max: 305 }
+    },
     origin: ProductOrigin.Mianyang,
     startDate: "2025-01-07",
-    dueDate: "2025-01-14"
+    endDate: "2025-01-14"
   },
   {
-    orderId: "WO-202501-003",
-    description: "XT-Lite 试产",
-    expectedQuantity: 320,
-    aaPass: 180,
-    calibrationPass: 174,
-    finalPass: 168,
-    product: "XT-Lite",
+    workOrderCode: "WO-202501-003",
+    productCodes: ["800.00033"],
+    products: ["XT-Lite"],
+    metrics: {
+      数量: { 良品: 180, 产品: 198, 总体: 205 },
+      良率: { 一次: 0.89, 最终: 0.95, 总体: 0.97 },
+      良品用时: { mean: 240, min: 180, max: 360 }
+    },
     origin: ProductOrigin.Mianyang,
     startDate: "2025-01-08",
-    dueDate: "2025-01-15"
+    endDate: "2025-01-15"
   },
   {
-    orderId: "WO-202501-004",
-    description: "XT-2 批量订单",
-    expectedQuantity: 540,
-    aaPass: 350,
-    calibrationPass: 340,
-    finalPass: 334,
-    product: "XT-2",
+    workOrderCode: "WO-202501-004",
+    productCodes: ["800.00044"],
+    products: ["XT-2"],
+    metrics: {
+      数量: { 良品: 350, 产品: 370, 总体: 380 },
+      良率: { 一次: 0.93, 最终: 0.98, 总体: 0.99 },
+      良品用时: { mean: 195, min: 140, max: 265 }
+    },
     origin: ProductOrigin.Suzhou,
     startDate: "2025-01-05",
-    dueDate: "2025-01-13"
+    endDate: "2025-01-13"
   },
   {
-    orderId: "WO-202501-005",
-    description: "XT-1 定制需求",
-    expectedQuantity: 260,
-    aaPass: 160,
-    calibrationPass: 155,
-    finalPass: 152,
-    product: "XT-1",
+    workOrderCode: "WO-202501-005",
+    productCodes: ["800.00012", "800.00044"],
+    products: ["XT-1", "XT-2"],
+    metrics: {
+      数量: { 良品: 260, 产品: 275, 总体: 280 },
+      良率: { 一次: 0.9, 最终: 0.96, 总体: 0.97 },
+      良品用时: { mean: 205, min: 150, max: 300 }
+    },
     origin: ProductOrigin.Suzhou,
     startDate: "2025-01-09",
-    dueDate: "2025-01-16"
+    endDate: "2025-01-16"
   }
 ];
 
@@ -686,13 +691,15 @@ export function buildDashboardSummary(
   });
 
   const filteredWorkOrders = workOrderSeed.filter(item => {
-    const matchProduct = !product || item.product === product;
-    const matchOrigin = !origins.length || origins.includes(item.origin);
+    const matchProduct =
+      !product || item.productCodes.some(code => code === product);
+    const matchOrigin =
+      !origins.length || (item.origin ? origins.includes(item.origin) : false);
     const matchDate =
       !startDate ||
       !endDate ||
-      inDateRange(item.startDate, startDate, endDate) ||
-      inDateRange(item.dueDate, startDate, endDate);
+      (item.startDate && inDateRange(item.startDate, startDate, endDate)) ||
+      (item.endDate && inDateRange(item.endDate, startDate, endDate));
     return matchProduct && matchOrigin && matchDate;
   });
 
@@ -710,12 +717,16 @@ export function buildDashboardSummary(
   const productOptions = unique(
     processMetricsSeed
       .flatMap(item => item.products)
-      .concat(filteredWorkOrders.map(order => order.product))
+      .concat(filteredWorkOrders.flatMap(order => order.productCodes))
   );
   const originOptions = unique(
     processMetricsSeed
       .flatMap(item => item.origins)
-      .concat(filteredWorkOrders.map(order => order.origin))
+      .concat(
+        filteredWorkOrders
+          .map(order => order.origin)
+          .filter((origin): origin is ProductOrigin => Boolean(origin))
+      )
   );
 
   return {
@@ -794,18 +805,18 @@ export function buildDashboardProducts(
 
   const orderProducts = workOrderSeed
     .filter(order => {
-      if (!matchesOrigin(order.origin)) {
+      if (origin && (!order.origin || !matchesOrigin(order.origin))) {
         return false;
       }
       if (!startDate || !endDate) {
         return true;
       }
       return (
-        inDateRange(order.startDate, startDate, endDate) ||
-        inDateRange(order.dueDate, startDate, endDate)
+        (order.startDate && inDateRange(order.startDate, startDate, endDate)) ||
+        (order.endDate && inDateRange(order.endDate, startDate, endDate))
       );
     })
-    .map(order => order.product);
+    .flatMap(order => order.productCodes);
 
   const options = unique(processProducts.concat(orderProducts));
 

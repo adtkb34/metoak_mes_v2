@@ -98,7 +98,10 @@
           </el-tag>
         </div>
       </template>
-      <work-orders-table :work-orders="workOrders" :loading="overviewLoading" />
+      <work-orders-table
+        :work-orders="workOrders"
+        :loading="workOrdersLoading"
+      />
     </el-card>
   </div>
 </template>
@@ -126,7 +129,9 @@ import {
   fetchProcessMetrics,
   fetchStepTypeProcessMetrics,
   fetchProcessStageInfo,
-  fetchMaterialCodes
+  fetchMaterialCodes,
+  fetchWorkOrderCodes,
+  fetchWorkOrderProcessMetrics
 } from "@/api/dashboard";
 import type { DashboardSummaryParams, ProcessStageInfo } from "@/api/dashboard";
 import { PRODUCT_ORIGIN_OPTIONS, ProductOrigin } from "@/enums/product-origin";
@@ -245,6 +250,7 @@ const hasMeaningfulMetrics = (summary: ProcessMetricsSummary): boolean => {
 
 const processStagesInfo = ref<ProcessStageInfo[]>([]);
 let processStageRequestToken = 0;
+let workOrderRequestToken = 0;
 
 const activeProcessSteps = ref<ProcessStepInfo[]>(buildDefaultActiveSteps());
 const processMetricsMap = ref<Record<string, ProcessMetricsSummary>>({
@@ -252,6 +258,7 @@ const processMetricsMap = ref<Record<string, ProcessMetricsSummary>>({
 });
 
 const workOrders = ref<WorkOrderRow[]>([]);
+const workOrdersLoading = ref(false);
 
 const stepOverviewItems = ref<ProcessOverviewItem[]>([]);
 const productOverviewItems = ref<ProcessOverviewItem[]>([]);
@@ -536,6 +543,110 @@ const resetProcessDataState = () => {
   paretoData.value = createEmptyParetoData();
 };
 
+const clearWorkOrders = () => {
+  workOrderRequestToken++;
+  workOrders.value = [];
+  workOrdersLoading.value = false;
+};
+
+const loadWorkOrderMetricsForStep = async (
+  stepTypeNo: string | null
+): Promise<void> => {
+  clearWorkOrders();
+
+  if (!stepTypeNo) {
+    return;
+  }
+
+  const origin = filters.origin;
+  const { startDate, endDate } = getRequestRange();
+
+  if (origin === null || origin === undefined || !startDate || !endDate) {
+    return;
+  }
+
+  const requestToken = ++workOrderRequestToken;
+  workOrdersLoading.value = true;
+
+  try {
+    const codeMap = await fetchWorkOrderCodes({
+      origin,
+      stepTypeNo,
+      startDate,
+      endDate
+    });
+
+    if (requestToken !== workOrderRequestToken) {
+      return;
+    }
+
+    const entries = Object.entries(codeMap ?? {}).filter(
+      ([code]) => Boolean(normalizeStringValue(code))
+    );
+
+    if (!entries.length) {
+      workOrders.value = [];
+      return;
+    }
+
+    const requests = entries.map(([workOrderCode, rawProducts]) => {
+      const normalizedProducts = (rawProducts ?? [])
+        .map(code => normalizeStringValue(code))
+        .filter((code): code is string => Boolean(code));
+
+      return fetchWorkOrderProcessMetrics({
+        origin,
+        product: normalizedProducts,
+        stepTypeNo,
+        workOrderCode,
+        startDate,
+        endDate
+      }).then(summary => ({
+        workOrderCode,
+        productCodes: normalizedProducts,
+        products: normalizedProducts.map(getProductLabel),
+        metrics: summary,
+        origin
+      }));
+    });
+
+    const results = await Promise.allSettled(requests);
+
+    if (requestToken !== workOrderRequestToken) {
+      return;
+    }
+
+    const rows: WorkOrderRow[] = [];
+    const failedOrders: string[] = [];
+
+    results.forEach((result, index) => {
+      const [orderCode] = entries[index];
+      if (result.status === "fulfilled") {
+        rows.push(result.value);
+      } else {
+        failedOrders.push(orderCode);
+      }
+    });
+
+    workOrders.value = rows;
+
+    if (failedOrders.length) {
+      ElMessage.error(`获取 ${failedOrders.join("、")} 工单指标失败`);
+    }
+  } catch (error: any) {
+    if (requestToken !== workOrderRequestToken) {
+      return;
+    }
+    const message = error?.message ?? "获取工单指标失败";
+    workOrders.value = [];
+    ElMessage.error(message);
+  } finally {
+    if (requestToken === workOrderRequestToken) {
+      workOrdersLoading.value = false;
+    }
+  }
+};
+
 const syncProcessStepsWithSelection = async () => {
   const requestToken = ++processStageRequestToken;
   const processCode = filters.processCode?.trim?.() ?? null;
@@ -593,6 +704,7 @@ const loadStepOverview = async () => {
   level.value = "step";
   selectedStepTypeNo.value = null;
   selectedProductCode.value = null;
+  clearWorkOrders();
   topLevelError.value = null;
   overviewLoading.value = true;
   stepOverviewItems.value = [];
@@ -666,6 +778,7 @@ const loadProductOverview = async (stepTypeNo: string) => {
   topLevelError.value = null;
   overviewLoading.value = true;
   productOverviewItems.value = [];
+  void loadWorkOrderMetricsForStep(stepTypeNo);
 
   const origin = filters.origin;
   const { startDate, endDate } = getRequestRange();
@@ -743,7 +856,6 @@ const loadProcessOverviewForProduct = async () => {
   level.value = "process";
   overviewLoading.value = true;
   summaryError.value = null;
-  workOrders.value = [];
 
   const params = buildSummaryParams();
   if (!params.product || !params.product.length) {
@@ -878,6 +990,7 @@ const handleNavigateBack = async () => {
     topLevelError.value = null;
     selectedStepTypeNo.value = null;
     selectedProductCode.value = null;
+    clearWorkOrders();
     return;
   }
 };
@@ -977,6 +1090,11 @@ const handleFiltersSubmit = async () => {
     return;
   }
 
+  if (!selectedStepTypeNo.value) {
+    summaryError.value = "请选择工序";
+    return;
+  }
+
   const product = filters.product[0] ?? selectedProductCode.value;
   if (!product) {
     summaryError.value = "请选择产品";
@@ -992,6 +1110,7 @@ const handleFiltersSubmit = async () => {
   }
 
   await loadProcessOverviewForProduct();
+  await loadWorkOrderMetricsForStep(selectedStepTypeNo.value);
 };
 
 const handleFiltersReset = async () => {
@@ -1004,6 +1123,7 @@ const handleFiltersReset = async () => {
   detailError.value = null;
   selectedProcessId.value = null;
   paretoData.value = createEmptyParetoData();
+  clearWorkOrders();
   await loadStepOverview();
 };
 
@@ -1076,6 +1196,7 @@ watch(
     selectedStepTypeNo.value = null;
     selectedProductCode.value = null;
     level.value = "step";
+    clearWorkOrders();
     try {
       await processStore.setProcessFlow(true, value ?? null);
     } catch (error: any) {
