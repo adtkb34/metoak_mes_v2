@@ -75,50 +75,6 @@ export class DashboardController {
     };
   }
 
-  // @Post('process-detail')
-  // async getProcessDetail(
-  //   @Body()
-  //   body: {
-  //     processId?: string;
-  //     startDate?: string;
-  //     endDate?: string;
-  //     origin?: string | number | null;
-  //     product?: string | null;
-  //     stepTypeNo?: string;
-  //     equipmentIds?: string[] | string | null;
-  //   },
-  // ): Promise<{ success: true; data: ProcessDetailData }> {
-  //   const processId = body?.processId?.trim();
-  //   if (!processId) {
-  //     throw new BadRequestException('缺少工序ID');
-  //   }
-
-  //   const origin = this.parseOrigin(body?.origin);
-
-  //   const equipmentIds = Array.isArray(body?.equipmentIds)
-  //     ? body?.equipmentIds
-  //     : body?.equipmentIds
-  //       ? [String(body.equipmentIds)]
-  //       : undefined;
-
-  //   const startDate =
-  //     this.normalizeDateParam('start', body?.startDate) ?? body?.startDate;
-  //   const endDate =
-  //     this.normalizeDateParam('end', body?.endDate) ?? body?.endDate;
-
-  //   const data = await this.dashboardService.getProcessDetail({
-  //     processId,
-  //     startDate,
-  //     endDate,
-  //     origin,
-  //     product: body?.product ?? null,
-  //     stepTypeNo: body?.stepTypeNo,
-  //     equipmentIds,
-  //   });
-
-  //   return { success: true, data };
-  // }
-
   @Get('material-codes')
   async getMaterialCodes(
     @Query()
@@ -131,6 +87,38 @@ export class DashboardController {
   ) {
     try {
       const rows = await this.dashboardService.queryMaterialCodes(
+        query.origin,
+        query.stepTypeNo,
+        query.startDate,
+        query.endDate,
+      );
+      return {
+        success: true,
+        count: rows.length,
+        data: rows,
+      };
+    } catch (error) {
+      console.error('❌ Error in getMaterialCodes:', error);
+      return {
+        success: false,
+        message: 'Database query failed',
+        error: error.message,
+      };
+    }
+  }
+
+  @Get('work-order-codes')
+  async getWorkOrderCodes(
+    @Query()
+    query: {
+      origin: number;
+      stepTypeNo: string;
+      startDate: string;
+      endDate: string;
+    },
+  ) {
+    try {
+      const rows = await this.dashboardService.queryWorkOrderCodes(
         query.origin,
         query.stepTypeNo,
         query.startDate,
@@ -167,6 +155,33 @@ export class DashboardController {
       query.startDate,
       query.endDate,
     );
+
+    return { success: true, data: summary };
+  }
+
+  @Get('work-order-process-metrics')
+  async getWorkOrderProcessMetrics(
+    @Query()
+    query: {
+      origin?: string | number | null;
+      product?: string[] | string | null;
+      workOrderCode?: string | null;
+      startDate?: string;
+      endDate?: string;
+      deviceNos?: string[] | string | null;
+      stations?: string[] | string | null;
+    },
+  ): Promise<{ success: true; data: ProcessMetricsSummary }> {
+    const origin = this.parseOrigin(query?.origin);
+    const summary = await this.dashboardService.getWorkOrderProcessMetrics({
+      origin,
+      products: this.normalizeStringArray(query?.product),
+      workOrderCode: query?.workOrderCode?.trim(),
+      startDate: query.startDate,
+      endDate: query.endDate,
+      deviceNos: this.normalizeStringArray(query?.deviceNos),
+      stations: this.normalizeStringArray(query?.stations),
+    });
 
     return { success: true, data: summary };
   }
