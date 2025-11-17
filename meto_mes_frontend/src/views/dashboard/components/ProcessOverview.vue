@@ -13,10 +13,10 @@
           <div class="flex items-start justify-between">
             <div>
               <div class="text-base font-medium text-gray-700">
-                {{ item.name }}
+                {{ formatTitle(item) }}
               </div>
               <div class="mt-1 text-xs text-gray-400">
-                工序编码 {{ item.code ?? "-" }}
+                {{ getMetaLabel(item) }} {{ getMetaValue(item) }}
               </div>
             </div>
             <el-tag size="small" effect="plain" type="info">指标概览</el-tag>
@@ -100,6 +100,25 @@ const numberFormatter = new Intl.NumberFormat("zh-CN", {
 });
 
 const metricGroups = METRIC_GROUPS;
+
+const formatTitle = (item: ProcessOverviewItem) => {
+  if (!item.titleLabel) {
+    return item.name;
+  }
+  return `${item.titleLabel} ${item.name}`;
+};
+
+const getMetaLabel = (item: ProcessOverviewItem) => {
+  return item.metaLabel ?? "工序编码";
+};
+
+const getMetaValue = (item: ProcessOverviewItem) => {
+  const value = item.metaValue ?? item.code;
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  return typeof value === "string" ? value : String(value);
+};
 
 const formatMetricValue = (
   groupKey: string,

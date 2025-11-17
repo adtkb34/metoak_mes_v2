@@ -595,7 +595,6 @@ const loadWorkOrderMetricsForStep = async (
 
       return fetchWorkOrderProcessMetrics({
         origin,
-        product: normalizedProducts,
         stepTypeNo,
         workOrderCode,
         startDate,
@@ -795,55 +794,70 @@ const loadProductOverview = async (stepTypeNo: string) => {
   }
 
   try {
-    const materialCodes = await fetchMaterialCodes({
+    const codeMap = await fetchWorkOrderCodes({
       origin,
       stepTypeNo,
       startDate,
       endDate
     });
-    const uniqueCodes = Array.from(new Set(materialCodes));
 
-    if (!uniqueCodes.length) {
-      topLevelError.value = "该工序暂无产品数据";
+    const entries = Object.entries(codeMap ?? {}).filter(([code]) =>
+      Boolean(normalizeStringValue(code))
+    );
+
+    if (!entries.length) {
+      topLevelError.value = "该工序暂无工单数据";
       return;
     }
-    const requests = uniqueCodes.map(code =>
-      fetchProcessMetrics({
+
+    const requests = entries.map(([workOrderCode, rawProducts]) => {
+      const normalizedProducts = (rawProducts ?? [])
+        .map(code => normalizeStringValue(code))
+        .filter((code): code is string => Boolean(code));
+      const productCodeLabel = normalizedProducts.length
+        ? normalizedProducts.join("、")
+        : "-";
+
+      return fetchWorkOrderProcessMetrics({
         origin,
-        product: [code],
         stepTypeNo,
+        workOrderCode,
         startDate,
         endDate
       }).then(summary => ({
-        id: code,
-        name: getProductLabel(code),
-        code,
+        id: workOrderCode,
+        name: workOrderCode,
+        code: null,
+        titleLabel: "工单号",
+        metaLabel: "产品料号",
+        metaValue: productCodeLabel,
+        targetProductCode: normalizedProducts[0] ?? null,
         metrics: summary
-      }))
-    );
+      }));
+    });
 
     const results = await Promise.allSettled(requests);
     const items: ProcessOverviewItem[] = [];
-    const failedProducts: string[] = [];
+    const failedOrders: string[] = [];
 
     results.forEach((result, index) => {
-      const code = uniqueCodes[index];
+      const [workOrderCode] = entries[index];
       if (result.status === "fulfilled") {
         items.push(result.value);
       } else {
-        failedProducts.push(getProductLabel(code));
+        failedOrders.push(workOrderCode);
       }
     });
 
     productOverviewItems.value = items;
 
     if (!items.length) {
-      topLevelError.value = "该工序暂无产品统计数据";
-    } else if (failedProducts.length) {
-      ElMessage.error(`获取 ${failedProducts.join("、")} 指标失败`);
+      topLevelError.value = "该工序暂无工单统计数据";
+    } else if (failedOrders.length) {
+      ElMessage.error(`获取 ${failedOrders.join("、")} 工单指标失败`);
     }
   } catch (error: any) {
-    const message = error?.message ?? "获取产品统计失败";
+    const message = error?.message ?? "获取工单统计失败";
     topLevelError.value = message;
     ElMessage.error(message);
   } finally {
@@ -961,7 +975,13 @@ const handleOverviewSelect = async (id: string) => {
   }
 
   if (level.value === "product") {
-    await handleProductSelect(id);
+    const target = productOverviewItems.value.find(item => item.id === id);
+    const productCode = target?.targetProductCode ?? null;
+    if (!productCode) {
+      ElMessage.warning("当前工单缺少产品料号，无法查看工序详情");
+      return;
+    }
+    await handleProductSelect(productCode);
     return;
   }
 

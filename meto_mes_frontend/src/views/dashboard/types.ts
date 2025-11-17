@@ -35,6 +35,21 @@ export interface ProcessOverviewItem {
   name: string;
   code: string | null;
   metrics: ProcessMetricsSummary;
+  /**
+   * Optional label that will be rendered before the card title.
+   * Example: "工单号" -> "工单号 123".
+   */
+  titleLabel?: string;
+  /**
+   * Optional label/value pair rendered under the title.
+   * Defaults to "工序编码" + code if not provided.
+   */
+  metaLabel?: string;
+  metaValue?: string | null;
+  /**
+   * When present, clicking the card will navigate using this product code.
+   */
+  targetProductCode?: string | null;
 }
 
 export interface DashboardSummaryResponse {
