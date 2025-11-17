@@ -4,35 +4,42 @@
     <template v-else>
       <el-empty v-if="!workOrders.length" description="暂无工单数据" />
       <el-table v-else :data="workOrders" stripe>
-        <el-table-column prop="orderId" label="工单号" width="140" />
-        <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="product" label="产品" width="110" />
-        <el-table-column label="产地" width="110">
+        <el-table-column prop="workOrderCode" label="工单号" width="140" />
+        <el-table-column label="产品" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
-            {{ getProductOriginLabel(row.origin) }}
+            {{ formatProducts(row.products) }}
           </template>
         </el-table-column>
-        <el-table-column label="预期完成数" width="130">
+        <el-table-column label="良品数" width="120">
           <template #default="{ row }">
-            {{ formatNumber(row.expectedQuantity) }}
+            {{ formatCount(row.metrics.数量.良品) }}
           </template>
         </el-table-column>
-        <el-table-column label="AA通过数" width="120">
+        <el-table-column label="产品数" width="120">
           <template #default="{ row }">
-            {{ formatNumber(row.aaPass) }}
+            {{ formatCount(row.metrics.数量.产品) }}
           </template>
         </el-table-column>
-        <el-table-column label="标定通过数" width="130">
+        <el-table-column label="总体数" width="120">
           <template #default="{ row }">
-            {{ formatNumber(row.calibrationPass) }}
+            {{ formatCount(row.metrics.数量.总体) }}
           </template>
         </el-table-column>
-        <el-table-column label="终检通过数" width="130">
+        <el-table-column label="一次良率" width="120">
           <template #default="{ row }">
-            {{ formatNumber(row.finalPass) }}
+            {{ formatRate(row.metrics.良率.一次) }}
           </template>
         </el-table-column>
-        <el-table-column prop="dueDate" label="预计完成" width="130" />
+        <el-table-column label="最终良率" width="120">
+          <template #default="{ row }">
+            {{ formatRate(row.metrics.良率.最终) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="总体良率" width="120">
+          <template #default="{ row }">
+            {{ formatRate(row.metrics.良率.总体) }}
+          </template>
+        </el-table-column>
       </el-table>
     </template>
   </div>
@@ -40,7 +47,6 @@
 
 <script setup lang="ts">
 import { toRefs } from "vue";
-import { getProductOriginLabel } from "@/enums/product-origin";
 import type { WorkOrderRow } from "../types";
 
 interface Props {
@@ -55,7 +61,24 @@ const numberFormatter = new Intl.NumberFormat("zh-CN", {
   maximumFractionDigits: 0
 });
 
-const formatNumber = (value: number) => numberFormatter.format(value);
+const formatCount = (value: number | string) => {
+  if (typeof value !== "number") {
+    return value ?? "-";
+  }
+  return numberFormatter.format(value);
+};
+
+const formatRate = (value: number | string) => {
+  if (typeof value !== "number") {
+    return value ?? "-";
+  }
+  return `${(value * 100).toFixed(1)}%`;
+};
+
+const formatProducts = (products: string[]) => {
+  if (!products.length) return "-";
+  return products.join("、");
+};
 </script>
 
 <style scoped>

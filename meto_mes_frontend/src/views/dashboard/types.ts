@@ -47,16 +47,13 @@ export interface DashboardSummaryResponse {
 }
 
 export interface WorkOrderRow {
-  orderId: string;
-  description: string;
-  expectedQuantity: number;
-  aaPass: number;
-  calibrationPass: number;
-  finalPass: number;
-  product: string;
-  origin: ProductOrigin;
-  startDate: string;
-  dueDate: string;
+  workOrderCode: string;
+  productCodes: string[];
+  products: string[];
+  metrics: ProcessMetricsSummary;
+  origin?: ProductOrigin;
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface DefectBreakdown {

@@ -23,6 +23,19 @@ export interface ProcessMetricsParams {
   stations?: string[];
 }
 
+export interface WorkOrderCodeParams {
+  origin: ProductOrigin;
+  stepTypeNo: string;
+  startDate: string;
+  endDate: string;
+}
+
+export type WorkOrderCodeMap = Record<string, string[]>;
+
+export interface WorkOrderProcessMetricsParams extends ProcessMetricsParams {
+  workOrderCode: string;
+}
+
 export interface ParetoChartParams {
   product: string[];
   origin: ProductOrigin;

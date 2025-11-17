@@ -22,7 +22,10 @@ import type {
   ProcessStageInfo,
   ParetoChartParams,
   ParetoChartData,
-  MaterialCodeParams
+  MaterialCodeParams,
+  WorkOrderCodeParams,
+  WorkOrderCodeMap,
+  WorkOrderProcessMetricsParams
 } from "./dashboard.types";
 import { fa } from "element-plus/es/locale/index.mjs";
 
@@ -40,6 +43,8 @@ const STEP_TYPE_PROCESS_METRICS_URL = "/dashboard/step-type-process-metrics";
 const PROCESS_STAGE_INFO_URL = "/dashboard/process-stage-info";
 const PROCESS_PARETO_URL = "/dashboard/pareto";
 const MATERIAL_CODES_URL = "/dashboard/material-codes";
+const WORK_ORDER_CODES_URL = "/dashboard/work-order-codes";
+const WORK_ORDER_PROCESS_METRICS_URL = "/dashboard/work-order-process-metrics";
 
 const isMockEnabled = (() => {
   const flag = false;
@@ -218,6 +223,23 @@ export async function fetchMaterialCodes(
   return (response.data ?? []).filter(Boolean);
 }
 
+export async function fetchWorkOrderCodes(
+  params: WorkOrderCodeParams
+): Promise<WorkOrderCodeMap> {
+  if (isMockEnabled) {
+    return Promise.resolve({});
+  }
+
+  const response = await http.request<ApiResponse<WorkOrderCodeMap>>(
+    "get",
+    WORK_ORDER_CODES_URL,
+    { params }
+  );
+
+  const data = unwrapResponse(response, "获取工单编码失败");
+  return data ?? {};
+}
+
 export async function fetchProcessMetrics(
   params: ProcessMetricsParams
 ): Promise<ProcessMetricsSummary> {
@@ -238,6 +260,30 @@ export async function fetchProcessMetrics(
     }
   );
   return unwrapResponse(response, "获取工序指标失败");
+}
+
+export async function fetchWorkOrderProcessMetrics(
+  params: WorkOrderProcessMetricsParams
+): Promise<ProcessMetricsSummary> {
+  if (isMockEnabled) {
+    return Promise.resolve(buildProcessMetrics(params));
+  }
+
+  const response = await http.request<ApiResponse<ProcessMetricsSummary>>(
+    "get",
+    WORK_ORDER_PROCESS_METRICS_URL,
+    {
+      params,
+      paramsSerializer: params => {
+        return qs.stringify(params, {
+          arrayFormat: "repeat",
+          indices: false
+        });
+      }
+    }
+  );
+
+  return unwrapResponse(response, "获取工单工序指标失败");
 }
 
 export async function fetchStepTypeProcessMetrics(
@@ -317,5 +363,8 @@ export type {
   ProcessStageInfo,
   ParetoChartParams,
   ParetoChartData,
-  MaterialCodeParams
+  MaterialCodeParams,
+  WorkOrderCodeParams,
+  WorkOrderCodeMap,
+  WorkOrderProcessMetricsParams
 };
