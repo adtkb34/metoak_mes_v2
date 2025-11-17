@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { K3cloudController } from './k3cloud.controller';
+import { K3CloudController } from './k3cloud.controller';
 
-describe('K3cloudController', () => {
-  let controller: K3cloudController;
+describe('K3CloudController', () => {
+  let controller: K3CloudController;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [K3cloudController],
+      controllers: [K3CloudController],
     }).compile();
 
-    controller = module.get<K3cloudController>(K3cloudController);
+    controller = module.get<K3CloudController>(K3CloudController);
   });
 
   it('should be defined', () => {

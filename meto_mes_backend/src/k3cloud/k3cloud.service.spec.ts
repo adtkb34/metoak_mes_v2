@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { K3cloudService } from './k3cloud.service';
+import { K3CloudService } from './k3cloud.service';
 
-describe('K3cloudService', () => {
-  let service: K3cloudService;
+describe('K3CloudService', () => {
+  let service: K3CloudService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [K3cloudService],
+      providers: [K3CloudService],
     }).compile();
 
-    service = module.get<K3cloudService>(K3cloudService);
+    service = module.get<K3CloudService>(K3CloudService);
   });
 
   it('should be defined', () => {

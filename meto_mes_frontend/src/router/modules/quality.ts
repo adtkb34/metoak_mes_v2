@@ -9,7 +9,6 @@
 //   }
 // };
 
-
 export default {
   path: "/statistics",
   meta: {
@@ -27,22 +26,22 @@ export default {
     //     showParent: true,
     //   }
     // },
-    {
-      path: "/statistics/quality",
-      name: "Quality",
-      component: () => import("@/views/quality/analysis/index.vue"),
-      meta: {
-        title: "品质管理",
-        showParent: true,
-      }
-    },
+    // {
+    //   path: "/statistics/quality",
+    //   name: "Quality",
+    //   component: () => import("@/views/quality/analysis/index.vue"),
+    //   meta: {
+    //     title: "品质管理",
+    //     showParent: true,
+    //   }
+    // },
     {
       path: "/statistics/measure-distance",
       name: "measure-distance",
       component: () => import("@/views/quality/measure-distance/index.vue"),
       meta: {
         title: "测距分析",
-        showParent: true,
+        showParent: true
       }
     },
     {
@@ -51,7 +50,7 @@ export default {
       component: () => import("@/views/quality/stereo-calibration/index.vue"),
       meta: {
         title: "双目标定",
-        showParent: true,
+        showParent: true
       }
     },
     {
@@ -60,7 +59,7 @@ export default {
       component: () => import("@/views/quality/stereo-precheck/index.vue"),
       meta: {
         title: "316L",
-        showParent: true,
+        showParent: true
       }
     },
     {
@@ -69,7 +68,7 @@ export default {
       component: () => import("@/views/m55h/index.vue"),
       meta: {
         title: "M55H 单目终测",
-        showParent: true,
+        showParent: true
       }
     },
     {
@@ -78,7 +77,7 @@ export default {
       component: () => import("@/views/quality/table-others/index.vue"),
       meta: {
         title: "其他工序",
-        showParent: true,
+        showParent: true
       }
     }
   ]

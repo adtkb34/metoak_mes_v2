@@ -143,12 +143,12 @@ type ViewLevel = "step" | "product" | "process";
 const STEP_OVERVIEW_CODES: string[] = [
   STEP_NO.AUTO_ADJUST,
   STEP_NO.CALIB,
-  STEP_NO.S315FQC
+  STEP_NO.FQC
 ];
 
 const STEP_TITLE_MAP: Record<string, string> = {
   [STEP_NO.AUTO_ADJUST]: "AA",
-  [STEP_NO.S315FQC]: "FQC",
+  [STEP_NO.FQC]: "FQC",
   [STEP_NO.CALIB]: "标定"
 };
 

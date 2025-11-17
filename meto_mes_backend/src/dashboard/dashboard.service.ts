@@ -331,26 +331,32 @@ export class DashboardService {
         string,
         { table: string; timeField: string; productSnField: string }[]
       > = {
-        [STEP_NO.CALIB]: [{
-          table: 'mo_calibration',
-          timeField: 'start_time',
-          productSnField: 'camera_sn',
-        }],
-        [STEP_NO.AUTO_ADJUST]: [{
-          table: 'mo_auto_adjust_info',
-          timeField: 'add_time',
-          productSnField: 'beam_sn',
-        }],
-        [STEP_NO.S315FQC]: [{
-          table: 'mo_final_result',
-          timeField: 'check_time',
-          productSnField: 'camera_sn',
-        },
-        {
-          table: 'mo_stereo_postcheck',
-          timeField: 'datetime',
-          productSnField: 'sn',
-        }]
+        [STEP_NO.CALIB]: [
+          {
+            table: 'mo_calibration',
+            timeField: 'start_time',
+            productSnField: 'camera_sn',
+          },
+        ],
+        [STEP_NO.AUTO_ADJUST]: [
+          {
+            table: 'mo_auto_adjust_info',
+            timeField: 'add_time',
+            productSnField: 'beam_sn',
+          },
+        ],
+        [STEP_NO.FQC]: [
+          {
+            table: 'mo_final_result',
+            timeField: 'check_time',
+            productSnField: 'camera_sn',
+          },
+          {
+            table: 'mo_stereo_postcheck',
+            timeField: 'datetime',
+            productSnField: 'sn',
+          },
+        ],
       };
 
       const configList = tableMap[stepTypeNo];
@@ -401,7 +407,7 @@ export class DashboardService {
     );
 
     try {
-      let workOrderCode = params.workOrderCode
+      let workOrderCode = params.workOrderCode;
       // products = products?.length ? products : [''];
 
       // if (!products?.length) {
@@ -411,73 +417,91 @@ export class DashboardService {
       const client = this.prisma.getClientByOrigin(params.origin);
       let allRows: ProcessMetricRow[] = [];
       // for (const product of products) {
-        let rows: ProcessMetricRow[] | undefined;
-        if (params.stepTypeNo == STEP_NO.CALIB) {
-          rows = await this.fetchCalibMetricRows({
+      let rows: ProcessMetricRow[] | undefined;
+      if (params.stepTypeNo == STEP_NO.CALIB) {
+        rows = await this.fetchCalibMetricRows({
+          product: null,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+          workOrderCode,
+        });
+      } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
+        rows = await this.fetchAssemblePcbaMetricRows({
+          product: null,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+          workOrderCode,
+        });
+      } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
+        rows = await this.fetchAutoAdjustMetricRows({
+          product: null,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+          workOrderCode,
+        });
+      } else if (params.stepTypeNo == STEP_NO.S315FQC) {
+        rows = await this.fetchS315FqcMetricRows({
+          product: null,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+          workOrderCode,
+        });
+      } else if (params.stepTypeNo == STEP_NO.FQC) {
+        rows =
+          (await this.fetchS315FqcMetricRows({
             product: null,
             client,
             stepTypeNo: normalizedStepTypeNo,
             range: { start, end },
-            workOrderCode
-          });
-        } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
-          rows = await this.fetchAssemblePcbaMetricRows({
+            workOrderCode,
+          })) ?? [];
+        const rows2 =
+          (await this.fetchStereoPostCheckMetricRows({
             product: null,
             client,
             stepTypeNo: normalizedStepTypeNo,
             range: { start, end },
-            workOrderCode
-          });
-        } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
-          rows = await this.fetchAutoAdjustMetricRows({
-            product: null,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-            workOrderCode
-          });
-        } else if (params.stepTypeNo == STEP_NO.S315FQC) {
-          rows = await this.fetchS315FqcMetricRows({
-            product: null,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-            workOrderCode
-          });
-        } else if (params.stepTypeNo == STEP_NO.PACKING) {
-          rows = await this.fetchPackingMetricRows({
-            product: null,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-            workOrderCode
-          });
-        } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
-          rows = await this.fetchStereoPrecheckMetricRows({
-            product: null,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-            workOrderCode
-          });
-        } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
-          rows = await this.fetchStereoPostCheckMetricRows({
-            product: null,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-            workOrderCode
-          });
-        } else {
-          rows = await this.fetchProcessProductionMetricRows({
-            product: null,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-            workOrderCode
-          });
-        }
-        if (rows) allRows.push(...rows);
+            workOrderCode,
+          })) ?? [];
+        rows = rows.concat(rows2);
+      } else if (params.stepTypeNo == STEP_NO.PACKING) {
+        rows = await this.fetchPackingMetricRows({
+          product: null,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+          workOrderCode,
+        });
+      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
+        rows = await this.fetchStereoPrecheckMetricRows({
+          product: null,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+          workOrderCode,
+        });
+      } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+        rows = await this.fetchStereoPostCheckMetricRows({
+          product: null,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+          workOrderCode,
+        });
+      } else {
+        rows = await this.fetchProcessProductionMetricRows({
+          product: null,
+          client,
+          stepTypeNo: normalizedStepTypeNo,
+          range: { start, end },
+          workOrderCode,
+        });
+      }
+      if (rows) allRows.push(...rows);
       // }
       const aggregated = allRows
         ? this.aggregateProcessMetricData(allRows)
@@ -681,6 +705,7 @@ export class DashboardService {
             stepTypeNo: stepTypeNo,
             range: { start, end },
           });
+
           if (rows != undefined) {
             rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
               this.prisma,
@@ -734,7 +759,7 @@ export class DashboardService {
 
       const total = breakdown.reduce((sum, item) => sum + item.count, 0);
       let running = 0;
-
+      console.log(rows);
       return {
         categories: breakdown.map((item) => item.reason),
         counts: breakdown.map((item) => item.count),
@@ -882,7 +907,7 @@ export class DashboardService {
       product,
       filterClause,
       'beam_sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const tagRows = await this.queryTagInfoProducts(
@@ -892,7 +917,7 @@ export class DashboardService {
       product,
       filterClause,
       'beam_sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const combined = [...beamRows, ...tagRows];
@@ -950,7 +975,7 @@ export class DashboardService {
       product,
       filterClause,
       'camera_sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const tagRows = await this.queryTagInfoProducts(
@@ -960,7 +985,7 @@ export class DashboardService {
       product,
       filterClause,
       'camera_sn',
-      workOrderCode
+      workOrderCode,
     );
     const combined = [...beamRows, ...tagRows];
     if (!combined.length) {
@@ -1017,7 +1042,7 @@ export class DashboardService {
       product,
       filterClause,
       'camera_sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const tagRows = await this.queryTagInfoProducts(
@@ -1027,7 +1052,7 @@ export class DashboardService {
       product,
       filterClause,
       'camera_sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const combined = [...beamRows, ...tagRows];
@@ -1085,7 +1110,7 @@ export class DashboardService {
       product,
       filterClause,
       'camera_sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const tagRows = await this.queryTagInfoProducts(
@@ -1095,7 +1120,7 @@ export class DashboardService {
       product,
       filterClause,
       'camera_sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const combined = [...beamRows, ...tagRows];
@@ -1152,7 +1177,7 @@ export class DashboardService {
       product,
       filterClause,
       'sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const tagRows = await this.queryTagInfoProducts(
@@ -1162,7 +1187,7 @@ export class DashboardService {
       product,
       filterClause,
       'sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const combined = [...beamRows, ...tagRows];
@@ -1219,7 +1244,7 @@ export class DashboardService {
       product,
       filterClause,
       'sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const tagRows = await this.queryTagInfoProducts(
@@ -1229,7 +1254,7 @@ export class DashboardService {
       product,
       filterClause,
       'sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const combined = [...beamRows, ...tagRows];
@@ -1286,7 +1311,7 @@ export class DashboardService {
       product,
       filterClause,
       'camera_sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const tagRows = await this.queryTagInfoProducts(
@@ -1296,7 +1321,7 @@ export class DashboardService {
       product,
       filterClause,
       'camera_sn',
-      workOrderCode
+      workOrderCode,
     );
 
     const combined = [...beamRows, ...tagRows];
@@ -1338,9 +1363,9 @@ export class DashboardService {
     productSnName: string = 'product_sn',
     workOrderCode?: string | null, // 工单编号
   ): Promise<ProcessMetricRow[]> {
-    let query
+    let query;
     if (workOrderCode == null) {
-       query = Prisma.sql`
+      query = Prisma.sql`
         ${baseSql}
         INNER JOIN mo_beam_info AS mbi
           ON mbi.beam_sn = ${Prisma.raw(alias)}.${Prisma.raw(productSnName)}
@@ -1359,7 +1384,7 @@ export class DashboardService {
         ${filterClause ?? Prisma.empty}
       `;
     }
-    
+
     const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
 
     return rows;
@@ -1377,7 +1402,7 @@ export class DashboardService {
     productSnName: string = 'product_sn',
     workOrderCode?: string | null, // 工单编号
   ): Promise<ProcessMetricRow[]> {
-    let query
+    let query;
     if (workOrderCode == null) {
       query = Prisma.sql`
         ${baseSql}
@@ -1477,47 +1502,73 @@ export class DashboardService {
   ): Promise<Record<string, string[]>> {
     const client = this.prisma.getClientByOrigin(origin);
 
-    // 定义要循环的来源表和连接字段
+    // 来源表（固定）
     const sources = [
       { table: 'mo_beam_info', joinField: 'beam_sn' },
       { table: 'mo_tag_info', joinField: 'tag_sn' },
     ];
 
+    // 工序 → 表映射
+    const tableMap: Record<
+      string,
+      { table: string; timeField: string; productSnField: string }[]
+    > = {
+      [STEP_NO.CALIB]: [
+        {
+          table: 'mo_calibration',
+          timeField: 'start_time',
+          productSnField: 'camera_sn',
+        },
+      ],
+      [STEP_NO.AUTO_ADJUST]: [
+        {
+          table: 'mo_auto_adjust_info',
+          timeField: 'add_time',
+          productSnField: 'beam_sn',
+        },
+      ],
+      [STEP_NO.FQC]: [
+        {
+          table: 'mo_final_result',
+          timeField: 'check_time',
+          productSnField: 'camera_sn',
+        },
+        {
+          table: 'mo_stereo_postcheck',
+          timeField: 'datetime',
+          productSnField: 'sn',
+        },
+      ],
+    };
+
+    const targetConfigs = tableMap[stepTypeNo];
+    if (!targetConfigs) return {};
+
     const resultMap: Record<string, Set<string>> = {};
-    let targetTable: string | undefined;
-    let timeField = 'start_time';
-    let productSnName = 'camera_sn';
 
-    // ✅ 根据工序号选择表与字段
-    if (stepTypeNo === STEP_NO.CALIB) {
-      targetTable = 'mo_calibration';
-    } else if (stepTypeNo === STEP_NO.S315FQC) {
-      targetTable = 'mo_final_result';
-      timeField = 'check_time';
-    } else if (stepTypeNo === STEP_NO.AUTO_ADJUST) {
-      targetTable = 'mo_auto_adjust_info';
-      productSnName = 'beam_sn';
-      timeField = 'add_time';
-    }
+    // ======================================================
+    //  🔁 1. 遍历 step 对应的多个目标表
+    // ======================================================
+    for (const cfg of targetConfigs) {
+      const safeTargetTable = Prisma.raw(`\`${cfg.table}\``);
+      const safeTimeField = Prisma.raw(`\`${cfg.timeField}\``);
+      const safeProductSnField = Prisma.raw(`\`${cfg.productSnField}\``);
 
-    if (!targetTable) return {};
+      // ======================================================
+      //  🔁 2. 遍历多个来源表（mo_beam_info / mo_tag_info）
+      // ======================================================
+      for (const src of sources) {
+        const safeSourceTable = Prisma.raw(`\`${src.table}\``);
+        const safeJoinField = Prisma.raw(`\`${src.joinField}\``);
 
-    // ✅ 循环查询不同来源表（mo_beam_info, mo_tag_info）
-    for (const src of sources) {
-      const safeTargetTable = Prisma.raw(`\`${targetTable}\``);
-      const safeSourceTable = Prisma.raw(`\`${src.table}\``);
-      const safeJoinField = Prisma.raw(`\`${src.joinField}\``);
-      const safeProductSnName = Prisma.raw(`\`${productSnName}\``);
-      const safeTimeField = Prisma.raw(`\`${timeField}\``);
-
-      const query = Prisma.sql`
+        const query = Prisma.sql`
         SELECT 
           mpo.work_order_code,
           mpo.material_code
         FROM 
           ${safeTargetTable} AS t
           LEFT JOIN ${safeSourceTable} AS s
-            ON s.${safeJoinField} = t.${safeProductSnName}
+            ON s.${safeJoinField} = t.${safeProductSnField}
           LEFT JOIN mo_produce_order AS mpo
             ON s.work_order_code = mpo.work_order_code
         WHERE 
@@ -1526,31 +1577,33 @@ export class DashboardService {
           mpo.work_order_code, mpo.material_code
       `;
 
-      const rows = await client.$queryRaw<{
-        work_order_code: string | null;
-        material_code: string | null;
-      }[]>(query);
+        const rows =
+          await client.$queryRaw<
+            { work_order_code: string | null; material_code: string | null }[]
+          >(query);
 
-      // ✅ 聚合到 map
-      for (const r of rows) {
-        const workOrder = r.work_order_code?.trim();
-        const material = r.material_code?.trim();
-        if (!workOrder || !material) continue;
+        // 聚合
+        for (const r of rows) {
+          const work = r.work_order_code?.trim();
+          const mat = r.material_code?.trim();
+          if (!work || !mat) continue;
 
-        if (!resultMap[workOrder]) resultMap[workOrder] = new Set();
-        resultMap[workOrder].add(material);
+          if (!resultMap[work]) resultMap[work] = new Set();
+          resultMap[work].add(mat);
+        }
       }
     }
 
-    // ✅ 把 Set 转成数组
+    // ======================================================
+    //  返回普通数组结构
+    // ======================================================
     const finalResult: Record<string, string[]> = {};
-    for (const [workOrder, materials] of Object.entries(resultMap)) {
-      finalResult[workOrder] = Array.from(materials);
+    for (const key in resultMap) {
+      finalResult[key] = [...resultMap[key]];
     }
 
     return finalResult;
   }
-
 
   private async fetchGenericProcessMetricData(
     params: ProcessMetricLoaderParams,

@@ -28,5 +28,6 @@ export enum STEP_NO {
   MO_AUTO_ADJUST_ST08 = "026",
   S315FQC = "027",
   IMU_CALIB = "028",
-  ASSEMBLE_PCBA = "029"
+  ASSEMBLE_PCBA = "029",
+  FQC = "031"
 }
