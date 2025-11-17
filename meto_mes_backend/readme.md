@@ -31,6 +31,11 @@
 $ pnpm install
 ```
 
+## Environment variables
+
+Create a `.env` file (for example by copying `.env.example`) and define the
+`BACKEND_VERSION` value that should be exposed through the `/version` endpoint.
+
 ## Compile and run the project
 
 ```bash

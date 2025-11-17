@@ -1,6 +1,5 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { ConfigService } from '@nestjs/config';
 
 export interface VersionInfo {
   backendVersion: string;
@@ -9,19 +8,19 @@ export interface VersionInfo {
 @Injectable()
 export class VersionService {
   private readonly logger = new Logger(VersionService.name);
-  private readonly versionFilePath = join(process.cwd(), 'config', 'version.json');
+
+  constructor(private readonly configService: ConfigService) {}
 
   getVersion(): VersionInfo {
     try {
-      const content = readFileSync(this.versionFilePath, 'utf-8');
-      const data = JSON.parse(content) as Partial<VersionInfo>;
+      const backendVersion = this.configService.get<string>('BACKEND_VERSION');
 
-      if (!data.backendVersion || typeof data.backendVersion !== 'string') {
-        throw new Error('Invalid version config file');
+      if (!backendVersion) {
+        throw new Error('BACKEND_VERSION env variable is missing');
       }
 
       return {
-        backendVersion: data.backendVersion,
+        backendVersion,
       } satisfies VersionInfo;
     } catch (error) {
       this.logger.error(
