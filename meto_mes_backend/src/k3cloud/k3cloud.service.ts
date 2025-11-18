@@ -82,7 +82,7 @@ export class K3CloudService {
 
           for (const dto of dtos) {
             const existing = await this.prisma.mo_produce_order.findFirst({
-              where: { work_order_code: dto.work_order_code },
+              where: { work_order_code: dto.work_order_code, material_code: dto.material_code },
             });
 
             if (existing) {
