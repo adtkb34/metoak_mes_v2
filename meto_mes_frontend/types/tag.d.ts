@@ -8,11 +8,15 @@ export interface OrderListItem {
 }
 
 export interface BeamSerialItem {
+  id?: number;
   beam_sn: string;
+  is_used?: number | null;
 }
 
 export interface ShellSerialItem {
+  id?: number;
   tag_sn: string;
+  is_used?: number | null;
 }
 
 export type LabelType = "beam" | "shell";
@@ -43,3 +47,9 @@ export type TagListResponse<T> = {
   data: T[];
   length: number;
 };
+
+export interface MarkSerialPayload {
+  work_order_code: string;
+  label_type: LabelType;
+  serial_numbers: string[];
+}

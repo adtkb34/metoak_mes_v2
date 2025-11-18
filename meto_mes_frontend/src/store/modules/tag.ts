@@ -1,5 +1,4 @@
 import { getBeamSN, getTagOrders } from "@/api/tag";
-import { spliceFields } from "@/views/tag/utils";
 import { defineStore } from "pinia";
 import type { BeamSerialItem, LabelType, ShellSerialItem, TagListResponse } from "types/tag";
 
@@ -34,10 +33,13 @@ export const useTagStore = defineStore("tag", {
   },
 
   actions: {
-    setCurrentOrder(orderCode: string) {
-      this.order.current = this.order.list.find(
-        order => spliceFields(order) === orderCode
-      );
+    setCurrentOrder(orderId: number | null) {
+      if (orderId == null) {
+        this.order.current = null;
+        return;
+      }
+
+      this.order.current = this.order.list.find(order => order.id === orderId) || null;
     },
 
     async setOrderList() {
@@ -47,12 +49,12 @@ export const useTagStore = defineStore("tag", {
       }
     },
 
-    async setSNList(orderCode: string, labelType: LabelType = "beam") {
-      // const { id } = this.order.list.find(
-      //   order => spliceFields(order) === splicedCode
-      // );
-      // this.beamSN.produceOrderID = id;
-      this.beamSN.list = await getBeamSN(orderCode, labelType);
+    async setSNList(
+      orderCode: string,
+      labelType: LabelType = "beam",
+      onlyUnused = false
+    ) {
+      this.beamSN.list = await getBeamSN(orderCode, labelType, onlyUnused);
       this.beamSN.labelType = labelType;
     },
 

@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { BeamInfoDTO } from './beamInfo.dto';
 import { ShellInfoDTO } from './shellInfo.dto';
 import { ShellConfigDTO } from './shellConfig.dto';
+import { MarkSerialDTO } from './markSerial.dto';
 
 @Injectable()
 export class TagService {
@@ -60,14 +61,17 @@ export class TagService {
     return result;
   }
 
-  async getBeamSN(work_order_code: string, label_type = 'beam') {
+  async getBeamSN(work_order_code: string, label_type = 'beam', onlyUnused = false) {
     if (label_type === 'shell') {
       return this.prisma.mo_tag_info.findMany({
         select: {
           tag_sn: true,
+          id: true,
+          is_used: true,
         },
         where: {
           work_order_code: work_order_code,
+          ...(onlyUnused ? { is_used: 0 } : {}),
         },
         orderBy: {
           create_time: 'asc',
@@ -78,22 +82,28 @@ export class TagService {
     const result = await this.prisma.mo_beam_info.findMany({
       select: {
         beam_sn: true,
+        id: true,
+        is_used: true,
       },
       where: {
         work_order_code: work_order_code,
+        ...(onlyUnused ? { is_used: 0 } : {}),
       },
     });
 
     return result;
   }
 
-  async getShellSN(work_order_code: string) {
+  async getShellSN(work_order_code: string, onlyUnused = false) {
     const result = await this.prisma.mo_tag_info.findMany({
       select: {
         tag_sn: true,
+        id: true,
+        is_used: true,
       },
       where: {
         work_order_code,
+        ...(onlyUnused ? { is_used: 0 } : {}),
       },
       orderBy: {
         create_time: 'asc',
@@ -355,6 +365,40 @@ export class TagService {
         serial_prefix: serial_prefix ?? null,
         created_time: timestamp,
         updated_time: timestamp,
+      },
+    });
+  }
+
+  async markSerialNumbersAsUsed(dto: MarkSerialDTO) {
+    const { work_order_code, label_type, serial_numbers } = dto;
+
+    if (!serial_numbers?.length || !work_order_code) {
+      return { count: 0 };
+    }
+
+    if (label_type === 'shell') {
+      return this.prisma.mo_tag_info.updateMany({
+        where: {
+          work_order_code,
+          tag_sn: {
+            in: serial_numbers,
+          },
+        },
+        data: {
+          is_used: 1,
+        },
+      });
+    }
+
+    return this.prisma.mo_beam_info.updateMany({
+      where: {
+        work_order_code,
+        beam_sn: {
+          in: serial_numbers,
+        },
+      },
+      data: {
+        is_used: 1,
       },
     });
   }
