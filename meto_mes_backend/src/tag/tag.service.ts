@@ -104,13 +104,14 @@ export class TagService {
   }
 
   async insertSerialRange(dto: BeamInfoDTO) {
-    const { total, work_order_code, produce_order_id, beam_sn_prefix } = dto;
+    const { total, produce_order_id, beam_sn_prefix } = dto;
 
     const res = await this.prisma.mo_produce_order.findFirst({
       where: { id: produce_order_id },
     });
 
     const material_code = res?.material_code;
+    const work_order_code = res?.work_order_code;
     const material_letter = beam_sn_prefix[0];
 
     const existing = await this.prisma.mo_beam_material_code.findFirst({
@@ -193,7 +194,6 @@ export class TagService {
   async insertShellSerialRange(dto: ShellInfoDTO) {
     const {
       total,
-      work_order_code,
       produce_order_id,
       shell_sn_prefix,
       serial_prefix,
@@ -226,6 +226,7 @@ export class TagService {
       });
 
       const material_code = res?.material_code;
+      const work_order_code = res?.work_order_code;
       const record: Prisma.mo_tag_infoCreateManyInput = {
         tag_sn,
         work_order_code,
