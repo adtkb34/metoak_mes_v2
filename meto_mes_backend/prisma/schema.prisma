@@ -414,7 +414,7 @@ model mo_after_aa_coating_process_record {
 model mo_assemble_info {
   id             Int          @id @default(autoincrement())
   camera_sn      String       @db.VarChar(16)
-  pcba_code      String       @db.VarChar(20)
+  pcba_code      String?      @db.VarChar(25)
   station_number Int
   operator       String       @db.VarChar(64)
   start_time     DateTime     @db.DateTime(0)
@@ -487,50 +487,52 @@ model mo_auto_adjust_st06 {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model mo_auto_adjust_st07 {
-  id                     BigInt                    @id @default(autoincrement())
-  beam_sn                String                    @db.VarChar(20)
-  side                   mo_auto_adjust_st07_side?
-  add_time               DateTime                  @db.DateTime(0)
-  mtf_center_value       Float?                    @db.Float
-  mtf_center_lsl         Float?                    @db.Float
-  mtf_center_usl         Float?                    @db.Float
-  mtf_leftup_value       Float?                    @db.Float
-  mtf_leftup_lsl         Float?                    @db.Float
-  mtf_leftup_usl         Float?                    @db.Float
-  mtf_rightup_value      Float?                    @db.Float
-  mtf_rightup_lsl        Float?                    @db.Float
-  mtf_rightup_usl        Float?                    @db.Float
-  mtf_leftdown_value     Float?                    @db.Float
-  mtf_leftdown_lsl       Float?                    @db.Float
-  mtf_leftdown_usl       Float?                    @db.Float
-  mtf_rightdown_value    Float?                    @db.Float
-  mtf_rightdown_lsl      Float?                    @db.Float
-  mtf_rightdown_usl      Float?                    @db.Float
-  mtf_corner_diff_value  Float?                    @db.Float
-  mtf_corner_diff_lsl    Float?                    @db.Float
-  mtf_corner_diff_usl    Float?                    @db.Float
-  image_path             String?                   @db.VarChar(256)
-  mtf_center_value2      Float?                    @db.Float
-  mtf_center_lsl2        Float?                    @db.Float
-  mtf_center_usl2        Float?                    @db.Float
-  mtf_leftup_value2      Float?                    @db.Float
-  mtf_leftup_lsl2        Float?                    @db.Float
-  mtf_leftup_usl2        Float?                    @db.Float
-  mtf_rightup_value2     Float?                    @db.Float
-  mtf_rightup_lsl2       Float?                    @db.Float
-  mtf_rightup_usl2       Float?                    @db.Float
-  mtf_leftdown_value2    Float?                    @db.Float
-  mtf_leftdown_lsl2      Float?                    @db.Float
-  mtf_leftdown_usl2      Float?                    @db.Float
-  mtf_rightdown_value2   Float?                    @db.Float
-  mtf_rightdown_lsl2     Float?                    @db.Float
-  mtf_rightdown_usl2     Float?                    @db.Float
-  mtf_corner_diff_value2 Float?                    @db.Float
-  mtf_corner_diff_lsl2   Float?                    @db.Float
-  mtf_corner_diff_usl2   Float?                    @db.Float
-  image_path2            String?                   @db.VarChar(256)
-  taskid                 BigInt?                   @db.UnsignedBigInt
-  type_num               Int?                      @db.UnsignedInt
+  id                     Int       @id @default(autoincrement())
+  beam_sn                String?   @db.Text
+  side                   String?   @db.Text
+  add_time               DateTime? @db.DateTime(0)
+  mtf_center_value       Float?
+  mtf_center_lsl         Float?
+  mtf_center_usl         Float?
+  mtf_leftup_value       Float?
+  mtf_leftup_lsl         Float?
+  mtf_leftup_usl         Float?
+  mtf_rightup_value      Float?
+  mtf_rightup_lsl        Float?
+  mtf_rightup_usl        Float?
+  mtf_leftdown_value     Float?
+  mtf_leftdown_lsl       Float?
+  mtf_leftdown_usl       Float?
+  mtf_rightdown_value    Float?
+  mtf_rightdown_lsl      Float?
+  mtf_rightdown_usl      Float?
+  mtf_corner_diff_value  Float?
+  mtf_corner_diff_lsl    Float?
+  mtf_corner_diff_usl    Float?
+  image_path             String?   @db.Text
+  mtf_center_value2      Float?
+  mtf_center_lsl2        Float?
+  mtf_center_usl2        Float?
+  mtf_leftup_value2      Float?
+  mtf_leftup_lsl2        Float?
+  mtf_leftup_usl2        Float?
+  mtf_rightup_value2     Float?
+  mtf_rightup_lsl2       Float?
+  mtf_rightup_usl2       Float?
+  mtf_leftdown_value2    Float?
+  mtf_leftdown_lsl2      Float?
+  mtf_leftdown_usl2      Float?
+  mtf_rightdown_value2   Float?
+  mtf_rightdown_lsl2     Float?
+  mtf_rightdown_usl2     Float?
+  mtf_corner_diff_value2 Float?
+  mtf_corner_diff_lsl2   Float?
+  mtf_corner_diff_usl2   Float?
+  image_path2            String?   @db.Text
+  taskid                 String?   @db.Text
+  type_num               String?   @db.Text
+  oc_x_offset            Float?
+  oc_y_offset            Float?
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -676,7 +678,7 @@ model mo_beam_material_code {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model mo_calibration {
   id                         BigInt       @id @default(autoincrement())
-  camera_sn                  String       @db.VarChar(16)
+  camera_sn                  String?      @db.VarChar(25)
   station_number             Int
   operator                   String       @db.VarChar(64)
   start_time                 DateTime     @db.DateTime(0)
@@ -786,7 +788,7 @@ model mo_error_desc {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model mo_final_check {
   id                 BigInt       @id @default(autoincrement())
-  camera_sn          String       @db.VarChar(16)
+  camera_sn          String?      @db.VarChar(25)
   station_number     Int
   operator           String       @db.VarChar(64)
   start_time         DateTime     @db.DateTime(0)
@@ -807,7 +809,7 @@ model mo_final_check {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model mo_final_result {
   id                 Int       @id @default(autoincrement())
-  camera_sn          String    @db.VarChar(16)
+  camera_sn          String?   @db.VarChar(25)
   station_number     Int
   operator           String    @db.VarChar(64)
   check_time         DateTime  @db.DateTime(0)
@@ -1060,7 +1062,7 @@ model mo_operation_record {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model mo_oqc_info {
   id             Int          @id @default(autoincrement())
-  camera_sn      String       @db.VarChar(16)
+  camera_sn      String?      @db.VarChar(25)
   station_number Int
   operator       String       @db.VarChar(64)
   start_time     DateTime     @db.DateTime(0)
@@ -1123,8 +1125,6 @@ model mo_process_step_production_result {
   software_tool         String?   @db.VarChar(255)
   software_tool_version String?   @db.VarChar(255)
   add_time              DateTime? @default(now()) @db.DateTime(0)
-  new_column_name       String?   @db.VarChar(255)
-  add_time_             DateTime? @default(now()) @db.DateTime(0)
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -1178,7 +1178,7 @@ model mo_rejection_info {
   workstation_id     Int?
   description_id     Int?
   produce_order_code String?   @db.VarChar(24)
-  product_id         String?   @db.VarChar(16)
+  product_id         String?   @db.VarChar(25)
   total              Int?      @default(0)
   quantity           Int?      @default(0)
   rejectdate         DateTime? @db.Date
@@ -1328,13 +1328,14 @@ model mo_tag_info {
   create_time      DateTime? @db.DateTime(0)
   produce_order_id Int?
   operator         String?   @db.VarChar(64)
+  is_used          Int?      @default(0)
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model mo_tag_shell_info {
   id             BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
   camera_sn      String       @db.VarChar(16)
-  shell_sn       String       @db.VarChar(20)
+  shell_sn       String?      @db.VarChar(25)
   station_number Int
   operator       String       @db.VarChar(64)
   operation_time DateTime     @db.DateTime(0)
@@ -1561,7 +1562,7 @@ view view_output_history {
 /// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 /// This view or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 view view_shell_beam_type {
-  shell_sn     String  @db.VarChar(20)
+  shell_sn     String? @db.VarChar(25)
   beam_sn      String  @db.VarChar(20)
   order_id     Int     @default(0)
   order_code   String? @db.VarChar(32)
@@ -1774,12 +1775,6 @@ view view_stereo_precheck_perfc {
   is_imu_valid                    Boolean?
 
   @@ignore
-}
-
-enum mo_auto_adjust_st07_side {
-  left
-  right
-  EMPTY_ENUM_VALUE @map("")
 }
 
 enum mo_auto_adjust_st08_side {
