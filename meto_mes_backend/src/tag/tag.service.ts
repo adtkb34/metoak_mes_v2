@@ -17,14 +17,14 @@ export class TagService {
         material_code: true,
         material_name: true,
         produce_count: true,
-        completed_count: true
+        completed_count: true,
       },
       orderBy: {
         work_order_code: 'asc',
       },
     });
 
-    return result.filter(item => !item.work_order_code?.includes("del"));
+    return result.filter((item) => !item.work_order_code?.includes('del'));
   }
 
   async getMaxSerialNumber(beamSnPrefix: string): Promise<number> {
@@ -44,18 +44,18 @@ export class TagService {
 
   async getBeamMaterialCode(work_order_code: string) {
     const res = await this.prisma.mo_produce_order.findFirst({
-      where: { work_order_code: work_order_code }
+      where: { work_order_code: work_order_code },
     });
 
-    const material_code = res?.material_code
-    
+    const material_code = res?.material_code;
+
     const result = await this.prisma.mo_beam_material_code.findFirst({
       select: {
-        material_letter: true
+        material_letter: true,
       },
       where: {
-        material_code: material_code
-      }
+        material_code: material_code,
+      },
     });
     return result;
   }
@@ -77,12 +77,12 @@ export class TagService {
 
     const result = await this.prisma.mo_beam_info.findMany({
       select: {
-        beam_sn: true
+        beam_sn: true,
       },
       where: {
-        work_order_code: work_order_code
-      }
-    })
+        work_order_code: work_order_code,
+      },
+    });
 
     return result;
   }
@@ -107,37 +107,36 @@ export class TagService {
     const { total, work_order_code, produce_order_id, beam_sn_prefix } = dto;
 
     const res = await this.prisma.mo_produce_order.findFirst({
-      where: { work_order_code: work_order_code }
+      where: { id: produce_order_id },
     });
 
-    const material_code = res?.material_code
-    const material_letter = beam_sn_prefix[0]
+    const material_code = res?.material_code;
+    const material_letter = beam_sn_prefix[0];
 
     const existing = await this.prisma.mo_beam_material_code.findFirst({
-      where: { material_code: material_code }
+      where: { material_code: material_code },
     });
 
     if (existing) {
-       await this.prisma.mo_beam_material_code.updateMany({
+      await this.prisma.mo_beam_material_code.updateMany({
         where: { material_code: material_code },
-        data: { 
-          material_letter: material_letter
-        }
-      })
+        data: {
+          material_letter: material_letter,
+        },
+      });
     } else {
       await this.prisma.mo_beam_material_code.create({
         data: {
           material_code: material_code,
-          material_letter: material_letter
-        }
-      })
+          material_letter: material_letter,
+        },
+      });
     }
-
 
     if (!this.prefixValidator(beam_sn_prefix)) {
       return {
         type: 'error',
-        message: 'prefix error'
+        message: 'prefix error',
       };
     }
 
@@ -156,6 +155,7 @@ export class TagService {
         serial_number,
         create_time,
         produce_order_id,
+        material_code,
       });
     }
 
@@ -168,7 +168,7 @@ export class TagService {
       return {
         type: 'success',
         ...result,
-        data
+        data,
       };
     } catch (e) {
       throw new Error(e);
@@ -200,9 +200,9 @@ export class TagService {
       front_section,
       operator,
     } = dto;
-    let serialPrefixLength = 0
+    let serialPrefixLength = 0;
     if (serial_prefix && typeof serial_prefix === 'string') {
-        serialPrefixLength = serial_prefix.length;
+      serialPrefixLength = serial_prefix.length;
     }
     if (!this.prefixValidator(shell_sn_prefix)) {
       return {
@@ -221,11 +221,17 @@ export class TagService {
         .toString()
         .padStart(5 - serialPrefixLength, '0')}`;
 
+      const res = await this.prisma.mo_produce_order.findFirst({
+        where: { id: produce_order_id },
+      });
+
+      const material_code = res?.material_code;
       const record: Prisma.mo_tag_infoCreateManyInput = {
         tag_sn,
         work_order_code,
         serial_number,
         create_time,
+        material_code,
       };
 
       if (typeof produce_order_id === 'number') {
@@ -298,7 +304,13 @@ export class TagService {
   }
 
   async saveShellConfig(dto: ShellConfigDTO) {
-    const { material_code, project_name, whole_machine_code, process_code, serial_prefix } = dto;
+    const {
+      material_code,
+      project_name,
+      whole_machine_code,
+      process_code,
+      serial_prefix,
+    } = dto;
 
     if (!material_code) {
       throw new Error('material_code is required');
