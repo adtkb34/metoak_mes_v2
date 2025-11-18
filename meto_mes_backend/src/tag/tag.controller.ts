@@ -3,6 +3,7 @@ import { TagService } from './tag.service';
 import { BeamInfoDTO } from './beamInfo.dto';
 import { ShellInfoDTO } from './shellInfo.dto';
 import { ShellConfigDTO } from './shellConfig.dto';
+import { MarkSerialDTO } from './markSerial.dto';
 
 @Controller('tag')
 export class TagController {
@@ -13,12 +14,22 @@ export class TagController {
     return this.tagService.getAllOrders();
   }
 
+  private parseOnlyUnusedFlag(value?: string) {
+    if (value === undefined) return false;
+    return value === 'true' || value === '1';
+  }
+
   @Get('/beamSN')
   async getBeamSN(
     @Query('work_order_code') work_order_code: string,
     @Query('label_type') label_type = 'beam',
+    @Query('only_unused') only_unused?: string,
   ) {
-    const result = await this.tagService.getBeamSN(work_order_code, label_type);
+    const result = await this.tagService.getBeamSN(
+      work_order_code,
+      label_type,
+      this.parseOnlyUnusedFlag(only_unused),
+    );
 
     return {
       data: result,
@@ -40,8 +51,14 @@ export class TagController {
   }
 
   @Get('/shellSN')
-  async getShellSN(@Query('work_order_code') work_order_code: string) {
-    const result = await this.tagService.getShellSN(work_order_code);
+  async getShellSN(
+    @Query('work_order_code') work_order_code: string,
+    @Query('only_unused') only_unused?: string,
+  ) {
+    const result = await this.tagService.getShellSN(
+      work_order_code,
+      this.parseOnlyUnusedFlag(only_unused),
+    );
 
     return {
       data: result,
@@ -68,5 +85,10 @@ export class TagController {
   @Post('/shellConfig')
   saveShellConfig(@Body() dto: ShellConfigDTO) {
     return this.tagService.saveShellConfig(dto);
+  }
+
+  @Post('/markUsed')
+  markSerialNumbersAsUsed(@Body() dto: MarkSerialDTO) {
+    return this.tagService.markSerialNumbersAsUsed(dto);
   }
 }

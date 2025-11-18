@@ -2,6 +2,7 @@ import { http } from "@/utils/http";
 import type {
   BeamSerialItem,
   LabelType,
+  MarkSerialPayload,
   OrderListItem,
   ShellSerialItem,
   ShellTagConfig,
@@ -10,11 +11,16 @@ import type {
   TagListResponse
 } from "types/tag";
 
-export function getBeamSN(work_order_code: string, label_type: LabelType = "beam") {
+export function getBeamSN(
+  work_order_code: string,
+  label_type: LabelType = "beam",
+  only_unused = false
+) {
   return http.request<TagListResponse<BeamSerialItem | ShellSerialItem>>("get", "/tag/beamSN", {
     params: {
       work_order_code,
-      label_type
+      label_type,
+      only_unused
     }
   });
 }
@@ -31,10 +37,11 @@ export function getBeamMaterialCode(work_order_code: string) {
   });
 }
 
-export function getShellSN(work_order_code: string) {
+export function getShellSN(work_order_code: string, only_unused = false) {
   return http.request<TagListResponse<ShellSerialItem>>("get", "/tag/shellSN", {
     params: {
-      work_order_code
+      work_order_code,
+      only_unused
     }
   });
 }
@@ -77,6 +84,12 @@ export function generateShellSN(data: {
 
 export function saveShellTagConfig(data: ShellTagConfigPayload) {
   return http.request<ShellTagConfig>("post", "/tag/shellConfig", {
+    data
+  });
+}
+
+export function markSerialNumbersUsed(data: MarkSerialPayload) {
+  return http.request("post", "/tag/markUsed", {
     data
   });
 }

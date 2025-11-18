@@ -7,13 +7,17 @@ import type { LabelType } from "types/tag";
 
 const tagStore = useTagStore(store);
 
-const currentOrderCode = ref<string>();
+const currentOrderId = ref<number | null>(null);
 const currentLabelType = ref<LabelType>("beam");
 
 const labelTypeOptions: { label: string; value: LabelType }[] = [
   { label: "横梁标签", value: "beam" },
   { label: "外壳标签", value: "shell" }
 ];
+
+const selectedOrder = computed(() =>
+  tagStore.getOrderList.find(order => order.id === currentOrderId.value) || null
+);
 
 const serialField = computed(() => tagStore.getSerialField as "beam_sn" | "tag_sn");
 const serialColumnLabel = computed(() =>
@@ -22,9 +26,12 @@ const serialColumnLabel = computed(() =>
 const serialList = computed(() => tagStore.getBeamSN);
 
 async function handleSelectChange() {
-  if (!currentOrderCode.value) return;
-  const workOrderCode = currentOrderCode.value.split(" (")[0];
-  await tagStore.setSNList(workOrderCode, currentLabelType.value);
+  if (!selectedOrder.value) {
+    tagStore.setCurrentOrder(null);
+    return;
+  }
+  await tagStore.setSNList(selectedOrder.value.work_order_code, currentLabelType.value);
+  tagStore.setCurrentOrder(selectedOrder.value.id);
 }
 
 function handleExport() {
@@ -38,9 +45,8 @@ function handleExport() {
 }
 
 watch(currentLabelType, async newType => {
-  if (!currentOrderCode.value) return;
-  const workOrderCode = currentOrderCode.value.split(" (")[0];
-  await tagStore.setSNList(workOrderCode, newType);
+  if (!selectedOrder.value) return;
+  await tagStore.setSNList(selectedOrder.value.work_order_code, newType);
 });
 
 onMounted(() => {
@@ -53,7 +59,7 @@ onMounted(() => {
     <div class="flex flex-row items-center mr-5 mb-5">
         <p class="mr-3">工单列表</p>
         <el-select
-          v-model="currentOrderCode"
+          v-model="currentOrderId"
           filterable
           placeholder="Select"
           style="width: 240px"
@@ -61,9 +67,9 @@ onMounted(() => {
         >
           <el-option
             v-for="order in tagStore.getOrderList"
-            :key="spliceFields(order)"
+            :key="order.id"
             :label="spliceFields(order)"
-            :value="spliceFields(order)"
+            :value="order.id"
           />
         </el-select>
         <p class="mr-3" style="margin-left: 40px;">标签类型</p>

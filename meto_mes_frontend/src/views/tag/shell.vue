@@ -5,14 +5,15 @@ import { computed, onMounted, ref, watch } from "vue";
 import { exportToCSV, getCurrentYearCode, spliceFields } from "./utils";
 import {
   generateShellSN,
-  getShellSN,
   getBeamMaterialCode,
   getShellTagConfig,
+  markSerialNumbersUsed,
   saveShellTagConfig
 } from "@/api/tag";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
 import { useUserListStore } from "@/store/modules/system";
+import type { ShellSerialItem } from "types/tag";
 
 defineOptions({
   name: "ShellTagManagement"
@@ -22,17 +23,23 @@ const userStore = useUserListStore(store);
 const machineCode = ref<string>("");
 const processCode = ref<string>("");
 const total = ref(0);
-const currentOrderCode = ref<string | null>(null);
+const currentOrderId = ref<number | null>(null);
 const backendUrl = import.meta.env.VITE_BACKEND_URL ?? "";
 const defaultOrigin = backendUrl.includes("11.11.11.15") ? "S" : "M";
 const selectAddr = ref(defaultOrigin);
-const selectOperate = ref("Z");
 const isWeekInputDisabled = ref(true);
 const weekNum = ref(dayjs().week().toString().padStart(2, "0"));
 const serialPrefix = ref("");
+const exportAll = ref(false);
 
 const tagStore = useTagStore(store);
-const snList = ref<{ tag_sn: string }[]>([]);
+const snList = ref<ShellSerialItem[]>([]);
+
+const selectedOrder = computed(() =>
+  tagStore.getOrderList.find(order => order.id === currentOrderId.value) || null
+);
+const selectedWorkOrderCode = computed(() => selectedOrder.value?.work_order_code ?? "");
+const onlyUnused = computed(() => !exportAll.value);
 
 const shellSnPrefix = computed(() => {
   const segments = [
@@ -51,10 +58,11 @@ const shellSnPrefix = computed(() => {
 const isExportDisabled = computed(() => snList.value.length === 0);
 const generatedCount = computed(() => snList.value.length);
 
-async function fetchShellSerialNumbers(workOrderCode: string) {
-  const response = await getShellSN(workOrderCode);
-  snList.value = response?.data ?? [];
-}
+const fetchShellSerialNumbers = async () => {
+  if (!selectedWorkOrderCode.value) return;
+  await tagStore.setSNList(selectedWorkOrderCode.value, "shell", onlyUnused.value);
+  snList.value = tagStore.getBeamSN as ShellSerialItem[];
+};
 
 async function handleGenerate() {
   if (total.value === 0 || !shellSnPrefix.value) {
@@ -72,6 +80,10 @@ async function handleGenerate() {
     });
   }
 
+  if (!selectedWorkOrderCode.value) {
+    return;
+  }
+
   await generateShellSN({
     total: total.value,
     work_order_code: tagStore.getOrderCode,
@@ -80,15 +92,38 @@ async function handleGenerate() {
     serial_prefix: serialPrefix.value
   });
 
-  if (tagStore.getOrderCode) {
-    await fetchShellSerialNumbers(tagStore.getOrderCode);
-  }
+  await fetchShellSerialNumbers();
 }
 
-function handleExport() {
+async function handleExport() {
   if (isExportDisabled.value) return;
+  if (!selectedWorkOrderCode.value) return;
   const rows = snList.value.map(item => ({ 序列号: item.tag_sn }));
   exportToCSV(rows, `${tagStore.getOrderCode || "shell"}_shell_tags.csv`);
+
+  const unusedSerials = snList.value
+    .filter(item => item.is_used !== 1)
+    .map(item => item.tag_sn);
+
+  if (!unusedSerials.length) {
+    return;
+  }
+
+  await markSerialNumbersUsed({
+    work_order_code: selectedWorkOrderCode.value,
+    label_type: "shell",
+    serial_numbers: unusedSerials
+  });
+
+  if (onlyUnused.value) {
+    await fetchShellSerialNumbers();
+  } else {
+    const usedSet = new Set(unusedSerials);
+    snList.value = snList.value.map(item => ({
+      ...item,
+      is_used: usedSet.has(item.tag_sn) ? 1 : item.is_used
+    }));
+  }
 }
 
 onMounted(() => {
@@ -97,19 +132,38 @@ onMounted(() => {
   tagStore.setMaterialCode();
 });
 
-watch(currentOrderCode, async newVal => {
-  if (newVal) {
+watch(
+  () => currentOrderId.value,
+  newVal => {
+    tagStore.setCurrentOrder(newVal ?? null);
+    if (newVal == null) {
+      snList.value = [];
+      total.value = 0;
+      machineCode.value = "";
+      processCode.value = "";
+      serialPrefix.value = "";
+    }
+  }
+);
+
+watch(
+  () => selectedWorkOrderCode.value,
+  async workOrderCode => {
+    if (!workOrderCode) return;
     total.value = 0;
     snList.value = [];
-    const workOrderCode = newVal.split(" (")[0];
-    await fetchShellSerialNumbers(workOrderCode);
+    await fetchShellSerialNumbers();
     machineCode.value = "";
     processCode.value = "";
     serialPrefix.value = "";
-    getBeamMaterialCode(workOrderCode).then(res => {
+    try {
+      const res = await getBeamMaterialCode(workOrderCode);
       machineCode.value = res.material_letter ?? "";
-    });
-    const currentOrder = tagStore.getOrder;
+    } catch (error) {
+      machineCode.value = "";
+    }
+
+    const currentOrder = selectedOrder.value;
     if (currentOrder?.material_code) {
       const config = await getShellTagConfig({
         material_code: currentOrder.material_code,
@@ -120,7 +174,15 @@ watch(currentOrderCode, async newVal => {
       serialPrefix.value = config?.serial_prefix ?? "";
     }
   }
-});
+);
+
+watch(
+  () => exportAll.value,
+  async () => {
+    if (!selectedWorkOrderCode.value) return;
+    await fetchShellSerialNumbers();
+  }
+);
 </script>
 
 <template>
@@ -129,21 +191,16 @@ watch(currentOrderCode, async newVal => {
       <div class="flex flex-row items-center justify-between w-[20rem] mr-5">
         <p>工单列表</p>
         <el-select
-          v-model="currentOrderCode"
+          v-model="currentOrderId"
           filterable
           placeholder="Select"
           style="width: 240px"
-          @change="
-            async () => {
-              tagStore.setCurrentOrder(currentOrderCode as string);
-            }
-          "
         >
           <el-option
             v-for="order in tagStore.getOrderList"
-            :key="spliceFields(order)"
+            :key="order.id"
             :label="spliceFields(order)"
-            :value="spliceFields(order)"
+            :value="order.id"
           />
         </el-select>
       </div>
@@ -154,6 +211,10 @@ watch(currentOrderCode, async newVal => {
       <div>
         <span>已生成数量: </span>
         <el-tag type="info">{{ generatedCount }}</el-tag>
+      </div>
+      <div class="ml-auto flex items-center">
+        <span class="mr-2">导出全部</span>
+        <el-switch v-model="exportAll" />
       </div>
     </div>
     <div class="flex flex-col mr-5 w-full justify-center items-end">
@@ -229,9 +290,7 @@ watch(currentOrderCode, async newVal => {
 
             <el-col :span="24">
               <el-button
-                v-if="
-                  userStore.getUserLevel < 2 && currentOrderCode && machineCode
-                "
+                v-if="userStore.getUserLevel < 2 && currentOrderId && machineCode"
                 @click="handleGenerate"
                 >生成</el-button
               >
