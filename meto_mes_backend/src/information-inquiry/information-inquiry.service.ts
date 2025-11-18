@@ -193,7 +193,7 @@ export class InformationInquiryService {
         beam_sn: sn,
       },
     });
-    let relatedSn: string | undefined;
+    let relatedSn: string | undefined | null;
     let inputSnType: SnType;
     let relatedSnType: SnType;
     if (beamInfo) {

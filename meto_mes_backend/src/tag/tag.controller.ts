@@ -71,6 +71,7 @@ export class TagController {
     if (dto.user_level > 1) {
       return null;
     }
+    console.log(dto);
     return this.tagService.insertSerialRange(dto);
   }
 

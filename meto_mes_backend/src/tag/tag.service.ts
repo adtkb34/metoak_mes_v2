@@ -61,7 +61,11 @@ export class TagService {
     return result;
   }
 
-  async getBeamSN(work_order_code: string, label_type = 'beam', onlyUnused = false) {
+  async getBeamSN(
+    work_order_code: string,
+    label_type = 'beam',
+    onlyUnused = false,
+  ) {
     if (label_type === 'shell') {
       return this.prisma.mo_tag_info.findMany({
         select: {
