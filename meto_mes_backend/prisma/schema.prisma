@@ -660,6 +660,7 @@ model mo_beam_info {
   id               Int       @id @default(autoincrement())
   beam_sn          String    @unique(map: "AK_uq_product_sn") @db.VarChar(20)
   work_order_code  String?   @db.VarChar(16)
+  material_code    String?   @db.VarChar(16)
   serial_number    Int?
   create_time      DateTime? @db.DateTime(0)
   is_produced      Boolean?  @default(false)
@@ -1323,6 +1324,7 @@ model mo_tag_info {
   id               Int       @id @default(autoincrement())
   tag_sn           String    @unique(map: "AK_uq_product_sn") @db.VarChar(20)
   work_order_code  String?   @db.VarChar(16)
+  material_code    String?   @db.VarChar(16)
   front_section    String?   @db.VarChar(16)
   serial_number    Int?
   create_time      DateTime? @db.DateTime(0)
