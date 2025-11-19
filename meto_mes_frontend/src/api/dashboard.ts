@@ -246,11 +246,15 @@ export async function fetchProcessMetrics(
   if (isMockEnabled) {
     return Promise.resolve(buildProcessMetrics(params));
   }
+  const requestParams: ProcessMetricsParams = { ...params };
+  if (!requestParams.workOrderCode) {
+    delete requestParams.workOrderCode;
+  }
   const response = await http.request<ApiResponse<ProcessMetricsSummary>>(
     "get",
     PROCESS_METRICS_URL,
     {
-      params,
+      params: requestParams,
       paramsSerializer: params => {
         return qs.stringify(params, {
           arrayFormat: "repeat", // 使用重复参数名格式
