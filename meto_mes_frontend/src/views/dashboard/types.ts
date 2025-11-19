@@ -50,6 +50,10 @@ export interface ProcessOverviewItem {
    * When present, clicking the card will navigate using this product code.
    */
   targetProductCode?: string | null;
+  /**
+   * When present, clicking the card will navigate using this work order code.
+   */
+  targetWorkOrderCode?: string | null;
 }
 
 export interface DashboardSummaryResponse {

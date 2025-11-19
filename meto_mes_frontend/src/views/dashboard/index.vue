@@ -173,6 +173,7 @@ const filters = reactive<FilterState>({
 const level = ref<ViewLevel>("step");
 const selectedStepTypeNo = ref<string | null>(null);
 const selectedProductCode = ref<string | null>(null);
+const selectedWorkOrderCode = ref<string | null>(null);
 
 const processStore = useProcessStore();
 
@@ -702,6 +703,7 @@ const loadStepOverview = async () => {
   level.value = "step";
   selectedStepTypeNo.value = null;
   selectedProductCode.value = null;
+  selectedWorkOrderCode.value = null;
   clearWorkOrders();
   topLevelError.value = null;
   overviewLoading.value = true;
@@ -772,6 +774,7 @@ const loadProductOverview = async (stepTypeNo: string) => {
   level.value = "product";
   selectedStepTypeNo.value = stepTypeNo;
   selectedProductCode.value = null;
+  selectedWorkOrderCode.value = null;
   summaryError.value = null;
   topLevelError.value = null;
   overviewLoading.value = true;
@@ -832,6 +835,7 @@ const loadProductOverview = async (stepTypeNo: string) => {
         metaLabel: "产品料号",
         metaValue: productCodeLabel,
         targetProductCode: normalizedProducts[0] ?? null,
+        targetWorkOrderCode: workOrderCode,
         metrics: summary
       }));
     });
@@ -915,6 +919,30 @@ const handleProductSelect = async (productCode: string) => {
     return;
   }
 
+  selectedWorkOrderCode.value = null;
+  selectedProductCode.value = productCode;
+  filters.product = [productCode];
+
+  const preferredProcess = await ensureProcessCodeForProduct(productCode);
+  filters.processCode = preferredProcess ?? null;
+
+  await loadProcessOverviewForProduct();
+};
+
+const handleWorkOrderSelect = async (
+  workOrderCode: string,
+  productCode: string | null
+) => {
+  if (overviewLoading.value) {
+    return;
+  }
+
+  if (!productCode) {
+    ElMessage.warning("当前工单缺少产品料号，无法查看工序详情");
+    return;
+  }
+
+  selectedWorkOrderCode.value = workOrderCode;
   selectedProductCode.value = productCode;
   filters.product = [productCode];
 
@@ -976,12 +1004,13 @@ const handleOverviewSelect = async (id: string) => {
 
   if (level.value === "product") {
     const target = productOverviewItems.value.find(item => item.id === id);
+    const workOrderCode = target?.targetWorkOrderCode ?? target?.id ?? null;
     const productCode = target?.targetProductCode ?? null;
-    if (!productCode) {
-      ElMessage.warning("当前工单缺少产品料号，无法查看工序详情");
+    if (!workOrderCode) {
+      ElMessage.warning("未找到工单信息，无法查看工序详情");
       return;
     }
-    await handleProductSelect(productCode);
+    await handleWorkOrderSelect(workOrderCode, productCode);
     return;
   }
 
@@ -1001,6 +1030,7 @@ const handleNavigateBack = async () => {
     selectedProcessId.value = null;
     detailError.value = null;
     paretoData.value = createEmptyParetoData();
+    selectedWorkOrderCode.value = null;
     return;
   }
 
@@ -1009,6 +1039,7 @@ const handleNavigateBack = async () => {
     topLevelError.value = null;
     selectedStepTypeNo.value = null;
     selectedProductCode.value = null;
+    selectedWorkOrderCode.value = null;
     clearWorkOrders();
     return;
   }
@@ -1034,7 +1065,12 @@ const refreshProcessMetrics = async (
   const baseMap = buildEmptyMetricsMap(steps);
   processMetricsMap.value = { ...baseMap };
 
-  if (!params.product || !steps.length) {
+  if (!steps.length) {
+    return false;
+  }
+
+  const hasWorkOrderSelection = Boolean(selectedWorkOrderCode.value);
+  if (!hasWorkOrderSelection && (!params.product || !params.product.length)) {
     return false;
   }
 
@@ -1044,15 +1080,26 @@ const refreshProcessMetrics = async (
     return false;
   }
 
-  const requests = requestableSteps.map(step =>
-    fetchProcessMetrics({
+  const requests = requestableSteps.map(step => {
+    if (hasWorkOrderSelection) {
+      return fetchWorkOrderProcessMetrics({
+        startDate: params.startDate,
+        endDate: params.endDate,
+        origin: params.origin,
+        product: params.product,
+        workOrderCode: selectedWorkOrderCode.value!,
+        stepTypeNo: step.code!
+      }).then(summary => ({ id: step.id, summary }));
+    }
+
+    return fetchProcessMetrics({
       startDate: params.startDate,
       endDate: params.endDate,
       origin: params.origin,
       product: params.product!,
       stepTypeNo: step.code!
-    }).then(summary => ({ id: step.id, summary }))
-  );
+    }).then(summary => ({ id: step.id, summary }));
+  });
 
   const results = await Promise.allSettled(requests);
   let hasData = false;
@@ -1120,6 +1167,7 @@ const handleFiltersSubmit = async () => {
     return;
   }
 
+  selectedWorkOrderCode.value = null;
   selectedProductCode.value = product;
   filters.product = [product];
   const selectedProcessCode = normalizeStringValue(filters.processCode);
@@ -1142,6 +1190,7 @@ const handleFiltersReset = async () => {
   detailError.value = null;
   selectedProcessId.value = null;
   paretoData.value = createEmptyParetoData();
+  selectedWorkOrderCode.value = null;
   clearWorkOrders();
   await loadStepOverview();
 };
@@ -1155,6 +1204,7 @@ const resetProductSelection = () => {
     filters.product = [];
   }
   selectedProductCode.value = null;
+  selectedWorkOrderCode.value = null;
 };
 
 const refreshProductOptions = async () => {
