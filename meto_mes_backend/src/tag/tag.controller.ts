@@ -19,13 +19,13 @@ export class TagController {
     return value === 'true' || value === '1';
   }
 
-  @Get('/beamSN')
-  async getBeamSN(
+  @Get('/SN')
+  async getSN(
     @Query('work_order_code') work_order_code: string,
     @Query('label_type') label_type = 'beam',
     @Query('only_unused') only_unused?: string,
   ) {
-    const result = await this.tagService.getBeamSN(
+    const result = await this.tagService.getSN(
       work_order_code,
       label_type,
       this.parseOnlyUnusedFlag(only_unused),

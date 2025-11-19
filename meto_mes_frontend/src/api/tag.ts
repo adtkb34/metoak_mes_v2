@@ -16,7 +16,7 @@ export function getBeamSN(
   label_type: LabelType = "beam",
   only_unused = false
 ) {
-  return http.request<TagListResponse<BeamSerialItem | ShellSerialItem>>("get", "/tag/beamSN", {
+  return http.request<TagListResponse<BeamSerialItem | ShellSerialItem>>("get", "/tag/SN", {
     params: {
       work_order_code,
       label_type,

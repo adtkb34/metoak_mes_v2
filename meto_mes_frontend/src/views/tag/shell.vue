@@ -33,6 +33,12 @@ const serialPrefix = ref("");
 const exportAll = ref(false);
 
 const tagStore = useTagStore(store);
+const materialFilterPrefix = ref("900.");
+const filteredOrderList = computed(() => {
+  return tagStore.getOrderList.filter(o => 
+    o.material_code?.startsWith(materialFilterPrefix.value)
+  );
+});
 const snList = ref<ShellSerialItem[]>([]);
 
 const selectedOrder = computed(() =>
@@ -180,21 +186,30 @@ watch(
 <template>
   <div class="flex flex-col h-full">
     <div class="flex flex-row justify-start items-center w-full mb-5">
-      <div class="flex flex-row items-center justify-between w-[20rem] mr-5">
+
+      <div class="flex flex-row items-center justify-between w-[30rem] mr-5">
         <p>工单列表</p>
         <el-select
           v-model="currentOrderId"
           filterable
           placeholder="Select"
-          style="width: 240px"
+          style="width: 80%"
         >
           <el-option
-            v-for="order in tagStore.getOrderList"
+            v-for="order in filteredOrderList"
             :key="order.id"
             :label="spliceFields(order)"
             :value="order.id"
           />
         </el-select>
+      </div>
+        <div class="flex flex-row items-center justify-between w-[20rem] mr-5">
+        <p>物料编码前缀</p>
+        <el-input
+          v-model="materialFilterPrefix"
+          placeholder="输入物料编码前缀"
+          style="width: 60%"
+        />
       </div>
       <div class="mr-5">
         <span>计划生产数量: </span>

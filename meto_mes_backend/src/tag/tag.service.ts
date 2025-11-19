@@ -61,7 +61,7 @@ export class TagService {
     return result;
   }
 
-  async getBeamSN(
+  async getSN(
     work_order_code: string,
     label_type = 'beam',
     onlyUnused = false,
@@ -206,12 +206,13 @@ export class TagService {
   async insertShellSerialRange(dto: ShellInfoDTO) {
     const {
       total,
-      produced_order_id,
+      produce_order_id,
       shell_sn_prefix,
       serial_prefix,
       front_section,
       operator,
     } = dto;
+    console.log(dto)
     let serialPrefixLength = 0;
     if (serial_prefix && typeof serial_prefix === 'string') {
       serialPrefixLength = serial_prefix.length;
@@ -234,7 +235,7 @@ export class TagService {
         .padStart(5 - serialPrefixLength, '0')}`;
 
       const res = await this.prisma.mo_produce_order.findFirst({
-        where: { id: produced_order_id },
+        where: { id: produce_order_id },
       });
 
       const material_code = res?.material_code;
@@ -247,8 +248,8 @@ export class TagService {
         material_code,
       };
 
-      if (typeof produced_order_id === 'number') {
-        record.produce_order_id = produced_order_id;
+      if (typeof produce_order_id === 'number') {
+        record.produce_order_id = produce_order_id;
       }
 
       if (front_section) {
@@ -260,6 +261,8 @@ export class TagService {
       }
 
       data.push(record);
+      
+    console.log(record)
     }
 
     try {
