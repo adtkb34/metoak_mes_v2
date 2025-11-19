@@ -33,7 +33,6 @@ const selectedOrder = computed(() =>
   tagStore.getOrderList.find(order => order.id === currentOrderId.value) || null
 );
 const selectedWorkOrderCode = computed(() => selectedOrder.value?.work_order_code ?? "");
-const onlyUnused = computed(() => !exportAll.value);
 
 const beamSnPrefix = computed(() => {
   const segments = [
@@ -49,10 +48,13 @@ const beamSnPrefix = computed(() => {
 });
 
 const isExportDisabled = computed(() => snList.value.length === 0);
+const generatedCount = computed(() => snList.value.length);
+const exportedCount = computed(() => snList.value.filter(item => item.is_used === 1).length);
+const unexportedCount = computed(() => Math.max(generatedCount.value - exportedCount.value, 0));
 
 const fetchSerialNumbers = async (options: { withMaterialCode?: boolean } = {}) => {
   if (!selectedWorkOrderCode.value) return;
-  await tagStore.setSNList(selectedWorkOrderCode.value, "beam", onlyUnused.value);
+  await tagStore.setSNList(selectedWorkOrderCode.value, "beam");
   snList.value = tagStore.getBeamSN as BeamSerialItem[];
   if (options.withMaterialCode === false) {
     return;
@@ -92,10 +94,14 @@ async function handleGenerate() {
 async function handleExport() {
   if (isExportDisabled.value) return;
   if (!selectedWorkOrderCode.value) return;
-  const rows = snList.value.map(item => ({ 序列号: item.beam_sn }));
+  const exportList = exportAll.value
+    ? snList.value
+    : snList.value.filter(item => item.is_used !== 1);
+  if (!exportList.length) return;
+  const rows = exportList.map(item => ({ 序列号: item.beam_sn }));
   exportToCSV(rows, `${tagStore.getOrderCode || "beam"}_tags.csv`);
 
-  const unusedSerials = snList.value
+  const unusedSerials = exportList
     .filter(item => item.is_used !== 1)
     .map(item => item.beam_sn);
 
@@ -109,15 +115,7 @@ async function handleExport() {
     serial_numbers: unusedSerials
   });
 
-  if (onlyUnused.value) {
-    await fetchSerialNumbers();
-  } else {
-    const usedSet = new Set(unusedSerials);
-    snList.value = snList.value.map(item => ({
-      ...item,
-      is_used: usedSet.has(item.beam_sn) ? 1 : item.is_used
-    }));
-  }
+  await fetchSerialNumbers({ withMaterialCode: false });
 }
 
 onMounted(() => {
@@ -148,13 +146,7 @@ watch(
   }
 );
 
-watch(
-  () => exportAll.value,
-  async () => {
-    if (!selectedWorkOrderCode.value) return;
-    await fetchSerialNumbers({ withMaterialCode: false });
-  }
-);
+// no watcher for exportAll - it now only affects export behavior
 </script>
 
 <template>
@@ -183,7 +175,11 @@ watch(
       </div>
       <div>
         <span>已生成数量: </span>
-        <el-tag type="info">{{ tagStore.getBeamListLength }}</el-tag>
+        <el-tag type="info">{{ generatedCount }}</el-tag>
+      </div>
+      <div class="ml-5 flex items-center gap-3">
+        <el-tag type="success">已导出: {{ exportedCount }}</el-tag>
+        <el-tag type="warning">未导出: {{ unexportedCount }}</el-tag>
       </div>
       <div class="ml-auto flex items-center">
         <span class="mr-2">导出全部</span>
@@ -295,6 +291,13 @@ watch(
           <el-table :data="snList" max-height="595" style="width: 100%" border>
             <el-table-column fixed type="index" />
             <el-table-column prop="beam_sn" label="序列号" />
+            <el-table-column label="状态" width="120">
+              <template #default="{ row }">
+                <el-tag :type="row.is_used === 1 ? 'success' : 'warning'">
+                  {{ row.is_used === 1 ? "已导出" : "未导出" }}
+                </el-tag>
+              </template>
+            </el-table-column>
           </el-table>
         </el-card>
       </div>
