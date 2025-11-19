@@ -14,7 +14,7 @@
         :show-process="showProcessFilter"
         :product-multiple="allowMultipleProducts"
         @update:dateRange="value => (filters.dateRange = value)"
-        @update:product="value => (filters.product = value)"
+        @update:product="handleProductFilterUpdate"
         @update:origin="value => (filters.origin = value)"
         @update:processCode="value => (filters.processCode = value)"
         @submit="handleFiltersSubmit"
@@ -132,7 +132,11 @@ import {
   fetchWorkOrderCodes,
   fetchWorkOrderProcessMetrics
 } from "@/api/dashboard";
-import type { DashboardSummaryParams, ProcessStageInfo } from "@/api/dashboard";
+import type {
+  DashboardSummaryParams,
+  ProcessStageInfo,
+  ProcessMetricsParams
+} from "@/api/dashboard";
 import { PRODUCT_ORIGIN_OPTIONS, ProductOrigin } from "@/enums/product-origin";
 import { STEP_NO } from "@/enums/step-no";
 import { useProcessStore } from "@/store/modules/processFlow";
@@ -169,6 +173,18 @@ const filters = reactive<FilterState>({
   origin: getDefaultOrigin(),
   processCode: null
 });
+
+const productFilterTouched = ref(false);
+
+const setProductFilterValues = (values: string[]) => {
+  filters.product = [...values];
+  productFilterTouched.value = false;
+};
+
+const handleProductFilterUpdate = (values: string[]) => {
+  filters.product = [...values];
+  productFilterTouched.value = true;
+};
 
 const level = ref<ViewLevel>("step");
 const selectedStepTypeNo = ref<string | null>(null);
@@ -921,7 +937,7 @@ const handleProductSelect = async (productCode: string) => {
 
   selectedWorkOrderCode.value = null;
   selectedProductCode.value = productCode;
-  filters.product = [productCode];
+  setProductFilterValues([productCode]);
 
   const preferredProcess = await ensureProcessCodeForProduct(productCode);
   filters.processCode = preferredProcess ?? null;
@@ -944,7 +960,7 @@ const handleWorkOrderSelect = async (
 
   selectedWorkOrderCode.value = workOrderCode;
   selectedProductCode.value = productCode;
-  filters.product = [productCode];
+  setProductFilterValues([productCode]);
 
   const preferredProcess = await ensureProcessCodeForProduct(productCode);
   filters.processCode = preferredProcess ?? null;
@@ -1082,14 +1098,23 @@ const refreshProcessMetrics = async (
   }
 
   const requests = requestableSteps.map(step => {
-    return fetchProcessMetrics({
+    const payload: ProcessMetricsParams = {
       startDate: params.startDate,
       endDate: params.endDate,
       origin: params.origin,
-      product: params.product!,
-      stepTypeNo: step.code!,
-      workOrderCode: selectedWorkOrderCode.value!,
-    }).then(summary => ({ id: step.id, summary }));
+      stepTypeNo: step.code!
+    };
+
+    if (selectedWorkOrderCode.value) {
+      payload.workOrderCode = selectedWorkOrderCode.value;
+    } else if (params.product?.length) {
+      payload.product = params.product;
+    }
+
+    return fetchProcessMetrics(payload).then(summary => ({
+      id: step.id,
+      summary
+    }));
   });
 
   const results = await Promise.allSettled(requests);
@@ -1137,7 +1162,6 @@ const handleFiltersSubmit = async () => {
     return;
   }
 
-
   if (level.value === "product") {
     if (!selectedStepTypeNo.value) {
       topLevelError.value = "请选择工序";
@@ -1152,15 +1176,21 @@ const handleFiltersSubmit = async () => {
     return;
   }
 
+  const hasManualProductSelection =
+    filters.product.length > 0 && productFilterTouched.value;
+
+  if (hasManualProductSelection) {
+    selectedWorkOrderCode.value = null;
+  }
+
   const product = filters.product[0] ?? selectedProductCode.value;
   if (!product) {
     summaryError.value = "请选择产品";
     return;
   }
 
-  // selectedWorkOrderCode.value = null;
   selectedProductCode.value = product;
-  filters.product = [product];
+  setProductFilterValues([product]);
   const selectedProcessCode = normalizeStringValue(filters.processCode);
   if (!selectedProcessCode) {
     const preferredProcess = await ensureProcessCodeForProduct(product);
@@ -1173,7 +1203,7 @@ const handleFiltersSubmit = async () => {
 
 const handleFiltersReset = async () => {
   filters.dateRange = getDefaultDateRange();
-  filters.product = [];
+  setProductFilterValues([]);
   filters.origin = getDefaultOrigin();
   filters.processCode = null;
   topLevelError.value = null;
@@ -1191,9 +1221,7 @@ let productOptionsRequestToken = 0;
 const resetProductSelection = () => {
   productOptionsRequestToken++;
   productOptions.value = [];
-  if (filters.product.length) {
-    filters.product = [];
-  }
+  setProductFilterValues([]);
   selectedProductCode.value = null;
   selectedWorkOrderCode.value = null;
 };
@@ -1233,7 +1261,7 @@ const refreshProductOptions = async () => {
         nextProductOptions.some(opt => opt.value === p)
       )
     ) {
-      filters.product = [];
+      setProductFilterValues([]);
     }
   } catch (error: any) {
     if (requestToken !== productOptionsRequestToken) {
@@ -1244,7 +1272,7 @@ const refreshProductOptions = async () => {
     ElMessage.warning(message);
     productOptions.value = [];
     if (filters.product.length) {
-      filters.product = [];
+      setProductFilterValues([]);
     }
   }
 };
