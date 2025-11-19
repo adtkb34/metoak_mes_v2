@@ -1081,23 +1081,13 @@ const refreshProcessMetrics = async (
   }
 
   const requests = requestableSteps.map(step => {
-    if (hasWorkOrderSelection) {
-      return fetchWorkOrderProcessMetrics({
-        startDate: params.startDate,
-        endDate: params.endDate,
-        origin: params.origin,
-        product: params.product,
-        workOrderCode: selectedWorkOrderCode.value!,
-        stepTypeNo: step.code!
-      }).then(summary => ({ id: step.id, summary }));
-    }
-
     return fetchProcessMetrics({
       startDate: params.startDate,
       endDate: params.endDate,
       origin: params.origin,
       product: params.product!,
-      stepTypeNo: step.code!
+      stepTypeNo: step.code!,
+      workOrderCode: selectedWorkOrderCode.value!,
     }).then(summary => ({ id: step.id, summary }));
   });
 
@@ -1141,11 +1131,11 @@ const handleFiltersSubmit = async () => {
   selectedProcessId.value = null;
   detailError.value = null;
   paretoData.value = createEmptyParetoData();
-
   if (level.value === "step") {
     await loadStepOverview();
     return;
   }
+
 
   if (level.value === "product") {
     if (!selectedStepTypeNo.value) {
@@ -1167,7 +1157,7 @@ const handleFiltersSubmit = async () => {
     return;
   }
 
-  selectedWorkOrderCode.value = null;
+  // selectedWorkOrderCode.value = null;
   selectedProductCode.value = product;
   filters.product = [product];
   const selectedProcessCode = normalizeStringValue(filters.processCode);

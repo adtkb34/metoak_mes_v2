@@ -21,6 +21,7 @@ export interface ProcessMetricsParams {
   stepTypeNo: string;
   deviceNos?: string[];
   stations?: string[];
+  workOrderCode: string;
 }
 
 export interface WorkOrderCodeParams {

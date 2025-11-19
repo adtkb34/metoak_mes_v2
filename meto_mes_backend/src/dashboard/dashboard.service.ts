@@ -540,70 +540,20 @@ export class DashboardService {
       // if (!products?.length) {
       //   return summary;
       // }
-
+      let workOrderCode = params.workOrderCode;
       const client = this.prisma.getClientByOrigin(params.origin);
       let allRows: ProcessMetricRow[] = [];
-      for (const product of products) {
-        let rows: ProcessMetricRow[] | undefined;
-        if (params.stepTypeNo == STEP_NO.CALIB) {
-          rows = await this.fetchCalibMetricRows({
-            product,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else if (params.stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
-          rows = await this.fetchAssemblePcbaMetricRows({
-            product,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
-          rows = await this.fetchAutoAdjustMetricRows({
-            product,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else if (params.stepTypeNo == STEP_NO.S315FQC) {
-          rows = await this.fetchS315FqcMetricRows({
-            product,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else if (params.stepTypeNo == STEP_NO.PACKING) {
-          rows = await this.fetchPackingMetricRows({
-            product,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
-          rows = await this.fetchStereoPrecheckMetricRows({
-            product,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else if (params.stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
-          rows = await this.fetchStereoPostCheckMetricRows({
-            product,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        } else {
-          rows = await this.fetchProcessProductionMetricRows({
-            product,
-            client,
-            stepTypeNo: normalizedStepTypeNo,
-            range: { start, end },
-          });
-        }
+      let rows: ProcessMetricRow[] | undefined = [];
+      if (workOrderCode) {
+        rows = await this.fetchProcessMetrics(normalizedStepTypeNo, null, client, start, end, workOrderCode)
         if (rows) allRows.push(...rows);
+      } else {
+        for (const product of products) { 
+          rows = await this.fetchProcessMetrics(normalizedStepTypeNo, product, client, start, end, null)
+          if (rows) allRows.push(...rows);
+        }
       }
+      
       const aggregated = allRows
         ? this.aggregateProcessMetricData(allRows)
         : undefined;
@@ -617,12 +567,82 @@ export class DashboardService {
     }
   }
 
+  async fetchProcessMetrics(stepTypeNo: string, product :string | null, client, start, end, workOrderCode: string | null) {
+    if (stepTypeNo == STEP_NO.CALIB) {
+          return await this.fetchCalibMetricRows({
+            product,
+            client,
+            stepTypeNo,
+            range: { start, end },
+            workOrderCode
+          });
+        } else if (stepTypeNo == STEP_NO.ASSEMBLE_PCBA) {
+          return await this.fetchAssemblePcbaMetricRows({
+            product,
+            client,
+            stepTypeNo,
+            range: { start, end },
+            workOrderCode
+          });
+        } else if (stepTypeNo == STEP_NO.AUTO_ADJUST) {
+          return await this.fetchAutoAdjustMetricRows({
+            product,
+            client,
+            stepTypeNo,
+            range: { start, end },
+            workOrderCode
+          });
+        } else if (stepTypeNo == STEP_NO.S315FQC) {
+          return await this.fetchS315FqcMetricRows({
+            product,
+            client,
+            stepTypeNo,
+            range: { start, end },
+            workOrderCode
+          });
+        } else if (stepTypeNo == STEP_NO.PACKING) {
+          return await this.fetchPackingMetricRows({
+            product,
+            client,
+            stepTypeNo,
+            range: { start, end },
+            workOrderCode
+          });
+        } else if (stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
+          return await this.fetchStereoPrecheckMetricRows({
+            product,
+            client,
+            stepTypeNo,
+            range: { start, end },
+            workOrderCode
+          });
+        } else if (stepTypeNo == STEP_NO.MO_STEREO_POSTCHECK) {
+          return await this.fetchStereoPostCheckMetricRows({
+            product,
+            client,
+            stepTypeNo,
+            range: { start, end },
+            workOrderCode
+          });
+        } else {
+          return await this.fetchProcessProductionMetricRows({
+            product,
+            client,
+            stepTypeNo,
+            range: { start, end },
+            workOrderCode
+          });
+        }
+        
+  }
+
   async getParetoData(params: {
     products: string[];
     origin: ProductOrigin;
     stepTypeNo: string;
     startDate?: string;
     endDate?: string;
+    workOrderCode?: string;
   }): Promise<ParetoChartData> {
     const empty: ParetoChartData = {
       categories: [],
@@ -645,6 +665,7 @@ export class DashboardService {
       const client = this.prisma.getClientByOrigin(params.origin);
       let rows: ProcessMetricRow[] | undefined;
       let allRows: ProcessMetricRow[] = [];
+      let workOrderCode = params.workOrderCode
       for (const product of params.products) {
         if (params.stepTypeNo == STEP_NO.CALIB) {
           rows = await this.fetchCalibMetricRows({
@@ -652,6 +673,7 @@ export class DashboardService {
             client,
             stepTypeNo: stepTypeNo,
             range: { start, end },
+            workOrderCode
           });
           if (rows != undefined) {
             rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
@@ -666,6 +688,7 @@ export class DashboardService {
             client,
             stepTypeNo: stepTypeNo,
             range: { start, end },
+            workOrderCode
           });
         } else if (params.stepTypeNo == STEP_NO.AUTO_ADJUST) {
           rows = await this.fetchAutoAdjustMetricRows({
@@ -673,6 +696,7 @@ export class DashboardService {
             client,
             stepTypeNo: stepTypeNo,
             range: { start, end },
+            workOrderCode
           });
           if (params.origin == ProductOrigin.SUZHOU && rows != undefined) {
             rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
@@ -687,6 +711,7 @@ export class DashboardService {
             client,
             stepTypeNo: stepTypeNo,
             range: { start, end },
+            workOrderCode
           });
           if (rows != undefined) {
             rows = await populateFQCNgReasonFromErrorCode(this.prisma, rows);
@@ -697,6 +722,7 @@ export class DashboardService {
             client,
             stepTypeNo: stepTypeNo,
             range: { start, end },
+            workOrderCode
           });
         } else if (params.stepTypeNo == STEP_NO.MO_STEREO_PRECHECK) {
           rows = await this.fetchStereoPrecheckMetricRows({
@@ -704,6 +730,7 @@ export class DashboardService {
             client,
             stepTypeNo: stepTypeNo,
             range: { start, end },
+            workOrderCode
           });
 
           if (rows != undefined) {
@@ -719,6 +746,7 @@ export class DashboardService {
             client,
             stepTypeNo: stepTypeNo,
             range: { start, end },
+            workOrderCode
           });
           if (rows != undefined) {
             rows = await populateCalibOrGUanghaojieAANgReasonFromErrorCode(
@@ -733,6 +761,7 @@ export class DashboardService {
             client,
             stepTypeNo,
             range: { start, end },
+            workOrderCode
           });
         }
         if (rows) allRows.push(...rows);
@@ -741,7 +770,17 @@ export class DashboardService {
       if (!allRows?.length) {
         return empty;
       }
-      if (params.origin == ProductOrigin.MIANYANG) {
+      if (params.origin == ProductOrigin.MIANYANG && params.stepTypeNo in [
+        STEP_NO.AFTER_AA_COATING_PROCESS_RECORD,
+        STEP_NO.AFTER_AA_FINAL_COMPREHENSIVE_INSPECTION,
+        STEP_NO.AUTO_ADJUST,
+        STEP_NO.BEAM_APPEARANCE_INSPECTION,
+        STEP_NO.CMOS_APPEARANCE_INSPECTION,
+        STEP_NO.DIRTY_CHECKING,
+        STEP_NO.SCREW_TIGHTENING_INSPECTION,
+        STEP_NO.HIGH_TEMP_CURING_RECORD,
+        STEP_NO.LASER_MARKING_INSPECTION
+      ]) {
         return await populateAiweishiAANgReasonFromErrorCode(
           allRows,
           this.configService,
@@ -759,7 +798,6 @@ export class DashboardService {
 
       const total = breakdown.reduce((sum, item) => sum + item.count, 0);
       let running = 0;
-      console.log(rows);
       return {
         categories: breakdown.map((item) => item.reason),
         counts: breakdown.map((item) => item.count),
@@ -1384,9 +1422,7 @@ export class DashboardService {
         ${filterClause ?? Prisma.empty}
       `;
     }
-
     const rows = await client.$queryRaw<ProcessMetricRow[]>(query);
-
     return rows;
   }
 
@@ -1608,7 +1644,7 @@ export class DashboardService {
   private async fetchGenericProcessMetricData(
     params: ProcessMetricLoaderParams,
   ): Promise<ProcessMetricRow[] | undefined> {
-    const { product, client, stepTypeNo, range } = params;
+    const { product, client, stepTypeNo, range, workOrderCode } = params;
 
     const tableAlias = 'mpspr';
     const baseSql = Prisma.sql`
@@ -1642,6 +1678,8 @@ export class DashboardService {
       tableAlias,
       product,
       filterClause,
+      "product_sn",
+      workOrderCode
     );
 
     const tagRows = await this.queryTagInfoProducts(
@@ -1650,6 +1688,8 @@ export class DashboardService {
       tableAlias,
       product,
       filterClause,
+      "product_sn",
+      workOrderCode
     );
 
     const combined = [...beamRows, ...tagRows];

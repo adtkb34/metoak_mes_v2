@@ -192,6 +192,7 @@ export class DashboardController {
     query: {
       origin?: string | number | null;
       product?: string[] | string | null;
+      workOrderCode?: string | null;
       stepTypeNo?: string | null;
       startDate?: string;
       endDate?: string;
@@ -203,6 +204,7 @@ export class DashboardController {
     const summary = await this.dashboardService.getProcessMetrics({
       origin,
       products: this.normalizeStringArray(query?.product),
+      workOrderCode: query?.workOrderCode?.trim(),
       stepTypeNo: query?.stepTypeNo?.trim(),
       startDate: query.startDate,
       endDate: query.endDate,
