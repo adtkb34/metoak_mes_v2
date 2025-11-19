@@ -33,7 +33,7 @@
           />
         </el-select>
       </el-form-item> -->
-      <el-form-item label="产品">
+      <el-form-item v-if="showProduct" label="产品">
         <el-select
           class="filter-select"
           clearable
@@ -41,7 +41,7 @@
           :multiple="productMultiple"
           placeholder="选择产品"
           :disabled="loading || !productOptions.length"
-          :model-value="product"
+          :model-value="productModelValue"
           @update:model-value="onProductChange"
         >
           <el-option
@@ -52,7 +52,7 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="工艺">
+      <el-form-item v-if="showProcess" label="工艺">
         <el-select
           class="filter-select"
           clearable
@@ -85,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs } from "vue";
+import { computed, toRefs } from "vue";
 import type { ProductOrigin } from "@/enums/product-origin";
 import type { SelectOption } from "../types";
 
@@ -121,6 +121,9 @@ const {
   showProcess,
   productMultiple
 } = toRefs(props);
+const productModelValue = computed(() =>
+  productMultiple.value ? product.value : product.value[0] ?? null
+);
 const emit = defineEmits([
   "update:dateRange",
   "update:product",
