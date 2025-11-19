@@ -1,5 +1,6 @@
 <template>
   <div class="dashboard-page space-y-4">
+    {{ level }}
     <el-card shadow="never">
       <filters-panel
         :date-range="filters.dateRange"
@@ -914,21 +915,6 @@ const handleStepSelect = async (stepTypeNo: string) => {
   await loadProductOverview(stepTypeNo);
 };
 
-const handleProductSelect = async (productCode: string) => {
-  if (overviewLoading.value) {
-    return;
-  }
-
-  selectedWorkOrderCode.value = null;
-  selectedProductCode.value = productCode;
-  filters.product = [productCode];
-
-  const preferredProcess = await ensureProcessCodeForProduct(productCode);
-  filters.processCode = preferredProcess ?? null;
-
-  await loadProcessOverviewForProduct();
-};
-
 const handleWorkOrderSelect = async (
   workOrderCode: string,
   productCode: string | null
@@ -1088,7 +1074,7 @@ const refreshProcessMetrics = async (
       origin: params.origin,
       product: params.product!,
       stepTypeNo: step.code!,
-      workOrderCode: selectedWorkOrderCode.value!,
+      workOrderCode: selectedWorkOrderCode.value!
     }).then(summary => ({ id: step.id, summary }));
   });
 
@@ -1128,15 +1114,34 @@ const refreshProcessMetrics = async (
   return hasData;
 };
 
+watch(
+  () => filters.product.slice(),
+  async newProducts => {
+    if (!newProducts.length) return;
+    const firstProduct = newProducts[0];
+    const preferredProcess = await ensureProcessCodeForProduct(firstProduct);
+    if (preferredProcess) {
+      filters.processCode = preferredProcess;
+    }
+  }
+);
+
 const handleFiltersSubmit = async () => {
   selectedProcessId.value = null;
   detailError.value = null;
   paretoData.value = createEmptyParetoData();
+
+  // ✅ 优先判断产品是否选中
+  if (filters.product.length > 0) {
+    level.value = "process";
+    await loadProcessOverviewForProduct();
+    return;
+  }
+
   if (level.value === "step") {
     await loadStepOverview();
     return;
   }
-
 
   if (level.value === "product") {
     if (!selectedStepTypeNo.value) {
@@ -1158,17 +1163,14 @@ const handleFiltersSubmit = async () => {
     return;
   }
 
-  // selectedWorkOrderCode.value = null;
   selectedProductCode.value = product;
   filters.product = [product];
-  const selectedProcessCode = normalizeStringValue(filters.processCode);
-  if (!selectedProcessCode) {
+  if (!filters.processCode) {
     const preferredProcess = await ensureProcessCodeForProduct(product);
     filters.processCode = preferredProcess ?? null;
   }
 
   await loadProcessOverviewForProduct();
-  await loadWorkOrderMetricsForStep(selectedStepTypeNo.value);
 };
 
 const handleFiltersReset = async () => {
@@ -1249,31 +1251,31 @@ const refreshProductOptions = async () => {
   }
 };
 
-watch(
-  () => filters.origin,
-  async value => {
-    resetProductSelection();
-    selectedStepTypeNo.value = null;
-    selectedProductCode.value = null;
-    level.value = "step";
-    clearWorkOrders();
-    try {
-      await processStore.setProcessFlow(true, value ?? null);
-    } catch (error: any) {
-      const message = error?.message ?? "获取工艺流程失败";
-      ElMessage.error(message);
-    }
-    await refreshProductOptions();
-    await loadStepOverview();
-  }
-);
+// watch(
+//   () => filters.origin,
+//   async value => {
+//     // resetProductSelection();
+//     selectedStepTypeNo.value = null;
+//     selectedProductCode.value = null;
+//     level.value = "step";
+//     clearWorkOrders();
+//     try {
+//       await processStore.setProcessFlow(true, value ?? null);
+//     } catch (error: any) {
+//       const message = error?.message ?? "获取工艺流程失败";
+//       ElMessage.error(message);
+//     }
+//     await refreshProductOptions();
+//     await loadStepOverview();
+//   }
+// );
 
-watch(
-  () => filters.dateRange.slice(),
-  () => {
-    refreshProductOptions();
-  }
-);
+// watch(
+//   () => filters.dateRange.slice(),
+//   () => {
+//     refreshProductOptions();
+//   }
+// );
 
 watch(processOptions, options => {
   if (
@@ -1291,7 +1293,6 @@ onMounted(async () => {
     const message = error?.message ?? "获取工艺流程失败";
     ElMessage.error(message);
   }
-
   await refreshProductOptions();
   await loadStepOverview();
 });
