@@ -33,7 +33,7 @@
           />
         </el-select>
       </el-form-item> -->
-      <!-- <el-form-item v-if="showProduct" label="产品">
+      <el-form-item label="产品">
         <el-select
           class="filter-select"
           clearable
@@ -51,8 +51,8 @@
             :value="item.value"
           />
         </el-select>
-      </el-form-item> -->
-      <el-form-item v-if="showProcess" label="工艺">
+      </el-form-item>
+      <el-form-item label="工艺">
         <el-select
           class="filter-select"
           clearable

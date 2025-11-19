@@ -1136,10 +1136,10 @@ export class DashboardService {
       filterConditions.push(Prisma.sql`${timestampExpr} <= ${range.end}`);
     }
 
-    const filterClause =
-      filterConditions.length > 0
-        ? Prisma.sql`AND ${Prisma.join(filterConditions, ' AND ')}`
-        : Prisma.empty;
+    let filterClause = Prisma.sql`AND check_type = 'FQC'`;
+    if (filterConditions.length > 0) {
+      filterClause = Prisma.sql`${filterClause} AND ${Prisma.join(filterConditions, ' AND ')}`;
+    }
 
     const beamRows = await this.queryBeamInfoProducts(
       client,

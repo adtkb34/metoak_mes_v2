@@ -43,6 +43,7 @@ export interface ParetoChartParams {
   stepTypeNo: string;
   startDate?: string;
   endDate?: string;
+  workOrderCode?: string;
 }
 
 export interface ParetoChartData {

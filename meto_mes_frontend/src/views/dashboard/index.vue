@@ -984,7 +984,8 @@ const handleProcessSelect = async (processId: string) => {
       origin,
       stepTypeNo: step.code,
       startDate: params.startDate,
-      endDate: params.endDate
+      endDate: params.endDate,
+      workOrderCode: selectedWorkOrderCode.value
     });
     paretoData.value = result;
   } catch (error: any) {

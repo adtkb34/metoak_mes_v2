@@ -222,6 +222,7 @@ export class DashboardController {
     @Query('endDate') endDate?: string,
     @Query('origin') originParam?: string,
     @Query('stepTypeNo') stepTypeNo?: string,
+    @Query('workOrderCode') workOrderCode?: string,
   ): Promise<{ success: true; data: ParetoChartData }> {
     // const normalizedProduct = product?.trim();
     // if (!normalizedProduct) {
@@ -248,6 +249,7 @@ export class DashboardController {
       origin,
       startDate: normalizedStart,
       endDate: normalizedEnd,
+      workOrderCode
     });
 
     return { success: true, data };
