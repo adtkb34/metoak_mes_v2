@@ -26,6 +26,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { SerialNumberDataModule } from './serial-number-data/serial-number-data.module';
 import { TraceabilityModule } from './traceability/traceability.module';
 import { VersionModule } from './version/version.module';
+import { DeviceManagementModule } from './device-management/device-management.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { VersionModule } from './version/version.module';
     SerialNumberDataModule,
     TraceabilityModule,
     VersionModule,
+    DeviceManagementModule,
   ],
   controllers: [AppController, ImuController],
   providers: [AppService],
