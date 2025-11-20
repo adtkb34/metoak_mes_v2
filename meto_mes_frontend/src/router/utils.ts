@@ -27,7 +27,9 @@ const IFrame = () => import("@/layout/frame.vue");
 const modulesRoutes = import.meta.glob("/src/views/**/*.{vue,tsx}");
 
 export const baseUrlApi = (url: string) =>
-  `${import.meta.env.VITE_BACKEND_URL}${url}`;
+  /^https?:\/\//i.test(url)
+    ? url
+    : `${import.meta.env.VITE_BACKEND_URL}${url}`;
 
 // 动态路由
 import { getAsyncRoutes } from "@/api/routes";
