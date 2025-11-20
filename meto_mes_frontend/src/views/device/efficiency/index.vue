@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive, ref } from "vue";
+import dayjs from "dayjs";
 import * as echarts from "echarts";
 import { ElMessage } from "element-plus";
 import {
@@ -76,8 +77,8 @@ const fetchStatistics = async () => {
     const [start, end] = formState.range;
     const res = await getDeviceEfficiencyStatistics({
       deviceId: formState.deviceId,
-      start: start?.toISOString(),
-      end: end?.toISOString(),
+      start: start ? dayjs(start).format("YYYY-MM-DD") : undefined,
+      end: end ? dayjs(end).format("YYYY-MM-DD") : undefined,
       interval: formState.interval
     });
     statistics.value = res;
@@ -111,7 +112,13 @@ onUnmounted(() => {
           <span class="font-bold">效率统计</span>
         </div>
       </template>
-      <el-form label-width="80px" inline :model="formState" class="w-full" @submit.prevent>
+      <el-form
+        label-width="80px"
+        inline
+        :model="formState"
+        class="w-full"
+        @submit.prevent
+      >
         <el-form-item label="设备">
           <el-select
             v-model="formState.deviceId"
@@ -131,9 +138,9 @@ onUnmounted(() => {
         <el-form-item label="时间范围">
           <el-date-picker
             v-model="formState.range"
-            type="datetimerange"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
+            type="daterange"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
           />
         </el-form-item>
         <el-form-item label="间隔">
