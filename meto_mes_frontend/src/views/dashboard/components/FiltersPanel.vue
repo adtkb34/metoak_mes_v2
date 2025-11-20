@@ -85,17 +85,14 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs } from "vue";
+import { computed, toRefs } from "vue";
 import type { ProductOrigin } from "@/enums/product-origin";
 import type { SelectOption } from "../types";
+import { useDashboardStore } from "@/store/modules/dashboard";
 
 interface Props {
-  dateRange: string[];
-  product: string[];
-  origin: ProductOrigin | null;
   productOptions: SelectOption[];
   processOptions: SelectOption[];
-  processCode: string | null;
   originOptions: SelectOption[];
   loading?: boolean;
   showProduct?: boolean;
@@ -108,30 +105,20 @@ const props = withDefaults(defineProps<Props>(), {
   showProcess: true,
   productMultiple: true
 });
-const {
-  dateRange,
-  product,
-  origin,
-  productOptions,
-  processOptions,
-  processCode,
-  originOptions,
-  loading,
-  showProduct,
-  showProcess,
-  productMultiple
-} = toRefs(props);
-const emit = defineEmits([
-  "update:dateRange",
-  "update:product",
-  "update:origin",
-  "update:processCode",
-  "submit",
-  "reset"
-]);
+const { productOptions, processOptions, originOptions, loading, showProduct, showProcess, productMultiple } =
+  toRefs(props);
+
+const dashboardStore = useDashboardStore();
+
+const dateRange = computed(() => dashboardStore.filters.dateRange);
+const product = computed(() => dashboardStore.filters.product);
+const origin = computed(() => dashboardStore.filters.origin);
+const processCode = computed(() => dashboardStore.filters.processCode);
+
+const emit = defineEmits(["submit", "reset"]);
 
 const onDateRangeChange = (value: string[] | null) => {
-  emit("update:dateRange", value ?? []);
+  dashboardStore.filters.dateRange = value ?? [];
 };
 
 const onProductChange = (
@@ -139,31 +126,31 @@ const onProductChange = (
 ) => {
   if (Array.isArray(value)) {
     if (!value.length) {
-      emit("update:product", []);
+      dashboardStore.filters.product = [];
       return;
     }
 
     const normalized = value.map(item => String(item));
-    emit("update:product", normalized);
+    dashboardStore.filters.product = normalized;
     return;
   }
 
   if (value === null || value === undefined || value === "") {
-    emit("update:product", []);
+    dashboardStore.filters.product = [];
     return;
   }
 
-  emit("update:product", [String(value)]);
+  dashboardStore.filters.product = [String(value)];
 };
 
 const onOriginChange = (value: ProductOrigin | null) => {
-  emit("update:origin", value ?? null);
+  dashboardStore.filters.origin = value ?? null;
 };
 
 const onProcessCodeChange = (value: string | number | null) => {
   const nextValue =
     value === null || value === undefined ? null : String(value);
-  emit("update:processCode", nextValue);
+  dashboardStore.filters.processCode = nextValue;
 };
 </script>
 
