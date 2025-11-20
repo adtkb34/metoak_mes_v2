@@ -108,8 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
-import dayjs from "dayjs";
+import { computed, onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import FiltersPanel from "./components/FiltersPanel.vue";
 import ProcessOverview from "./components/ProcessOverview.vue";
@@ -138,6 +137,7 @@ import { PRODUCT_ORIGIN_OPTIONS, ProductOrigin } from "@/enums/product-origin";
 import { STEP_NO } from "@/enums/step-no";
 import { useProcessStore } from "@/store/modules/processFlow";
 import type { ProcessFlow } from "@/api/processFlow";
+import { useDashboardStore } from "@/store/modules/dashboard";
 
 type ViewLevel = "step" | "product" | "process";
 
@@ -153,23 +153,8 @@ const STEP_TITLE_MAP: Record<string, string> = {
   [STEP_NO.CALIB]: "标定"
 };
 
-const getDefaultDateRange = (): string[] => {
-  const today = dayjs().format("YYYY-MM-DD");
-  return [today, today];
-};
-
-const backendUrl = import.meta.env.VITE_BACKEND_URL ?? "";
-const getDefaultOrigin = (): ProductOrigin =>
-  backendUrl.includes("11.11.11.15")
-    ? ProductOrigin.Suzhou
-    : ProductOrigin.Mianyang;
-
-const filters = reactive<FilterState>({
-  dateRange: getDefaultDateRange(),
-  product: [] as string[],
-  origin: getDefaultOrigin(),
-  processCode: null
-});
+const dashboardStore = useDashboardStore();
+const filters = dashboardStore.filters;
 
 const level = ref<ViewLevel>("step");
 const selectedStepTypeNo = ref<string | null>(null);
@@ -1174,10 +1159,7 @@ const handleFiltersSubmit = async () => {
 };
 
 const handleFiltersReset = async () => {
-  filters.dateRange = getDefaultDateRange();
-  filters.product = [];
-  filters.origin = getDefaultOrigin();
-  filters.processCode = null;
+  dashboardStore.resetFilters();
   topLevelError.value = null;
   summaryError.value = null;
   detailError.value = null;
