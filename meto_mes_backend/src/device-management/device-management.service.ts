@@ -21,15 +21,14 @@ export class DeviceManagementService {
   constructor(private readonly prisma: PrismaService) {}
   async getDeviceOptions() {
     const dbUrl = process.env.DATABASE_URL || '';
-    if (dbUrl.includes('11.11.11.15')) {
-      return [
-        DeviceType.GUANGHAOJIE_AA,
-        DeviceType.SHUNYU_AA,
-        DeviceType.CALIB,
-      ];
-    } else {
-      return [DeviceType.AIWEISHI_AA, DeviceType.CALIB];
-    }
+    const availableDevices = dbUrl.includes('11.11.11.15')
+      ? [DeviceType.GUANGHAOJIE_AA, DeviceType.SHUNYU_AA, DeviceType.CALIB]
+      : [DeviceType.AIWEISHI_AA, DeviceType.CALIB];
+
+    return availableDevices.map((device) => ({
+      label: device.name,
+      value: device.code,
+    }));
   }
 
   async getEfficiencyStatistics(params: EfficiencyStatisticsParams) {
@@ -113,8 +112,8 @@ export class DeviceManagementService {
 
     // 3️⃣ 转成数组并按时间排序
     const points = Array.from(grouped.entries())
-      .map(([x, y]) => ({ x, y }))
-      .sort((a, b) => a.x.localeCompare(b.x));
+      .map(([timestamp, quantity]) => ({ timestamp, quantity }))
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
     return {
       deviceId: params.deviceId,
