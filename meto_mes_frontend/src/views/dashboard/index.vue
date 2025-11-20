@@ -3,21 +3,13 @@
     {{ level }}
     <el-card shadow="never">
       <filters-panel
-        :date-range="filters.dateRange"
-        :product="filters.product"
-        :origin="filters.origin"
         :product-options="productOptions"
         :process-options="processOptions"
-        :process-code="filters.processCode"
         :origin-options="originOptions"
         :loading="filtersLoading"
         :show-product="showProductFilter"
         :show-process="showProcessFilter"
         :product-multiple="allowMultipleProducts"
-        @update:dateRange="value => (filters.dateRange = value)"
-        @update:product="value => (filters.product = value)"
-        @update:origin="value => (filters.origin = value)"
-        @update:processCode="value => (filters.processCode = value)"
         @submit="handleFiltersSubmit"
         @reset="handleFiltersReset"
       />
