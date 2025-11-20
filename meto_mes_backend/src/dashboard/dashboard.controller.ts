@@ -228,7 +228,6 @@ export class DashboardController {
     // if (!normalizedProduct) {
     //   throw new BadRequestException('缺少产品');
     // }
-
     const normalizedStep = stepTypeNo?.trim();
     if (!normalizedStep) {
       throw new BadRequestException('缺少工序编号');
@@ -249,7 +248,7 @@ export class DashboardController {
       origin,
       startDate: normalizedStart,
       endDate: normalizedEnd,
-      workOrderCode
+      workOrderCode,
     });
 
     return { success: true, data };
