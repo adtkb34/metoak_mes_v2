@@ -21,7 +21,7 @@ export class DeviceManagementService {
   constructor(private readonly prisma: PrismaService) {}
   async getDeviceOptions() {
     const dbUrl = process.env.DATABASE_URL || '';
-    const availableDevices = dbUrl.includes('11.11.11.15')
+    const availableDevices = dbUrl.includes('11.11.11.13')
       ? [DeviceType.GUANGHAOJIE_AA, DeviceType.SHUNYU_AA, DeviceType.CALIB]
       : [DeviceType.AIWEISHI_AA, DeviceType.CALIB];
 
@@ -33,7 +33,10 @@ export class DeviceManagementService {
 
   async getEfficiencyStatistics(params: EfficiencyStatisticsParams) {
     let rows: { time: Date | null }[] = [];
-
+    const aaDevices: string[] = [
+      DeviceType.SHUNYU_AA.code,
+      DeviceType.AIWEISHI_AA.code,
+    ];
     if (params.deviceId === DeviceType.GUANGHAOJIE_AA.code) {
       const result = await this.prisma.mo_auto_adjust_info.findMany({
         where: {
@@ -50,12 +53,12 @@ export class DeviceManagementService {
       rows = result.map((row) => ({
         time: row.operation_time, // 重命名字段
       }));
-    } else if (
-      params.deviceId in
-      [DeviceType.SHUNYU_AA.code, DeviceType.AIWEISHI_AA.code]
-    ) {
-      const result = await this.prisma.mo_auto_adjust_st08.findMany({
+    } else if (aaDevices.includes(params.deviceId)) {
+      const result = await this.prisma.mo_auto_adjust_info.findMany({
         where: {
+          station_num: {
+            not: 7, // ✅ 不等于 7
+          },
           add_time: {
             ...(params.start && { gte: new Date(params.start) }),
             ...(params.end && { lte: new Date(params.end) }),
@@ -84,7 +87,6 @@ export class DeviceManagementService {
         time: row.start_time, // 重命名字段
       }));
     }
-
     const interval = params.interval || 'hour';
     const grouped = new Map<string, number>();
 
