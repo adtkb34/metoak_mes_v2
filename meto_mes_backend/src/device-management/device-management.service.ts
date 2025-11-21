@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { format, startOfDay, startOfHour } from 'date-fns'; // ✅ 必须导入
 import { PrismaService } from 'src/prisma/prisma.service';
+import {
+  startOfDay,
+  startOfHour,
+  startOfWeek,
+  addHours,
+  format,
+} from 'date-fns';
+import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 interface EfficiencyStatisticsParams {
   deviceId: string;
@@ -15,6 +22,28 @@ export const DeviceType = {
   AIWEISHI_AA: { code: '002', name: '艾薇视 AA 机' },
   CALIB: { code: '003', name: '标定台' },
 } as const;
+
+function toUtcBucket(date: Date, interval: 'hour' | 'day' | 'week'): string {
+  // 不用任何时区，直接用 UTC 各项取整
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const hour = String(date.getUTCHours()).padStart(2, '0');
+
+  switch (interval) {
+    case 'day':
+      return `${year}-${month}-${day}`;
+    case 'week': {
+      const weekday = date.getUTCDay() || 7; // 以周一为开始
+      const monday = new Date(
+        Date.UTC(year, date.getUTCMonth(), date.getUTCDate() - (weekday - 1)),
+      );
+      return `${monday.getUTCFullYear()}-${String(monday.getUTCMonth() + 1).padStart(2, '0')}-${String(monday.getUTCDate()).padStart(2, '0')}`;
+    }
+    default:
+      return `${year}-${month}-${day} ${hour}:00`;
+  }
+}
 
 @Injectable()
 export class DeviceManagementService {
@@ -33,90 +62,94 @@ export class DeviceManagementService {
 
   async getEfficiencyStatistics(params: EfficiencyStatisticsParams) {
     let rows: { time: Date | null }[] = [];
-    const aaDevices: string[] = [
+    const aaDevices = [
       DeviceType.SHUNYU_AA.code,
       DeviceType.AIWEISHI_AA.code,
-    ];
+    ] as string[];
+
+    // ✅ 构造 UTC 边界，强制使用 UTC
+    const startUtc = params.start
+      ? new Date(
+          Date.UTC(
+            Number(params.start.slice(0, 4)),
+            Number(params.start.slice(5, 7)) - 1,
+            Number(params.start.slice(8, 10)),
+            0,
+            0,
+            0,
+          ),
+        )
+      : undefined;
+
+    const endUtc = params.end
+      ? new Date(
+          Date.UTC(
+            Number(params.end.slice(0, 4)),
+            Number(params.end.slice(5, 7)) - 1,
+            Number(params.end.slice(8, 10)),
+            23,
+            59,
+            59,
+            999,
+          ),
+        )
+      : undefined;
+
+    console.log('UTC 查询参数:', { startUtc, endUtc });
+
+    // ✅ 查询不同设备
     if (params.deviceId === DeviceType.GUANGHAOJIE_AA.code) {
       const result = await this.prisma.mo_auto_adjust_info.findMany({
         where: {
           station_num: 7,
           operation_time: {
-            ...(params.start && { gte: new Date(params.start) }),
-            ...(params.end && { lte: new Date(params.end) }),
+            ...(startUtc && { gte: startUtc }),
+            ...(endUtc && { lte: endUtc }),
           },
         },
         select: { operation_time: true },
       });
-
-      // ✅ 注意：map 在 await 之后执行
-      rows = result.map((row) => ({
-        time: row.operation_time, // 重命名字段
-      }));
+      rows = result.map((r) => ({ time: r.operation_time }));
     } else if (aaDevices.includes(params.deviceId)) {
       const result = await this.prisma.mo_auto_adjust_info.findMany({
         where: {
-          station_num: {
-            not: 7, // ✅ 不等于 7
-          },
+          station_num: { not: 7 },
           add_time: {
-            ...(params.start && { gte: new Date(params.start) }),
-            ...(params.end && { lte: new Date(params.end) }),
+            ...(startUtc && { gte: startUtc }),
+            ...(endUtc && { lte: endUtc }),
           },
         },
         select: { add_time: true },
       });
-
-      // ✅ 注意：map 在 await 之后执行
-      rows = result.map((row) => ({
-        time: row.add_time, // 重命名字段
-      }));
+      rows = result.map((r) => ({ time: r.add_time }));
     } else if (params.deviceId === DeviceType.CALIB.code) {
       const result = await this.prisma.mo_calibration.findMany({
         where: {
           start_time: {
-            ...(params.start && { gte: new Date(params.start) }),
-            ...(params.end && { lte: new Date(params.end) }),
+            ...(startUtc && { gte: startUtc }),
+            ...(endUtc && { lte: endUtc }),
           },
         },
         select: { start_time: true },
       });
-
-      // ✅ 注意：map 在 await 之后执行
-      rows = result.map((row) => ({
-        time: row.start_time, // 重命名字段
-      }));
+      rows = result.map((r) => ({ time: r.start_time }));
     }
-    const interval = params.interval || 'hour';
+
+    const interval = (params.interval ?? 'hour') as 'hour' | 'day' | 'week';
+
     const grouped = new Map<string, number>();
 
     for (const row of rows) {
-      if (!row.time) continue; // ⛔️ 跳过 nulls
-      const opTime = new Date(row.time); // ✅ 用重命名后的字段
-      let bucket = '';
-
-      switch (interval) {
-        case 'day':
-          bucket = format(startOfDay(opTime), 'yyyy-MM-dd');
-          break;
-        case 'week':
-          const weekStart = new Date(opTime);
-          weekStart.setDate(opTime.getDate() - opTime.getDay());
-          bucket = format(weekStart, 'yyyy-MM-dd');
-          break;
-        default:
-          bucket = format(startOfHour(opTime), 'yyyy-MM-dd HH:00');
-          break;
-      }
-
+      if (!row.time) continue;
+      const bucket = toUtcBucket(row.time, interval);
       grouped.set(bucket, (grouped.get(bucket) || 0) + 1);
     }
 
-    // 3️⃣ 转成数组并按时间排序
     const points = Array.from(grouped.entries())
       .map(([timestamp, quantity]) => ({ timestamp, quantity }))
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
+    console.log('✅ 真·UTC 统计结果:', points);
     return {
       deviceId: params.deviceId,
       start: params.start,
