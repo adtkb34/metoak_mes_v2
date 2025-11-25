@@ -72,13 +72,13 @@ export async function populateAiweishiAANgReasonFromErrorCode<
       mapAttrNo[key] = (mapAttrNo[key] ?? 0) + 1;
     });
   });
-
+console.log(`mapAttrNo: ${mapAttrNo}`);
   for (const attrNo of Object.keys(mapAttrNo)) {
     const key = await updateNgReason4Aiweishi(configService, stepNo, attrNo);
     mapAttrKey[key] = mapAttrNo[attrNo];
   }
   console.log(`mapAttrKey: ${mapAttrKey}`);
-  console.log(`mapAttrNo: ${mapAttrNo}`);
+  
   const sortedEntries = Object.entries(mapAttrKey).sort((a, b) => b[1] - a[1]);
 
   const categories = sortedEntries.map(([key]) => key);

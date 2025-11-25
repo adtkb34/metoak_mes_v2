@@ -38,7 +38,7 @@
           class="filter-select"
           clearable
           filterable
-          :multiple="productMultiple"
+          multiple
           placeholder="选择产品"
           :disabled="loading || !productOptions.length"
           :model-value="product"
@@ -111,7 +111,11 @@ const { productOptions, processOptions, originOptions, loading, showProduct, sho
 const dashboardStore = useDashboardStore();
 
 const dateRange = computed(() => dashboardStore.filters.dateRange);
-const product = computed(() => dashboardStore.filters.product);
+const product = computed(() =>
+  productMultiple.value
+    ? dashboardStore.filters.product
+    : dashboardStore.filters.product ?? null
+);
 const origin = computed(() => dashboardStore.filters.origin);
 const processCode = computed(() => dashboardStore.filters.processCode);
 

@@ -1,0 +1,5 @@
+DATABASE_URL="mysql://root:momeshou@172.24.81.112:3306/mo_mes_db?schema=public"
+DATABASE_URL_SUZHOU="mysql://readonlyuser:123456@11.11.11.13:3306/mo_mes_db?schema=public"
+DATABASE_URL_MIANYANG="mysql://readonlyuser:123456@192.168.188.11:3306/mo_mes_db?schema=public"
+MES_API_BASE=http://172.24.81.112:8080
+BACKEND_VERSION=v1.1.1.web_mes.alpha.test

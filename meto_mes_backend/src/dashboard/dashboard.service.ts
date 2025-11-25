@@ -669,12 +669,7 @@ export class DashboardService {
       counts: [],
       cumulative: [],
     };
-    console.log(params);
     const stepTypeNo = params.stepTypeNo.trim();
-
-    // if (!product || !stepTypeNo) {
-    //   return empty;
-    // }
 
     const { start, end } = this.normalizeDateRange(
       params.startDate,
@@ -790,9 +785,10 @@ export class DashboardService {
       if (!allRows?.length) {
         return empty;
       }
+        
+        console.log(params.origin, ProductOrigin.MIANYANG, params.stepTypeNo)
       if (
         params.origin == ProductOrigin.MIANYANG &&
-        params.stepTypeNo in
           [
             STEP_NO.AFTER_AA_COATING_PROCESS_RECORD,
             STEP_NO.AFTER_AA_FINAL_COMPREHENSIVE_INSPECTION,
@@ -803,7 +799,9 @@ export class DashboardService {
             STEP_NO.SCREW_TIGHTENING_INSPECTION,
             STEP_NO.HIGH_TEMP_CURING_RECORD,
             STEP_NO.LASER_MARKING_INSPECTION,
-          ]
+            STEP_NO.BEAM_SEALANT_COATING,
+            STEP_NO.UV_DISPENSING,
+          ].includes(params.stepTypeNo as STEP_NO)
       ) {
         return await populateAiweishiAANgReasonFromErrorCode(
           allRows,

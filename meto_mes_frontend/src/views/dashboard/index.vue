@@ -1,6 +1,5 @@
 <template>
   <div class="dashboard-page space-y-4">
-    {{ level }}
     <el-card shadow="never">
       <filters-panel
         :product-options="productOptions"
@@ -82,7 +81,7 @@
       </template>
     </el-card>
 
-    <el-card v-if="level === 'process'" shadow="never">
+    <!-- <el-card v-if="level === 'process'" shadow="never">
       <template #header>
         <div class="flex items-center justify-between">
           <span class="text-base font-medium text-gray-700">在制工单</span>
@@ -95,7 +94,7 @@
         :work-orders="workOrders"
         :loading="workOrdersLoading"
       />
-    </el-card>
+    </el-card> -->
   </div>
 </template>
 

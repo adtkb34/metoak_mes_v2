@@ -48,6 +48,7 @@ export class K3CloudService {
 
         try {
           const result = JSON.parse(stdout);
+          console.log(result)
           const fields = [
             'work_order_code',
             'material_name',
@@ -58,6 +59,7 @@ export class K3CloudService {
             'order_state',
             'order_date',
             'description',
+            // 'id'
           ];
 
           const dtos = result.map((row: any[]) =>
@@ -81,6 +83,7 @@ export class K3CloudService {
           );
 
           for (const dto of dtos) {
+            // delete dto.id
             const existing = await this.prisma.mo_produce_order.findFirst({
               where: { work_order_code: dto.work_order_code, material_code: dto.material_code },
             });

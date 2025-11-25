@@ -8,7 +8,7 @@ import {
   format,
 } from 'date-fns';
 import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
-
+import { STEP_NO } from '../utils/stepNo';
 interface EfficiencyStatisticsParams {
   deviceId: string;
   start?: string;
@@ -110,7 +110,19 @@ export class DeviceManagementService {
         select: { operation_time: true },
       });
       rows = result.map((r) => ({ time: r.operation_time }));
-    } else if (aaDevices.includes(params.deviceId)) {
+    } else if (params.deviceId === DeviceType.SHUNYU_AA.code) {
+      const result = await this.prisma.mo_process_step_production_result.findMany({
+        where: {
+          step_type_no: STEP_NO.PLASMA,
+          add_time: {
+            ...(startUtc && { gte: startUtc }),
+            ...(endUtc && { lte: endUtc }),
+          },
+        },
+        select: { add_time: true },
+      });
+      rows = result.map((r) => ({ time: r.add_time }));
+    } else if (params.deviceId === DeviceType.AIWEISHI_AA.code) {
       const result = await this.prisma.mo_auto_adjust_info.findMany({
         where: {
           station_num: { not: 7 },

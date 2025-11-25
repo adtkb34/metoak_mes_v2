@@ -89,14 +89,12 @@ const EMPTY_PARETO_DATA: ParetoChartData = {
 
 const quantityMetricItems = [
   { key: "良品", label: "良品" },
-  { key: "产品", label: "产品" },
-  { key: "总体", label: "总体" }
+  { key: "产品", label: "产品" }
 ] as const;
 
 const yieldMetricItems = [
   { key: "一次", label: "一次" },
-  { key: "最终", label: "最终" },
-  { key: "总体", label: "总体" }
+  { key: "最终", label: "最终" }
 ] as const;
 
 const props = defineProps<{

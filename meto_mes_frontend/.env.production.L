@@ -12,7 +12,7 @@ VITE_CDN = false
 # 压缩时删除原始文件的配置：gzip-clear、brotli-clear、both-clear（同时开启 gzip 与 brotli 压缩）、none（不开启压缩，默认）
 VITE_COMPRESSION = "none"
 
-VITE_BACKEND_URL = "http://192.168.188.11:3000"
+VITE_BACKEND_URL = "http://172.24.81.112:3000"
 
 # 仪表盘是否使用本地mock数据
 VITE_USE_DASHBOARD_MOCK = true
@@ -20,7 +20,8 @@ VITE_USE_DASHBOARD_MOCK = true
 # 参数配置是否使用本地mock数据
 VITE_USE_PARAMETER_MOCK = true
 
-VITE_SPC_URL = "http://192.168.188.11:8080"
+VITE_SPC_URL = "http://172.24.81.112:8080"
 
 # 当前前端版本号
-VITE_APP_VERSION=v1.1.1.web_mes.alpha
+
+VITE_APP_VERSION=v1.1.1.web_mes.alpha.L
