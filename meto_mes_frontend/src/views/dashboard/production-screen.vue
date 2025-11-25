@@ -137,6 +137,17 @@ const processMetrics = reactive<ProcessMetric[]>([
   { name: "MTF测试", output: 398, uph: 58 }
 ]);
 
+const uphTimeline = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00"];
+
+const processUphHistory: Record<string, number[]> = {
+  镜片组装: [66, 68, 70, 72, 74, 76],
+  前盖锁付: [60, 62, 64, 66, 69, 70],
+  后盖锁付: [58, 60, 62, 64, 66, 68],
+  点胶: [55, 57, 59, 61, 63, 65],
+  IR贴片: [52, 54, 56, 58, 60, 62],
+  MTF测试: [50, 52, 54, 56, 58, 60]
+};
+
 const now = ref(new Date().toLocaleString());
 let timer: number | undefined;
 
@@ -147,7 +158,12 @@ let uphChart: echarts.ECharts | null = null;
 
 const processNames = computed(() => processMetrics.map(item => item.name));
 const outputValues = computed(() => processMetrics.map(item => item.output));
-const uphValues = computed(() => processMetrics.map(item => item.uph));
+const uphSeries = computed(() =>
+  processNames.value.map(name => ({
+    name,
+    data: processUphHistory[name] ?? new Array(uphTimeline.length).fill(0)
+  }))
+);
 
 function renderOutputChart() {
   if (!outputRef.value) return;
@@ -205,11 +221,17 @@ function renderUphChart() {
 
   uphChart.setOption({
     backgroundColor: "transparent",
-    grid: { top: 40, left: 60, right: 30, bottom: 40 },
+    grid: { top: 60, left: 60, right: 30, bottom: 40 },
     tooltip: { trigger: "axis" },
+    legend: {
+      data: processNames.value,
+      textStyle: { color: "#d8ccff" },
+      itemWidth: 14,
+      itemHeight: 8
+    },
     xAxis: {
       type: "category",
-      data: processNames.value,
+      data: uphTimeline,
       axisLine: { lineStyle: { color: "#7a6cff" } },
       axisLabel: { color: "#d8ccff" }
     },
@@ -220,29 +242,26 @@ function renderUphChart() {
       splitLine: { lineStyle: { color: "rgba(122,108,255,0.25)" } },
       axisLabel: { color: "#d8ccff" }
     },
-    series: [
-      {
+    series: uphSeries.value.map(({ name, data }, index) => {
+      const colors = ["#c5b3ff", "#7cf3ff", "#ffcf7f", "#7fe6ff", "#ffa6e7", "#9fff6c"];
+      const color = colors[index % colors.length];
+      return {
+        name,
         type: "line",
         smooth: true,
-        data: uphValues.value,
+        data,
         symbol: "circle",
-        symbolSize: 12,
-        itemStyle: { color: "#c5b3ff" },
-        lineStyle: { width: 3, color: "#c5b3ff" },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: "rgba(197,179,255,0.35)" },
-            { offset: 1, color: "rgba(197,179,255,0.05)" }
-          ])
-        },
+        symbolSize: 10,
+        itemStyle: { color },
+        lineStyle: { width: 3, color },
         label: {
           show: true,
           position: "top",
           color: "#f7f0ff",
           fontWeight: 700
         }
-      }
-    ]
+      };
+    })
   });
 }
 
