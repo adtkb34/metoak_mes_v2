@@ -1,828 +1,443 @@
 <template>
-  <div class="neo-screen" :class="{ fullscreen: isFullscreen }">
-    <div class="grid-overlay" />
-    <div class="scanline" />
-    <div class="content-shell">
-      <header class="screen-header">
-        <div>
-          <p class="eyebrow">mock data · cyber production board</p>
-          <h1 class="title">工单极客大屏</h1>
-          <div class="meta-row">
-            <span class="pill">{{ currentProductData.process }}</span>
-            <span class="pill">{{ currentProductData.line }}</span>
-          </div>
-        </div>
-        <div class="action-group">
-          <el-button class="ghost-btn" @click="selectionVisible = true">
-            <el-icon><Cpu /></el-icon>
-            选择工序 / 工单 / 产品
-          </el-button>
-          <el-button class="primary-btn" @click="toggleFullscreen">
-            <el-icon><FullScreen /></el-icon>
-            {{ isFullscreen ? "退出全屏" : "一键全屏" }}
-          </el-button>
-        </div>
-      </header>
+  <div class="production-screen">
+    <header class="screen-header">
+      <div>
+        <p class="eyebrow">产线实时看板</p>
+        <h1 class="title">装配生产大屏</h1>
+        <p class="subtitle">镜头模组 · 多工序运行态</p>
+      </div>
+      <div class="timestamp">{{ now }}</div>
+    </header>
 
-      <section class="metric-grid">
-        <div class="metric-card highlight">
-          <p class="label">工单编号</p>
-          <p class="value">{{ currentProductData.workOrder }}</p>
-          <p class="hint">高优先级 · 实时追踪</p>
+    <div class="screen-grid">
+      <section class="order-column">
+        <div class="panel-head">
+          <span class="panel-title">工单清单</span>
+          <span class="panel-hint">编号 · 描述 · 物料 · 数量</span>
         </div>
-        <div class="metric-card">
-          <p class="label">产品</p>
-          <p class="value">{{ currentProductData.product }}</p>
-          <p class="hint">{{ currentProductData.variant }}</p>
-        </div>
-        <div class="metric-card">
-          <p class="label">计划产量</p>
-          <p class="value">{{ currentProductData.plan }} pcs</p>
-          <div class="progress">
-            <div class="progress-bar" :style="{ width: `${completionPercent}%` }" />
+        <div class="order-list">
+          <div v-for="order in workOrders" :key="order.id" class="order-card">
+            <div class="order-row">
+              <span class="label">编号</span>
+              <span class="value strong">{{ order.id }}</span>
+            </div>
+            <div class="order-row">
+              <span class="label">描述</span>
+              <span class="value">{{ order.description }}</span>
+            </div>
+            <div class="order-row">
+              <span class="label">物料编码</span>
+              <span class="value">{{ order.materialCode }}</span>
+            </div>
+            <div class="order-row">
+              <span class="label">物料名称</span>
+              <span class="value">{{ order.materialName }}</span>
+            </div>
+            <div class="order-row">
+              <span class="label">数量</span>
+              <span class="value strong">{{
+                order.quantity.toLocaleString()
+              }}</span>
+            </div>
           </div>
-          <p class="hint">完成率 {{ completionPercent }}%</p>
-        </div>
-        <div class="metric-card">
-          <p class="label">一次良率</p>
-          <p class="value">{{ firstPassPercent }}%</p>
-          <p class="hint">首件至今趋势稳定</p>
-        </div>
-        <div class="metric-card">
-          <p class="label">今日产能</p>
-          <p class="value">{{ currentProductData.capacityToday }} pcs</p>
-          <p class="hint">班次：{{ currentProductData.shift }}</p>
-        </div>
-        <div class="metric-card">
-          <p class="label">UPH</p>
-          <p class="value">{{ latestUph }} /h</p>
-          <p class="hint">实时刷新 · 近12小时</p>
         </div>
       </section>
 
-      <section class="charts">
-        <div class="chart-card">
-          <div class="card-head">
-            <div>
-              <p class="label">质量柏拉图</p>
-              <p class="hint">缺陷贡献 + 累计占比</p>
-            </div>
-            <el-tag type="success" effect="dark">{{ currentProductData.batch }}</el-tag>
+      <section class="chart-column">
+        <div class="panel-block">
+          <div class="panel-head">
+            <span class="panel-title">工序产量</span>
+            <span class="panel-hint"
+              >镜片组装 · 前后盖锁付 · 点胶 · IR贴片 · MTF测试</span
+            >
           </div>
-          <div ref="paretoRef" class="chart-body" />
+          <div ref="outputRef" class="chart" />
         </div>
-        <div class="chart-card">
-          <div class="card-head">
-            <div>
-              <p class="label">UPH 动态</p>
-              <p class="hint">产能波动 · 霓虹曲线</p>
-            </div>
-            <el-tag effect="dark">{{ currentProductData.tempo }}</el-tag>
+        <div class="panel-block">
+          <div class="panel-head">
+            <span class="panel-title">工序 UPH</span>
+            <span class="panel-hint">单位小时产出对比</span>
           </div>
-          <div ref="uphRef" class="chart-body" />
+          <div ref="uphRef" class="chart" />
         </div>
       </section>
     </div>
-
-    <el-dialog
-      v-model="selectionVisible"
-      width="680px"
-      destroy-on-close
-      class="selection-dialog"
-      title="选择工序 / 工单 / 产品"
-    >
-      <div class="selection-grid">
-        <div class="selection-col">
-          <p class="label">工序</p>
-          <el-select v-model="selectedProcess" placeholder="选择工序" filterable>
-            <el-option
-              v-for="item in processOptions"
-              :key="item"
-              :label="item"
-              :value="item"
-            />
-          </el-select>
-        </div>
-        <div class="selection-col">
-          <p class="label">工单</p>
-          <el-select v-model="selectedOrder" placeholder="选择工单" filterable>
-            <el-option
-              v-for="item in orderOptions"
-              :key="item.id"
-              :label="`${item.id} · ${item.title}`"
-              :value="item.id"
-            />
-          </el-select>
-        </div>
-        <div class="selection-col">
-          <p class="label">产品</p>
-          <el-select v-model="selectedProduct" placeholder="选择产品" filterable>
-            <el-option
-              v-for="item in productOptions"
-              :key="item"
-              :label="item"
-              :value="item"
-            />
-          </el-select>
-        </div>
-      </div>
-      <template #footer>
-        <el-button class="ghost-btn" @click="selectionVisible = false">取消</el-button>
-        <el-button class="primary-btn" @click="applySelection">切换看板</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref, computed, watch } from "vue";
-import { ElMessage } from "element-plus";
-import { Cpu, FullScreen } from "@element-plus/icons-vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import * as echarts from "echarts";
 
-interface ParetoPoint {
-  issue: string;
-  count: number;
-}
-
-interface UphPoint {
-  label: string;
-  value: number;
-}
-
-interface ProductBoard {
-  product: string;
-  variant: string;
-  plan: number;
-  completion: number;
-  firstPass: number;
-  capacityToday: number;
-  shift: string;
-  uphTrend: UphPoint[];
-  pareto: ParetoPoint[];
-  workOrder: string;
-  process: string;
-  line: string;
-  batch: string;
-  tempo: string;
-}
-
-interface OrderBoard {
+interface WorkOrder {
   id: string;
-  title: string;
-  products: ProductBoard[];
+  description: string;
+  materialCode: string;
+  materialName: string;
+  quantity: number;
 }
 
-interface ProcessBoard {
-  process: string;
-  orders: OrderBoard[];
+interface ProcessMetric {
+  name: string;
+  output: number;
+  uph: number;
 }
 
-const mockData: ProcessBoard[] = reactive([
+const workOrders = reactive<WorkOrder[]>([
   {
-    process: "SMT 回流焊", // 1
-    orders: [
-      {
-        id: "WO-240512-01",
-        title: "AI 控制板 · 加急",
-        products: [
-          {
-            product: "AI 控制主板",
-            variant: "12层 · DDR5 · 高速链路",
-            plan: 1200,
-            completion: 0.72,
-            firstPass: 0.985,
-            capacityToday: 830,
-            shift: "白班 08:00 - 20:00",
-            workOrder: "WO-240512-01",
-            process: "SMT 回流焊",
-            line: "SMT-02 高速线",
-            batch: "Lot#B2405-SMT",
-            tempo: "62s tact",
-            uphTrend: [
-              { label: "08:00", value: 68 },
-              { label: "09:00", value: 72 },
-              { label: "10:00", value: 75 },
-              { label: "11:00", value: 79 },
-              { label: "12:00", value: 76 },
-              { label: "13:00", value: 81 },
-              { label: "14:00", value: 83 },
-              { label: "15:00", value: 84 },
-              { label: "16:00", value: 82 },
-              { label: "17:00", value: 80 },
-              { label: "18:00", value: 77 },
-              { label: "19:00", value: 75 }
-            ],
-            pareto: [
-              { issue: "印刷偏位", count: 34 },
-              { issue: "元件虚焊", count: 28 },
-              { issue: "锡珠", count: 22 },
-              { issue: "少锡", count: 18 },
-              { issue: "连锡", count: 11 },
-              { issue: "立碑", count: 9 },
-              { issue: "极性错误", count: 6 }
-            ]
-          },
-          {
-            product: "边缘计算板",
-            variant: "8层 · NPU 版",
-            plan: 860,
-            completion: 0.54,
-            firstPass: 0.972,
-            capacityToday: 620,
-            shift: "白班 08:00 - 20:00",
-            workOrder: "WO-240512-01",
-            process: "SMT 回流焊",
-            line: "SMT-02 高速线",
-            batch: "Lot#B2405-SMT",
-            tempo: "74s tact",
-            uphTrend: [
-              { label: "08:00", value: 51 },
-              { label: "09:00", value: 58 },
-              { label: "10:00", value: 62 },
-              { label: "11:00", value: 63 },
-              { label: "12:00", value: 60 },
-              { label: "13:00", value: 66 },
-              { label: "14:00", value: 69 },
-              { label: "15:00", value: 71 },
-              { label: "16:00", value: 72 },
-              { label: "17:00", value: 68 },
-              { label: "18:00", value: 64 },
-              { label: "19:00", value: 61 }
-            ],
-            pareto: [
-              { issue: "印刷偏位", count: 18 },
-              { issue: "少锡", count: 16 },
-              { issue: "立碑", count: 13 },
-              { issue: "虚焊", count: 11 },
-              { issue: "错件", count: 9 },
-              { issue: "锡珠", count: 7 },
-              { issue: "连锡", count: 6 }
-            ]
-          }
-        ]
-      },
-      {
-        id: "WO-240512-05",
-        title: "服务器背板",
-        products: [
-          {
-            product: "服务器背板",
-            variant: "18层 · 高速互连",
-            plan: 540,
-            completion: 0.38,
-            firstPass: 0.963,
-            capacityToday: 310,
-            shift: "夜班 20:00 - 08:00",
-            workOrder: "WO-240512-05",
-            process: "SMT 回流焊",
-            line: "SMT-01 精密线",
-            batch: "Lot#B2405-SRV",
-            tempo: "92s tact",
-            uphTrend: [
-              { label: "20:00", value: 33 },
-              { label: "21:00", value: 35 },
-              { label: "22:00", value: 38 },
-              { label: "23:00", value: 39 },
-              { label: "00:00", value: 40 },
-              { label: "01:00", value: 41 },
-              { label: "02:00", value: 42 },
-              { label: "03:00", value: 40 },
-              { label: "04:00", value: 38 },
-              { label: "05:00", value: 37 },
-              { label: "06:00", value: 36 },
-              { label: "07:00", value: 34 }
-            ],
-            pareto: [
-              { issue: "少锡", count: 21 },
-              { issue: "虚焊", count: 16 },
-              { issue: "连锡", count: 15 },
-              { issue: "翘脚", count: 12 },
-              { issue: "偏移", count: 9 },
-              { issue: "立碑", count: 7 },
-              { issue: "错件", count: 5 }
-            ]
-          }
-        ]
-      }
-    ]
+    id: "WO-202412-001",
+    description: "镜头组件批次 A · 加工中",
+    materialCode: "P01234-01",
+    materialName: "广角镜头组件",
+    quantity: 1200
   },
   {
-    process: "DIP 波峰焊",
-    orders: [
-      {
-        id: "WO-240513-03",
-        title: "汽车控制器",
-        products: [
-          {
-            product: "动力域控制器",
-            variant: "车规级 · 防护 conformal coating",
-            plan: 960,
-            completion: 0.61,
-            firstPass: 0.978,
-            capacityToday: 590,
-            shift: "白班 08:00 - 20:00",
-            workOrder: "WO-240513-03",
-            process: "DIP 波峰焊",
-            line: "DIP-03 自动线",
-            batch: "Lot#B2405-DIP",
-            tempo: "68s tact",
-            uphTrend: [
-              { label: "08:00", value: 60 },
-              { label: "09:00", value: 64 },
-              { label: "10:00", value: 66 },
-              { label: "11:00", value: 67 },
-              { label: "12:00", value: 65 },
-              { label: "13:00", value: 69 },
-              { label: "14:00", value: 72 },
-              { label: "15:00", value: 74 },
-              { label: "16:00", value: 73 },
-              { label: "17:00", value: 70 },
-              { label: "18:00", value: 68 },
-              { label: "19:00", value: 66 }
-            ],
-            pareto: [
-              { issue: "脚长不够", count: 17 },
-              { issue: "少焊", count: 15 },
-              { issue: "桥连", count: 13 },
-              { issue: "插反", count: 9 },
-              { issue: "漏件", count: 8 },
-              { issue: "位置偏移", count: 7 },
-              { issue: "铜箔翘起", count: 5 }
-            ]
-          }
-        ]
-      }
-    ]
+    id: "WO-202412-002",
+    description: "镜筒装配 · 质检优先",
+    materialCode: "P04567-02",
+    materialName: "精密镜筒",
+    quantity: 980
+  },
+  {
+    id: "WO-202412-003",
+    description: "前盖锁付 · 夜班",
+    materialCode: "P07890-05",
+    materialName: "铝合金前盖",
+    quantity: 860
+  },
+  {
+    id: "WO-202412-004",
+    description: "后盖锁付 · 待发料",
+    materialCode: "P09999-03",
+    materialName: "后盖组件",
+    quantity: 910
+  },
+  {
+    id: "WO-202412-005",
+    description: "IR 贴片 · 样件",
+    materialCode: "P02345-08",
+    materialName: "IR 滤光片",
+    quantity: 540
+  },
+  {
+    id: "WO-202412-006",
+    description: "MTF 测试 · 留样",
+    materialCode: "P06789-10",
+    materialName: "测试治具",
+    quantity: 420
   }
 ]);
 
-const selectionVisible = ref(false);
-const paretoRef = ref<HTMLDivElement>();
+const processMetrics = reactive<ProcessMetric[]>([
+  { name: "镜片组装", output: 520, uph: 74 },
+  { name: "前盖锁付", output: 488, uph: 69 },
+  { name: "后盖锁付", output: 462, uph: 66 },
+  { name: "点胶", output: 438, uph: 63 },
+  { name: "IR贴片", output: 412, uph: 60 },
+  { name: "MTF测试", output: 398, uph: 58 }
+]);
+
+const now = ref(new Date().toLocaleString());
+let timer: number | undefined;
+
+const outputRef = ref<HTMLDivElement>();
 const uphRef = ref<HTMLDivElement>();
-let paretoChart: echarts.ECharts | null = null;
+let outputChart: echarts.ECharts | null = null;
 let uphChart: echarts.ECharts | null = null;
 
-const selectedProcess = ref(mockData[0].process);
-const selectedOrder = ref(mockData[0].orders[0].id);
-const selectedProduct = ref(mockData[0].orders[0].products[0].product);
-const isFullscreen = ref(false);
-const handleFullscreenChange = () => {
-  isFullscreen.value = Boolean(document.fullscreenElement);
-};
+const processNames = computed(() => processMetrics.map(item => item.name));
+const outputValues = computed(() => processMetrics.map(item => item.output));
+const uphValues = computed(() => processMetrics.map(item => item.uph));
 
-const processOptions = computed(() => mockData.map(item => item.process));
-const orderOptions = computed(() => {
-  const target = mockData.find(item => item.process === selectedProcess.value);
-  return target?.orders || [];
-});
-
-const productOptions = computed(() => {
-  const target = orderOptions.value.find(order => order.id === selectedOrder.value);
-  return target?.products.map(item => item.product) || [];
-});
-
-const currentProductData = computed(() => {
-  const process = mockData.find(item => item.process === selectedProcess.value);
-  const order = process?.orders.find(item => item.id === selectedOrder.value);
-  const product = order?.products.find(item => item.product === selectedProduct.value);
-  return (
-    product || {
-      product: "-",
-      variant: "-",
-      plan: 0,
-      completion: 0,
-      firstPass: 0,
-      capacityToday: 0,
-      shift: "-",
-      workOrder: selectedOrder.value,
-      process: selectedProcess.value,
-      line: "-",
-      batch: "-",
-      tempo: "-",
-      uphTrend: [],
-      pareto: []
-    }
-  );
-});
-
-const completionPercent = computed(() => Math.round(currentProductData.value.completion * 100));
-const firstPassPercent = computed(() => Math.round(currentProductData.value.firstPass * 1000) / 10);
-const latestUph = computed(() => currentProductData.value.uphTrend.at(-1)?.value ?? 0);
-
-function applySelection() {
-  if (!selectedProcess.value || !selectedOrder.value || !selectedProduct.value) {
-    ElMessage.warning("请选择完整选项");
-    return;
+function renderOutputChart() {
+  if (!outputRef.value) return;
+  if (!outputChart) {
+    outputChart = echarts.init(outputRef.value);
   }
-  selectionVisible.value = false;
-  ElMessage.success("看板已切换为最新组合");
-}
 
-function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen();
-  } else {
-    document.exitFullscreen();
-  }
-}
-
-function buildParetoChart() {
-  if (!paretoRef.value) return;
-  if (!paretoChart) {
-    paretoChart = echarts.init(paretoRef.value);
-  }
-  const data = currentProductData.value.pareto;
-  const labels = data.map(item => item.issue);
-  const counts = data.map(item => item.count);
-  const total = counts.reduce((a, b) => a + b, 0) || 1;
-  const cumulative: number[] = [];
-  counts.reduce((acc, cur) => {
-    const next = acc + cur;
-    cumulative.push(Math.round((next / total) * 100));
-    return next;
-  }, 0);
-
-  paretoChart.setOption({
+  outputChart.setOption({
     backgroundColor: "transparent",
-    grid: { left: 60, right: 60, top: 40, bottom: 40 },
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-    xAxis: [
-      {
-        type: "category",
-        data: labels,
-        axisLabel: { color: "#9cc8ff" },
-        axisLine: { lineStyle: { color: "#2b80ff" } },
-        axisTick: { show: false }
-      }
-    ],
-    yAxis: [
-      {
-        type: "value",
-        name: "缺陷数",
-        axisLabel: { color: "#9cc8ff" },
-        splitLine: { lineStyle: { color: "rgba(77,123,255,0.2)" } },
-        axisLine: { lineStyle: { color: "#2b80ff" } }
-      },
-      {
-        type: "value",
-        name: "累计%",
-        max: 100,
-        axisLabel: { formatter: "{value}%", color: "#9cc8ff" },
-        splitLine: { show: false },
-        axisLine: { lineStyle: { color: "#2b80ff" } }
-      }
-    ],
+    grid: { top: 40, left: 60, right: 30, bottom: 40 },
+    tooltip: { trigger: "axis" },
+    xAxis: {
+      type: "category",
+      data: processNames.value,
+      axisLine: { lineStyle: { color: "#4ca3ff" } },
+      axisLabel: { color: "#cce6ff" }
+    },
+    yAxis: {
+      type: "value",
+      name: "产量 (件)",
+      axisLine: { lineStyle: { color: "#4ca3ff" } },
+      splitLine: { lineStyle: { color: "rgba(76,163,255,0.25)" } },
+      axisLabel: { color: "#cce6ff" }
+    },
     series: [
       {
         type: "bar",
-        name: "缺陷数",
-        data: counts,
+        data: outputValues.value,
+        barWidth: 36,
         itemStyle: {
+          borderRadius: [10, 10, 4, 4],
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: "#3af0ff" },
-            { offset: 1, color: "#0544ff" }
+            { offset: 0, color: "#7cf3ff" },
+            { offset: 1, color: "#1d5fff" }
           ]),
-          shadowBlur: 16,
-          shadowColor: "rgba(0,255,255,0.35)"
+          shadowBlur: 18,
+          shadowColor: "rgba(29,95,255,0.45)"
         },
-        barWidth: 26,
-        emphasis: { focus: "series" }
-      },
-      {
-        type: "line",
-        name: "累计占比",
-        yAxisIndex: 1,
-        data: cumulative,
-        smooth: true,
-        symbol: "circle",
-        symbolSize: 10,
-        itemStyle: { color: "#ffb547" },
-        lineStyle: { width: 3, color: "#ffb547" },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: "rgba(255,181,71,0.32)" },
-            { offset: 1, color: "rgba(255,181,71,0.05)" }
-          ])
+        label: {
+          show: true,
+          position: "top",
+          color: "#e6f7ff",
+          fontWeight: 700
         }
       }
     ]
   });
 }
 
-function buildUphChart() {
+function renderUphChart() {
   if (!uphRef.value) return;
   if (!uphChart) {
     uphChart = echarts.init(uphRef.value);
   }
-  const data = currentProductData.value.uphTrend;
-  const labels = data.map(item => item.label);
-  const values = data.map(item => item.value);
 
   uphChart.setOption({
     backgroundColor: "transparent",
-    grid: { left: 50, right: 40, top: 40, bottom: 40 },
+    grid: { top: 40, left: 60, right: 30, bottom: 40 },
     tooltip: { trigger: "axis" },
     xAxis: {
       type: "category",
-      data: labels,
-      boundaryGap: false,
-      axisLabel: { color: "#9cc8ff" },
-      axisLine: { lineStyle: { color: "#2b80ff" } },
-      axisTick: { show: false }
+      data: processNames.value,
+      axisLine: { lineStyle: { color: "#7a6cff" } },
+      axisLabel: { color: "#d8ccff" }
     },
     yAxis: {
       type: "value",
-      axisLabel: { color: "#9cc8ff" },
-      splitLine: { lineStyle: { color: "rgba(77,123,255,0.2)" } },
-      axisLine: { lineStyle: { color: "#2b80ff" } }
+      name: "UPH",
+      axisLine: { lineStyle: { color: "#7a6cff" } },
+      splitLine: { lineStyle: { color: "rgba(122,108,255,0.25)" } },
+      axisLabel: { color: "#d8ccff" }
     },
     series: [
       {
         type: "line",
-        data: values,
         smooth: true,
+        data: uphValues.value,
         symbol: "circle",
-        symbolSize: 10,
-        lineStyle: { width: 4, color: "#39ff14" },
-        itemStyle: {
-          color: "#39ff14",
-          shadowBlur: 20,
-          shadowColor: "rgba(57,255,20,0.6)"
-        },
+        symbolSize: 12,
+        itemStyle: { color: "#c5b3ff" },
+        lineStyle: { width: 3, color: "#c5b3ff" },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: "rgba(57,255,20,0.35)" },
-            { offset: 1, color: "rgba(57,255,20,0.05)" }
+            { offset: 0, color: "rgba(197,179,255,0.35)" },
+            { offset: 1, color: "rgba(197,179,255,0.05)" }
           ])
+        },
+        label: {
+          show: true,
+          position: "top",
+          color: "#f7f0ff",
+          fontWeight: 700
         }
       }
     ]
   });
 }
 
-watch(currentProductData, () => {
-  buildParetoChart();
-  buildUphChart();
-});
-
-watch(selectedProcess, () => {
-  selectedOrder.value = orderOptions.value[0]?.id || "";
-});
-
-watch(selectedOrder, () => {
-  selectedProduct.value = productOptions.value[0] || "";
-});
+function handleResize() {
+  outputChart?.resize();
+  uphChart?.resize();
+}
 
 onMounted(() => {
-  buildParetoChart();
-  buildUphChart();
-  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  renderOutputChart();
+  renderUphChart();
+  timer = window.setInterval(() => {
+    now.value = new Date().toLocaleString();
+  }, 1000);
+  window.addEventListener("resize", handleResize);
 });
 
 onBeforeUnmount(() => {
-  paretoChart?.dispose();
+  window.removeEventListener("resize", handleResize);
+  if (timer) {
+    clearInterval(timer);
+  }
+  outputChart?.dispose();
   uphChart?.dispose();
-  document.removeEventListener("fullscreenchange", handleFullscreenChange);
 });
 </script>
 
-<style scoped lang="scss">
-.neo-screen {
-  position: relative;
+<style scoped>
+.production-screen {
   min-height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-  background: radial-gradient(circle at 20% 20%, rgba(0, 200, 255, 0.08), transparent 25%),
-    radial-gradient(circle at 80% 10%, rgba(255, 0, 255, 0.06), transparent 30%),
-    radial-gradient(circle at 60% 60%, rgba(0, 255, 135, 0.08), transparent 35%),
-    linear-gradient(135deg, #040915, #050d1d 50%, #031133);
-  color: #e5f1ff;
-  font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-.neo-screen.fullscreen {
-  padding: 0;
-}
-
-.content-shell {
-  position: relative;
-  padding: 32px 36px 48px;
-  z-index: 2;
-}
-
-.grid-overlay {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(0, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 160px 160px, 160px 160px;
-  opacity: 0.35;
-  filter: blur(0.2px);
-  z-index: 0;
-}
-
-.scanline {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(0, 255, 255, 0.03),
-    rgba(0, 255, 255, 0.03) 2px,
-    transparent 2px,
-    transparent 4px
-  );
-  mix-blend-mode: screen;
-  opacity: 0.2;
-  z-index: 1;
+  padding: 20px 22px;
+  background: radial-gradient(
+      circle at 20% 20%,
+      rgba(0, 206, 255, 0.08),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 80% 10%,
+      rgba(122, 108, 255, 0.08),
+      transparent 30%
+    ),
+    linear-gradient(135deg, #050c1e, #0c1e38 60%, #0b1630);
+  color: #eaf5ff;
+  box-sizing: border-box;
 }
 
 .screen-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
-  gap: 12px;
-}
-
-.title {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  margin: 4px 0;
-  color: #8be9ff;
-  text-shadow: 0 0 16px rgba(0, 255, 255, 0.55);
+  align-items: center;
+  padding: 12px 18px;
+  border: 1px solid rgba(104, 191, 255, 0.35);
+  border-radius: 14px;
+  background: rgba(12, 30, 56, 0.75);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
 }
 
 .eyebrow {
-  color: #6dc8ff;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-size: 12px;
-}
-
-.meta-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid rgba(0, 255, 255, 0.3);
-  border-radius: 999px;
-  background: rgba(9, 42, 68, 0.5);
-  color: #bfe7ff;
-  font-size: 12px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: #7dc8ff;
   text-transform: uppercase;
 }
 
-.action-group {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+.title {
+  font-size: 28px;
+  margin: 6px 0 2px;
+  font-weight: 800;
+  color: #f6fbff;
 }
 
-.ghost-btn {
-  background: rgba(8, 31, 56, 0.7);
-  border: 1px solid rgba(0, 255, 255, 0.35);
-  color: #8bd3ff;
+.subtitle {
+  color: #7da2d9;
+  font-size: 14px;
 }
 
-.primary-btn {
-  background: linear-gradient(135deg, #00f0ff, #0060ff);
-  border: none;
-  color: #001123;
+.timestamp {
+  color: #9fc9ff;
   font-weight: 700;
-  box-shadow: 0 8px 40px rgba(0, 170, 255, 0.45);
+  letter-spacing: 0.02em;
 }
 
-.metric-grid {
+.screen-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: 360px 1fr;
   gap: 16px;
+  margin-top: 18px;
 }
 
-.metric-card {
-  padding: 16px 18px;
-  background: radial-gradient(circle at 20% 20%, rgba(0, 255, 255, 0.08), transparent 45%),
-    linear-gradient(135deg, rgba(18, 54, 92, 0.8), rgba(8, 20, 45, 0.8));
-  border: 1px solid rgba(61, 119, 255, 0.4);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
-  border-radius: 14px;
+.order-column,
+.chart-column .panel-block {
+  background: rgba(8, 23, 45, 0.8);
+  border: 1px solid rgba(87, 152, 255, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(6px);
 }
 
-.metric-card.highlight {
-  border-color: rgba(0, 255, 255, 0.7);
-  box-shadow: 0 0 25px rgba(0, 255, 255, 0.25);
+.order-column {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.label {
-  color: #7fbfff;
-  font-size: 13px;
-  letter-spacing: 0.04em;
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 4px 8px;
+  border-bottom: 1px solid rgba(87, 152, 255, 0.25);
 }
 
-.value {
-  font-size: 26px;
+.panel-title {
   font-weight: 800;
-  margin: 6px 0;
-  color: #f5fcff;
+  color: #f5fbff;
 }
 
-.hint {
-  color: #7a98c5;
+.panel-hint {
+  color: #7ea8d9;
   font-size: 12px;
 }
 
-.progress {
-  position: relative;
-  width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  overflow: hidden;
-  margin: 8px 0 4px;
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 180px);
+  overflow: auto;
+  padding-right: 6px;
 }
 
-.progress-bar {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, #19f0ff, #2667ff, #4a00ff);
-  box-shadow: 0 0 18px rgba(0, 255, 255, 0.4);
+.order-card {
+  border: 1px solid rgba(104, 191, 255, 0.4);
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(20, 64, 110, 0.6),
+    rgba(10, 30, 60, 0.9)
+  );
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
 }
 
-.charts {
-  margin-top: 18px;
+.order-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #cfe7ff;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(87, 152, 255, 0.25);
+}
+
+.order-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  color: #7ea8d9;
+}
+
+.value {
+  color: #f4fbff;
+}
+
+.value.strong {
+  font-weight: 800;
+}
+
+.chart-column {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  grid-template-rows: 1fr 1fr;
   gap: 16px;
 }
 
-.chart-card {
-  background: linear-gradient(145deg, rgba(13, 30, 60, 0.9), rgba(5, 12, 30, 0.9));
-  border: 1px solid rgba(0, 153, 255, 0.4);
-  box-shadow: 0 10px 45px rgba(0, 0, 0, 0.3);
-  border-radius: 18px;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.panel-block {
+  padding: 14px 16px;
 }
 
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.chart-body {
+.chart {
   width: 100%;
-  height: 320px;
+  height: calc(50vh - 80px);
 }
 
-.selection-dialog :deep(.el-dialog__body) {
-  padding-top: 12px;
-}
-
-.selection-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.selection-col {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-:deep(.el-select),
-:deep(.el-input__inner) {
-  background: rgba(8, 31, 56, 0.7);
-  border-color: rgba(0, 255, 255, 0.35);
-  color: #cbe6ff;
-}
-
-:deep(.el-select-dropdown__item) {
-  color: #0e1a2d;
-}
-
-@media (max-width: 960px) {
-  .screen-header {
-    flex-direction: column;
-    align-items: flex-start;
+@media (max-width: 1200px) {
+  .screen-grid {
+    grid-template-columns: 1fr;
   }
 
-  .action-group {
-    width: 100%;
-    justify-content: flex-end;
+  .order-list {
+    max-height: none;
+  }
+
+  .chart-column {
+    grid-template-rows: repeat(2, 360px);
   }
 }
 </style>
