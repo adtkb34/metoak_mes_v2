@@ -3,7 +3,11 @@ import { store } from "@/store";
 import { useTagStore } from "@/store/modules/tag";
 import { computed, onMounted, ref, watch } from "vue";
 import { getCurrentYearCode, spliceFields, exportToCSV } from "./utils";
-import { getBeamMaterialCode, markSerialNumbersUsed } from "@/api/tag";
+import {
+  generateCustomBeamSN,
+  getBeamMaterialCode,
+  markSerialNumbersUsed
+} from "@/api/tag";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
 import { generatebeamSN } from "@/api/tag";
@@ -17,6 +21,8 @@ defineOptions({
 const userStore = useUserListStore(store);
 const selectMaterialCode = ref<string | null>(null);
 const total = ref(0);
+const customTotal = ref(0);
+const generationMode = ref<"auto" | "custom">("auto");
 const currentOrderId = ref<number | null>(null);
 const backendUrl = import.meta.env.VITE_BACKEND_URL ?? "";
 const defaultOrigin = backendUrl.includes("11.11.11.15") ? "S" : "M";
@@ -25,6 +31,11 @@ const selectOperate = ref("Z");
 const isWeekInputDisabled = ref(true);
 const weekNum = ref(dayjs().week().toString().padStart(2, "0"));
 const exportAll = ref(false);
+const customWorkOrderCode = ref("");
+const customProduceOrderId = ref<number | null>(null);
+const customSnPrefix = ref("");
+const customSnSuffix = ref("");
+const customSerialLength = ref(5);
 
 const tagStore = useTagStore(store);
 const materialFilterPrefix = ref("800.");
@@ -75,11 +86,24 @@ const fetchSerialNumbers = async (options: { withMaterialCode?: boolean } = {}) 
 };
 
 async function handleGenerate() {
-  if (total.value === 0 || !beamSnPrefix.value) {
+  if (!selectedWorkOrderCode.value) {
     return;
   }
 
-  if (!selectedWorkOrderCode.value) {
+  if (generationMode.value === "custom") {
+    await generateCustomBeamSN({
+      work_order_code: customWorkOrderCode.value || tagStore.getOrderCode,
+      produced_order_id: customProduceOrderId.value ?? undefined,
+      sn_prefix: customSnPrefix.value.toUpperCase(),
+      sn_suffix: customSnSuffix.value.toUpperCase(),
+      serial_length: customSerialLength.value,
+      total: customTotal.value
+    });
+    await fetchSerialNumbers();
+    return;
+  }
+
+  if (total.value === 0 || !beamSnPrefix.value) {
     return;
   }
 
@@ -137,7 +161,10 @@ watch(
     if (newVal == null) {
       snList.value = [];
       total.value = 0;
+      customTotal.value = 0;
       selectMaterialCode.value = null;
+      customSnPrefix.value = "";
+      customSnSuffix.value = "";
     }
   }
 );
@@ -147,9 +174,19 @@ watch(
   async workOrderCode => {
     if (!workOrderCode) return;
     total.value = 0;
+    customTotal.value = 0;
     snList.value = [];
     await fetchSerialNumbers();
   }
+);
+
+watch(
+  () => selectedOrder.value,
+  order => {
+    customWorkOrderCode.value = order?.work_order_code ?? "";
+    customProduceOrderId.value = order?.id ?? null;
+  },
+  { immediate: true }
 );
 
 // no watcher for exportAll - it now only affects export behavior
@@ -203,8 +240,16 @@ watch(
     <div class="flex flex-col mr-5 w-full justify-center items-end">
       <div class="w-full flex flex-row">
         <el-card class="w-1/3 h-[40rem] mr-5">
-          <template #header> 自动生成 </template>
-          <el-row :gutter="20">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <span>序列号生成</span>
+              <el-radio-group v-model="generationMode" size="small">
+                <el-radio-button label="auto">自动模式</el-radio-button>
+                <el-radio-button label="custom">自定义模式</el-radio-button>
+              </el-radio-group>
+            </div>
+          </template>
+          <el-row v-if="generationMode === 'auto'" :gutter="20">
             <el-col :span="24" class="mb-5">
               <span>编码</span>
               <div class="inline-flex w-1/2 ml-5">
@@ -282,6 +327,64 @@ watch(
                   currentOrderId &&
                   selectMaterialCode
                 "
+                @click="handleGenerate"
+                >生成</el-button
+              >
+              <el-button
+                class="ml-3"
+                :disabled="isExportDisabled"
+                @click="handleExport"
+                >导出标签</el-button
+              >
+            </el-col>
+          </el-row>
+
+          <el-row v-else :gutter="20">
+            <el-col :span="24" class="mb-5">
+              <span>工单号</span>
+              <div class="inline-flex w-1/2 ml-5">
+                <el-input v-model="customWorkOrderCode" placeholder="work_order_code" />
+              </div>
+            </el-col>
+
+            <el-col :span="24" class="mb-5">
+              <span>生产订单ID</span>
+              <div class="inline-flex w-1/2 ml-5">
+                <el-input-number v-model="customProduceOrderId" class="w-full" />
+              </div>
+            </el-col>
+
+            <el-col :span="24" class="mb-5">
+              <span>前缀</span>
+              <div class="inline-flex w-1/2 ml-5">
+                <el-input v-model="customSnPrefix" placeholder="SN 前缀" />
+              </div>
+            </el-col>
+
+            <el-col :span="24" class="mb-5">
+              <span>后缀</span>
+              <div class="inline-flex w-1/2 ml-5">
+                <el-input v-model="customSnSuffix" placeholder="SN 后缀" />
+              </div>
+            </el-col>
+
+            <el-col :span="24" class="mb-5">
+              <span>流水号长度</span>
+              <div class="inline-flex w-1/2 ml-5">
+                <el-input-number v-model="customSerialLength" :min="1" />
+              </div>
+            </el-col>
+
+            <el-col :span="24" class="mb-5">
+              <span>数量</span>
+              <div class="inline-flex w-1/2 ml-5">
+                <el-input-number v-model="customTotal" :min="0" />
+              </div>
+            </el-col>
+
+            <el-col :span="24">
+              <el-button
+                :disabled="userStore.getUserLevel >= 2 || !customSnPrefix || !customTotal"
                 @click="handleGenerate"
                 >生成</el-button
               >

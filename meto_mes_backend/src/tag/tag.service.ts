@@ -5,6 +5,7 @@ import { BeamInfoDTO } from './beamInfo.dto';
 import { ShellInfoDTO } from './shellInfo.dto';
 import { ShellConfigDTO } from './shellConfig.dto';
 import { MarkSerialDTO } from './markSerial.dto';
+import { CustomSerialDTO } from './customSerial.dto';
 
 @Injectable()
 export class TagService {
@@ -188,6 +189,83 @@ export class TagService {
     }
   }
 
+  private async getCustomBeamSerialMax(
+    sn_prefix: string,
+    sn_suffix = '',
+  ): Promise<number> {
+    const result = await this.prisma.mo_beam_info.aggregate({
+      _max: {
+        serial_number: true,
+      },
+      where: {
+        beam_sn: {
+          startsWith: sn_prefix,
+          ...(sn_suffix ? { endsWith: sn_suffix } : {}),
+        },
+      },
+    });
+
+    return result._max.serial_number ?? 0;
+  }
+
+  async insertCustomBeamSerialRange(dto: CustomSerialDTO) {
+    const { total, produced_order_id, sn_prefix, sn_suffix = '', serial_length } = dto;
+
+    if (!total || !sn_prefix || !serial_length || serial_length < 1) {
+      return { type: 'error', message: 'invalid parameters' };
+    }
+
+    if (!this.prefixValidator(sn_prefix) || (sn_suffix && !this.prefixValidator(sn_suffix))) {
+      return { type: 'error', message: 'prefix error' };
+    }
+
+    const order = produced_order_id
+      ? await this.prisma.mo_produce_order.findFirst({ where: { id: produced_order_id } })
+      : await this.prisma.mo_produce_order.findFirst({
+          where: { work_order_code: dto.work_order_code ?? '' },
+        });
+
+    const work_order_code = dto.work_order_code ?? order?.work_order_code;
+    const material_code = order?.material_code;
+
+    if (!work_order_code) {
+      return { type: 'error', message: 'work_order_code is required' };
+    }
+
+    const currentMax = await this.getCustomBeamSerialMax(sn_prefix, sn_suffix);
+    const create_time = new Date();
+
+    const data: Prisma.mo_beam_infoCreateManyInput[] = [];
+    for (let index = 1; index <= total; index++) {
+      const serial_number = currentMax + index;
+      const serialText = serial_number.toString().padStart(serial_length, '0');
+      const beam_sn = `${sn_prefix}${serialText}${sn_suffix}`;
+
+      data.push({
+        beam_sn,
+        work_order_code,
+        serial_number,
+        create_time,
+        ...(material_code ? { material_code } : {}),
+      });
+    }
+
+    try {
+      const result = await this.prisma.mo_beam_info.createMany({
+        data,
+        skipDuplicates: true,
+      });
+
+      return {
+        type: 'success',
+        ...result,
+        data,
+      };
+    } catch (e) {
+      throw new Error(e);
+    }
+  }
+
   async getShellMaxSerialNumber(shellSnPrefix: string): Promise<number> {
     const result = await this.prisma.mo_tag_info.aggregate({
       _max: {
@@ -263,6 +341,86 @@ export class TagService {
       data.push(record);
       
     console.log(record)
+    }
+
+    try {
+      const result = await this.prisma.mo_tag_info.createMany({
+        data,
+        skipDuplicates: true,
+      });
+
+      return {
+        type: 'success',
+        ...result,
+        data,
+      };
+    } catch (e) {
+      throw new Error(e);
+    }
+  }
+
+  private async getCustomShellSerialMax(sn_prefix: string, sn_suffix = ''): Promise<number> {
+    const result = await this.prisma.mo_tag_info.aggregate({
+      _max: {
+        serial_number: true,
+      },
+      where: {
+        tag_sn: {
+          startsWith: sn_prefix,
+          ...(sn_suffix ? { endsWith: sn_suffix } : {}),
+        },
+      },
+    });
+
+    return result._max.serial_number ?? 0;
+  }
+
+  async insertCustomShellSerialRange(dto: CustomSerialDTO) {
+    const { total, produced_order_id, sn_prefix, sn_suffix = '', serial_length } = dto;
+
+    if (!total || !sn_prefix || !serial_length || serial_length < 1) {
+      return { type: 'error', message: 'invalid parameters' };
+    }
+
+    if (!this.prefixValidator(sn_prefix) || (sn_suffix && !this.prefixValidator(sn_suffix))) {
+      return { type: 'error', message: 'prefix error' };
+    }
+
+    const order = produced_order_id
+      ? await this.prisma.mo_produce_order.findFirst({ where: { id: produced_order_id } })
+      : await this.prisma.mo_produce_order.findFirst({
+          where: { work_order_code: dto.work_order_code ?? '' },
+        });
+
+    const work_order_code = dto.work_order_code ?? order?.work_order_code;
+    const material_code = order?.material_code;
+
+    if (!work_order_code) {
+      return { type: 'error', message: 'work_order_code is required' };
+    }
+
+    const currentMax = await this.getCustomShellSerialMax(sn_prefix, sn_suffix);
+    const create_time = new Date();
+    const data: Prisma.mo_tag_infoCreateManyInput[] = [];
+
+    for (let index = 1; index <= total; index++) {
+      const serial_number = currentMax + index;
+      const serialText = serial_number.toString().padStart(serial_length, '0');
+      const tag_sn = `${sn_prefix}${serialText}${sn_suffix}`;
+
+      const record: Prisma.mo_tag_infoCreateManyInput = {
+        tag_sn,
+        work_order_code,
+        serial_number,
+        create_time,
+        ...(material_code ? { material_code } : {}),
+      };
+
+      if (typeof produced_order_id === 'number') {
+        record.produce_order_id = produced_order_id;
+      }
+
+      data.push(record);
     }
 
     try {

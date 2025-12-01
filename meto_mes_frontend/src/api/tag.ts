@@ -8,6 +8,7 @@ import type {
   ShellTagConfig,
   ShellTagConfigPayload,
   TagCreationResponse,
+  CustomSerialPayload,
   TagListResponse
 } from "types/tag";
 
@@ -80,6 +81,14 @@ export function generateShellSN(data: {
   return http.request("post", "/tag/shellSN", {
     data
   });
+}
+
+export function generateCustomBeamSN(data: CustomSerialPayload) {
+  return http.request("post", "/tag/v2/beamSN", { data });
+}
+
+export function generateCustomShellSN(data: CustomSerialPayload) {
+  return http.request("post", "/tag/v2/shellSN", { data });
 }
 
 export function saveShellTagConfig(data: ShellTagConfigPayload) {
