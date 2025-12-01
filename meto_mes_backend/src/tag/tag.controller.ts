@@ -4,6 +4,7 @@ import { BeamInfoDTO } from './beamInfo.dto';
 import { ShellInfoDTO } from './shellInfo.dto';
 import { ShellConfigDTO } from './shellConfig.dto';
 import { MarkSerialDTO } from './markSerial.dto';
+import { CustomSerialDTO } from './customSerial.dto';
 
 @Controller('tag')
 export class TagController {
@@ -75,12 +76,28 @@ export class TagController {
     return this.tagService.insertSerialRange(dto);
   }
 
+  @Post('/v2/beamSN')
+  generateBeamSNV2(@Body() dto: CustomSerialDTO) {
+    if ((dto.user_level ?? 0) > 1) {
+      return null;
+    }
+    return this.tagService.insertCustomBeamSerialRange(dto);
+  }
+
   @Post('/shellSN')
   generateShellSN(@Body() dto: ShellInfoDTO) {
     if (dto.user_level > 1) {
       return null;
     }
     return this.tagService.insertShellSerialRange(dto);
+  }
+
+  @Post('/v2/shellSN')
+  generateShellSNV2(@Body() dto: CustomSerialDTO) {
+    if ((dto.user_level ?? 0) > 1) {
+      return null;
+    }
+    return this.tagService.insertCustomShellSerialRange(dto);
   }
 
   @Post('/shellConfig')
