@@ -1153,6 +1153,7 @@ model mo_produce_order {
   completed_count     Int?      @default(0)
   product_type        String?   @db.VarChar(16)
   description         String?   @db.VarChar(255)
+  can_exceed_planned_count Boolean? @default(false)
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
