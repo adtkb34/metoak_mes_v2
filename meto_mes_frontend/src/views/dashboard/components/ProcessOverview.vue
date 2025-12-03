@@ -43,6 +43,39 @@
                 </div>
               </div>
             </div>
+            <div v-if="showWip" class="metric-group">
+              <div class="text-xs font-medium text-gray-500">WIP</div>
+              <div v-if="item.metrics.WIP?.length" class="mt-2 space-y-2">
+                <div
+                  v-for="wip in item.metrics.WIP"
+                  :key="`${wip.productCode}-${wip.workOrderMaterialCode ?? ''}`"
+                  class="flex items-start justify-between rounded-md border border-gray-100 bg-white px-3 py-2"
+                >
+                  <div class="space-y-1">
+                    <div class="text-gray-600">{{ wip.productCode }}</div>
+                    <div v-if="wip.workOrderMaterialCode" class="text-xs text-gray-400">
+                      工单物料号：{{ wip.workOrderMaterialCode }}
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-lg font-semibold text-indigo-600">
+                      {{ formatWipQuantity(wip.goodQuantity) }}
+                      <span class="mx-1 text-xs text-gray-400">/</span>
+                      <span class="text-sm font-medium text-gray-500">
+                        {{ formatWipQuantity(wip.plannedQuantity) }}
+                      </span>
+                    </div>
+                    <div class="text-xs text-gray-400">
+                      完成率：
+                      <span class="text-gray-600">
+                        {{ formatCompletionRate(wip.goodQuantity, wip.plannedQuantity) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="mt-2 text-xs text-gray-400">暂无 WIP 数据</div>
+            </div>
           </div>
         </div>
       </div>
@@ -57,13 +90,14 @@ import type { ProcessMetricsSummary, ProcessOverviewItem } from "../types";
 interface Props {
   processes: ProcessOverviewItem[];
   loading?: boolean;
+  showWip?: boolean;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
   (event: "select", id: string): void;
 }>();
-const { processes, loading } = toRefs(props);
+const { processes, loading, showWip } = toRefs(props);
 
 const METRIC_GROUPS = [
   {
@@ -153,6 +187,35 @@ const getMetricClass = (groupKey: string) => {
     return "text-indigo-600";
   }
   return "text-gray-700";
+};
+
+const parseNumericValue = (value: number | string | undefined): number | null => {
+  if (typeof value === "number") return value;
+  if (value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const formatWipQuantity = (value: number | string | undefined) => {
+  if (typeof value === "number") {
+    return numberFormatter.format(value);
+  }
+  if (value === undefined || value === null) {
+    return "-";
+  }
+  return String(value);
+};
+
+const formatCompletionRate = (
+  goodQuantity: number | string | undefined,
+  plannedQuantity: number | string | undefined
+) => {
+  const good = parseNumericValue(goodQuantity);
+  const planned = parseNumericValue(plannedQuantity);
+  if (good === null || planned === null || planned <= 0) {
+    return "-";
+  }
+  return `${((good / planned) * 100).toFixed(1)}%`;
 };
 </script>
 
