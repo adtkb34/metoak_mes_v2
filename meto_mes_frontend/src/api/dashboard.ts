@@ -25,7 +25,9 @@ import type {
   MaterialCodeParams,
   WorkOrderCodeParams,
   WorkOrderCodeMap,
-  WorkOrderProcessMetricsParams
+  WorkOrderProcessMetricsParams,
+  PlannedQuantityParams,
+  PlannedQuantityResult
 } from "./dashboard.types";
 import { fa } from "element-plus/es/locale/index.mjs";
 
@@ -45,6 +47,7 @@ const PROCESS_PARETO_URL = "/dashboard/pareto";
 const MATERIAL_CODES_URL = "/dashboard/material-codes";
 const WORK_ORDER_CODES_URL = "/dashboard/work-order-codes";
 const WORK_ORDER_PROCESS_METRICS_URL = "/dashboard/work-order-process-metrics";
+const PLANNED_QUANTITY_URL = "/dashboard/planned-quantity";
 
 const isMockEnabled = (() => {
   const flag = false;
@@ -330,6 +333,18 @@ export async function fetchParetoData(
   );
 
   return unwrapResponse(response, "获取柏拉图数据失败");
+}
+
+export async function fetchPlannedQuantity(
+  params: PlannedQuantityParams
+): Promise<PlannedQuantityResult> {
+  const response = await http.request<ApiResponse<PlannedQuantityResult>>(
+    "get",
+    PLANNED_QUANTITY_URL,
+    { params }
+  );
+
+  return unwrapResponse(response, "获取计划产量失败");
 }
 
 export async function fetchProcessStageInfo(

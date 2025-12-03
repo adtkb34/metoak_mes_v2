@@ -101,6 +101,12 @@ interface ProcessMetricsParams extends DashboardSummaryParams {
   stations?: string[];
 }
 
+interface PlannedQuantityParams {
+  origin: ProductOrigin;
+  workOrderCode: string;
+  materialCode: string;
+}
+
 export interface ProcessMetricsSummary {
   数量: {
     良品: number | string;
@@ -308,6 +314,31 @@ export class DashboardService {
       stageName: r.stage_name?.trim() ?? null,
       sysStepTypeNo: r.step_type_no?.trim() ?? null,
     }));
+  }
+
+  async getPlannedQuantity(
+    params: PlannedQuantityParams,
+  ): Promise<number | null> {
+    try {
+      const client = this.prisma.getClientByOrigin(params.origin);
+      const rows = await client.$queryRaw<{ produce_count: number | null }[]>(
+        Prisma.sql`
+          SELECT produce_count
+          FROM mo_produce_order
+          WHERE work_order_code = ${params.workOrderCode}
+            AND material_code = ${params.materialCode}
+          LIMIT 1
+        `,
+      );
+
+      return rows[0]?.produce_count ?? null;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get planned quantity for work order ${params.workOrderCode}: ${error.message}`,
+        error.stack,
+      );
+      return null;
+    }
   }
 
   async getStepTypeProcessMetrics(
