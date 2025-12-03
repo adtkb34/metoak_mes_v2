@@ -69,6 +69,7 @@
           v-else
           :processes="displayedOverviewItems"
           :loading="overviewLoading"
+          :show-wip="level === 'product' || level === 'process'"
           @select="handleOverviewSelect"
         />
       </template>
@@ -76,6 +77,7 @@
         <process-overview
           :processes="displayedOverviewItems"
           :loading="overviewLoading"
+          :show-wip="level === 'product' || level === 'process'"
           @select="handleOverviewSelect"
         />
       </template>
@@ -121,7 +123,8 @@ import {
   fetchStepTypeProcessMetrics,
   fetchProcessStageInfo,
   fetchWorkOrderCodes,
-  fetchWorkOrderProcessMetrics
+  fetchWorkOrderProcessMetrics,
+  fetchPlannedQuantity
 } from "@/api/dashboard";
 import type { DashboardSummaryParams, ProcessStageInfo } from "@/api/dashboard";
 import { PRODUCT_ORIGIN_OPTIONS, ProductOrigin } from "@/enums/product-origin";
@@ -229,6 +232,101 @@ const hasMeaningfulMetrics = (summary: ProcessMetricsSummary): boolean => {
   ]);
 
   return [...values, ...wipValues].some(value => typeof value === "number");
+};
+
+const fetchPlannedQuantitySafe = async (
+  origin: ProductOrigin | null,
+  workOrderCode: string | null,
+  materialCode: string | null
+): Promise<number | null> => {
+  if (origin === null || origin === undefined) return null;
+  if (!workOrderCode || !materialCode) return null;
+  try {
+    const { plannedQuantity } = await fetchPlannedQuantity({
+      origin,
+      workOrderCode,
+      materialCode
+    });
+    return plannedQuantity ?? null;
+  } catch (error) {
+    console.error("Failed to fetch planned quantity", error);
+    return null;
+  }
+};
+
+const buildWipEntriesForWorkOrder = async (options: {
+  origin: ProductOrigin | null;
+  workOrderCode: string;
+  productCodes: string[];
+  stepTypeNo: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<NonNullable<ProcessMetricsSummary["WIP"]>> => {
+  const { origin, workOrderCode, productCodes, stepTypeNo, startDate, endDate } = options;
+  const entries: NonNullable<ProcessMetricsSummary["WIP"]> = [];
+
+  if (origin === null || origin === undefined || !productCodes.length) {
+    return entries;
+  }
+
+  for (const productCode of productCodes) {
+    let goodQuantity: number | string = "-";
+    try {
+      const metrics = await fetchWorkOrderProcessMetrics({
+        origin,
+        stepTypeNo,
+        workOrderCode,
+        startDate,
+        endDate,
+        product: [productCode]
+      });
+      goodQuantity = metrics.数量.良品;
+    } catch (error) {
+      console.error("Failed to fetch metrics for WIP", error);
+    }
+
+    const plannedQuantity = await fetchPlannedQuantitySafe(
+      origin,
+      workOrderCode,
+      productCode
+    );
+
+    entries.push({
+      productCode,
+      workOrderMaterialCode: productCode,
+      goodQuantity,
+      plannedQuantity: plannedQuantity ?? "-"
+    });
+  }
+
+  return entries;
+};
+
+const buildSingleWipEntry = async (options: {
+  origin: ProductOrigin | null;
+  workOrderCode: string | null;
+  productCode: string | null;
+  goodQuantity: number | string;
+}): Promise<ProcessMetricsSummary["WIP"]> => {
+  const { origin, workOrderCode, productCode, goodQuantity } = options;
+  if (origin === null || origin === undefined || !workOrderCode || !productCode) {
+    return [];
+  }
+
+  const plannedQuantity = await fetchPlannedQuantitySafe(
+    origin,
+    workOrderCode,
+    productCode
+  );
+
+  return [
+    {
+      productCode,
+      workOrderMaterialCode: productCode,
+      goodQuantity,
+      plannedQuantity: plannedQuantity ?? "-"
+    }
+  ];
 };
 
 const processStagesInfo = ref<ProcessStageInfo[]>([]);
@@ -804,23 +902,36 @@ const loadProductOverview = async (stepTypeNo: string) => {
         ? normalizedProducts.join("、")
         : "-";
 
-      return fetchWorkOrderProcessMetrics({
-        origin,
-        stepTypeNo,
-        workOrderCode,
-        startDate,
-        endDate
-      }).then(summary => ({
-        id: workOrderCode,
-        name: workOrderCode,
-        code: null,
-        titleLabel: "工单号",
-        metaLabel: "产品料号",
-        metaValue: productCodeLabel,
-        targetProductCode: normalizedProducts[0] ?? null,
-        targetWorkOrderCode: workOrderCode,
-        metrics: summary
-      }));
+      return (async () => {
+        const summary = await fetchWorkOrderProcessMetrics({
+          origin,
+          stepTypeNo,
+          workOrderCode,
+          startDate,
+          endDate
+        });
+
+        const wipEntries = await buildWipEntriesForWorkOrder({
+          origin,
+          workOrderCode,
+          productCodes: normalizedProducts,
+          stepTypeNo,
+          startDate,
+          endDate
+        });
+
+        return {
+          id: workOrderCode,
+          name: workOrderCode,
+          code: null,
+          titleLabel: "工单号",
+          metaLabel: "产品料号",
+          metaValue: productCodeLabel,
+          targetProductCode: normalizedProducts[0] ?? null,
+          targetWorkOrderCode: workOrderCode,
+          metrics: { ...summary, WIP: wipEntries }
+        };
+      })();
     });
 
     const results = await Promise.allSettled(requests);
@@ -1050,14 +1161,25 @@ const refreshProcessMetrics = async (
   }
 
   const requests = requestableSteps.map(step => {
-    return fetchProcessMetrics({
-      startDate: params.startDate,
-      endDate: params.endDate,
-      origin: params.origin,
-      product: params.product!,
-      stepTypeNo: step.code!,
-      workOrderCode: selectedWorkOrderCode.value!
-    }).then(summary => ({ id: step.id, summary }));
+    return (async () => {
+      const summary = await fetchProcessMetrics({
+        startDate: params.startDate,
+        endDate: params.endDate,
+        origin: params.origin,
+        product: params.product!,
+        stepTypeNo: step.code!,
+        workOrderCode: selectedWorkOrderCode.value!
+      });
+
+      const wipEntries = await buildSingleWipEntry({
+        origin: params.origin ?? null,
+        workOrderCode: selectedWorkOrderCode.value,
+        productCode: params.product?.[0] ?? null,
+        goodQuantity: summary.数量.良品
+      });
+
+      return { id: step.id, summary: { ...summary, WIP: wipEntries } };
+    })();
   });
 
   const results = await Promise.allSettled(requests);

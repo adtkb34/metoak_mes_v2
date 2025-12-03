@@ -254,6 +254,37 @@ export class DashboardController {
     return { success: true, data };
   }
 
+  @Get('planned-quantity')
+  async getPlannedQuantity(
+    @Query('origin') originParam?: string,
+    @Query('workOrderCode') workOrderCode?: string,
+    @Query('materialCode') materialCode?: string,
+  ): Promise<{ success: true; data: { plannedQuantity: number | null } }> {
+    const origin = this.parseOrigin(originParam);
+    const normalizedWorkOrder = workOrderCode?.trim();
+    const normalizedMaterial = materialCode?.trim();
+
+    if (origin === undefined) {
+      throw new BadRequestException('缺少产地');
+    }
+
+    if (!normalizedWorkOrder) {
+      throw new BadRequestException('缺少工单号');
+    }
+
+    if (!normalizedMaterial) {
+      throw new BadRequestException('缺少物料号');
+    }
+
+    const plannedQuantity = await this.dashboardService.getPlannedQuantity({
+      origin,
+      workOrderCode: normalizedWorkOrder,
+      materialCode: normalizedMaterial,
+    });
+
+    return { success: true, data: { plannedQuantity } };
+  }
+
   @Get('equipment-options')
   async getEquipmentOptions(
     @Query('stepTypeNo') stepTypeNo?: string,
