@@ -68,6 +68,12 @@ export interface ProcessMetricsSummary {
     min: number | string;
     max: number | string;
   };
+  WIP?: {
+    productCode: string;
+    workOrderMaterialCode?: string | null;
+    goodQuantity: number | string;
+    plannedQuantity: number | string;
+  }[];
 }
 
 export interface DashboardProductsParams {

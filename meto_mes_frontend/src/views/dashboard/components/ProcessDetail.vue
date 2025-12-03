@@ -3,7 +3,7 @@
     <el-skeleton v-if="loading" animated :rows="6" />
     <template v-else>
       <div class="space-y-6">
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid gap-4 md:grid-cols-3">
           <div class="stat-card">
             <div class="text-sm font-medium text-gray-500">产量</div>
             <div class="mt-4 grid grid-cols-3 gap-4 text-sm">
@@ -31,6 +31,39 @@
                 <div class="text-xl font-semibold text-emerald-600">
                   {{ formatYieldMetric(metricsSummary.良率[item.key]) }}
                 </div>
+              </div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="text-sm font-medium text-gray-500">WIP</div>
+            <div class="mt-4 space-y-3 text-sm">
+              <div
+                v-for="item in wipMetricItems"
+                :key="item.productCode"
+                class="flex items-start justify-between rounded-md border border-gray-100 bg-gray-50 px-3 py-2"
+              >
+                <div class="space-y-1">
+                  <div class="text-gray-600">{{ item.productCode }}</div>
+                  <div
+                    v-if="item.workOrderMaterialCode"
+                    class="text-xs text-gray-400"
+                  >
+                    工单物料号：{{ item.workOrderMaterialCode }}
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xl font-semibold text-indigo-600">
+                    {{ formatQuantityMetric(item.goodQuantity) }}
+                    <span class="mx-1 text-xs text-gray-400">/</span>
+                    <span class="text-sm font-medium text-gray-500">
+                      {{ formatQuantityMetric(item.plannedQuantity) }}
+                    </span>
+                  </div>
+                  <div class="text-xs text-gray-400">良品 / 计划数</div>
+                </div>
+              </div>
+              <div v-if="!wipMetricItems.length" class="text-gray-400">
+                暂无在制品数据
               </div>
             </div>
           </div>
@@ -78,7 +111,8 @@ use([
 const EMPTY_METRICS_SUMMARY: ProcessMetricsSummary = {
   数量: { 良品: "-", 产品: "-", 总体: "-" },
   良率: { 一次: "-", 最终: "-", 总体: "-" },
-  良品用时: { mean: "-", min: "-", max: "-" }
+  良品用时: { mean: "-", min: "-", max: "-" },
+  WIP: []
 };
 
 const EMPTY_PARETO_DATA: ParetoChartData = {
@@ -110,6 +144,8 @@ const metricsSummary = computed<ProcessMetricsSummary>(() => {
 
   return EMPTY_METRICS_SUMMARY;
 });
+
+const wipMetricItems = computed(() => metricsSummary.value.WIP ?? []);
 
 const paretoData = computed<ParetoChartData>(
   () => props.pareto ?? EMPTY_PARETO_DATA
