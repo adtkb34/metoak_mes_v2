@@ -197,7 +197,8 @@ const buildDefaultActiveSteps = (): ProcessStepInfo[] =>
 const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
   数量: { 良品: "-", 产品: "-", 总体: "-" },
   良率: { 一次: "-", 最终: "-", 总体: "-" },
-  良品用时: { mean: "-", min: "-", max: "-" }
+  良品用时: { mean: "-", min: "-", max: "-" },
+  WIP: []
 });
 
 const buildEmptyMetricsMap = (
@@ -222,7 +223,12 @@ const hasMeaningfulMetrics = (summary: ProcessMetricsSummary): boolean => {
     summary.良品用时.max
   ];
 
-  return values.some(value => typeof value === "number");
+  const wipValues = (summary.WIP ?? []).flatMap(item => [
+    item.goodQuantity,
+    item.plannedQuantity
+  ]);
+
+  return [...values, ...wipValues].some(value => typeof value === "number");
 };
 
 const processStagesInfo = ref<ProcessStageInfo[]>([]);
