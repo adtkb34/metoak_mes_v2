@@ -124,7 +124,8 @@ interface ProcessMetricsSummarySeed {
 const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
   数量: { 良品: "-", 产品: "-", 总体: "-" },
   良率: { 一次: "-", 最终: "-", 总体: "-" },
-  良品用时: { mean: "-", min: "-", max: "-" }
+  良品用时: { mean: "-", min: "-", max: "-" },
+  WIP: []
 });
 
 const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
@@ -132,7 +133,21 @@ const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
     metrics: {
       数量: { 良品: 320, 产品: 342, 总体: 360 },
       良率: { 一次: 0.928, 最终: 0.974, 总体: 0.996 },
-      良品用时: { mean: 185, min: 120, max: 264 }
+      良品用时: { mean: 185, min: 120, max: 264 },
+      WIP: [
+        {
+          productCode: "800.00012",
+          workOrderMaterialCode: "WO-800.00012",
+          goodQuantity: 120,
+          plannedQuantity: 150
+        },
+        {
+          productCode: "800.00061",
+          workOrderMaterialCode: "WO-800.00061",
+          goodQuantity: 200,
+          plannedQuantity: 210
+        }
+      ]
     },
     products: ["XT-1", "XT-2", "XT-Pro"],
     origins: [ProductOrigin.Suzhou, ProductOrigin.Mianyang],
@@ -142,7 +157,15 @@ const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
     metrics: {
       数量: { 良品: 298, 产品: 315, 总体: 332 },
       良率: { 一次: 0.912, 最终: 0.968, 总体: 0.982 },
-      良品用时: { mean: 210, min: 150, max: 305 }
+      良品用时: { mean: 210, min: 150, max: 305 },
+      WIP: [
+        {
+          productCode: "800.00051",
+          workOrderMaterialCode: "WO-800.00051",
+          goodQuantity: 95,
+          plannedQuantity: 120
+        }
+      ]
     },
     products: ["XT-1", "XT-Pro"],
     origins: [ProductOrigin.Suzhou, ProductOrigin.Mianyang],
@@ -152,7 +175,21 @@ const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
     metrics: {
       数量: { 良品: 276, 产品: 289, 总体: 301 },
       良率: { 一次: 0.958, 最终: 0.989, 总体: 0.995 },
-      良品用时: { mean: 165, min: 110, max: 230 }
+      良品用时: { mean: 165, min: 110, max: 230 },
+      WIP: [
+        {
+          productCode: "900.00083",
+          workOrderMaterialCode: "WO-900.00083",
+          goodQuantity: 76,
+          plannedQuantity: 90
+        },
+        {
+          productCode: "900.00101",
+          workOrderMaterialCode: "WO-900.00101",
+          goodQuantity: 58,
+          plannedQuantity: 70
+        }
+      ]
     },
     products: ["XT-1", "XT-2", "XT-Pro"],
     origins: [ProductOrigin.Mianyang, ProductOrigin.Suzhou],
@@ -162,7 +199,15 @@ const processMetricsSummarySeed: Record<string, ProcessMetricsSummarySeed> = {
     metrics: {
       数量: { 良品: 360, 产品: 378, 总体: 396 },
       良率: { 一次: 0.905, 最终: 0.965, 总体: 0.978 },
-      良品用时: { mean: 240, min: 180, max: 320 }
+      良品用时: { mean: 240, min: 180, max: 320 },
+      WIP: [
+        {
+          productCode: "800.00049",
+          workOrderMaterialCode: "WO-800.00049",
+          goodQuantity: 180,
+          plannedQuantity: 200
+        }
+      ]
     },
     products: ["XT-1", "XT-Lite"],
     origins: [ProductOrigin.Suzhou],
@@ -175,7 +220,8 @@ const cloneProcessMetricsSummary = (
 ): ProcessMetricsSummary => ({
   数量: { ...summary.数量 },
   良率: { ...summary.良率 },
-  良品用时: { ...summary.良品用时 }
+  良品用时: { ...summary.良品用时 },
+  WIP: summary.WIP?.map(item => ({ ...item })) ?? []
 });
 
 export function buildProcessMetrics(
