@@ -270,7 +270,14 @@ const buildWipEntriesForWorkOrder = async (options: {
   startDate?: string;
   endDate?: string;
 }): Promise<NonNullable<ProcessMetricsSummary["WIP"]>> => {
-  const { origin, workOrderCode, productCodes, stepTypeNo, startDate, endDate } = options;
+  const {
+    origin,
+    workOrderCode,
+    productCodes,
+    stepTypeNo,
+    startDate,
+    endDate
+  } = options;
   const entries: NonNullable<ProcessMetricsSummary["WIP"]> = [];
 
   if (origin === null || origin === undefined || !productCodes.length) {
@@ -317,7 +324,12 @@ const buildSingleWipEntry = async (options: {
   goodQuantity: number | string;
 }): Promise<ProcessMetricsSummary["WIP"]> => {
   const { origin, workOrderCode, productCode, goodQuantity } = options;
-  if (origin === null || origin === undefined || !workOrderCode || !productCode) {
+  if (
+    origin === null ||
+    origin === undefined ||
+    !workOrderCode ||
+    !productCode
+  ) {
     return [];
   }
 
@@ -1265,6 +1277,29 @@ watch(
   }
 );
 
+watch(
+  () => selectedWorkOrderCode.value,
+  async workOrderCode => {
+    if (!workOrderCode) return;
+
+    const products = workOrderProductMap.value.get(workOrderCode) ?? [];
+    const firstProduct = products[0] ?? null;
+    const preferredProcess = firstProduct
+      ? await ensureProcessCodeForProduct(firstProduct)
+      : null;
+
+    if (preferredProcess) {
+      filters.processCode = preferredProcess;
+      return;
+    }
+
+    const defaultProcess = processOptions.value[0]?.value;
+    if (defaultProcess) {
+      filters.processCode = String(defaultProcess);
+    }
+  }
+);
+
 const handleFiltersSubmit = async () => {
   selectedProcessId.value = null;
   detailError.value = null;
@@ -1467,7 +1502,10 @@ const refreshWorkOrderOptions = async () => {
     workOrderProductMap.value = nextWorkOrderProductMap;
     workOrderOptions.value = nextOptions;
 
-    if (selectedWorkOrderCode.value && !aggregation.has(selectedWorkOrderCode.value)) {
+    if (
+      selectedWorkOrderCode.value &&
+      !aggregation.has(selectedWorkOrderCode.value)
+    ) {
       selectedWorkOrderCode.value = null;
     }
   } catch (error: any) {
