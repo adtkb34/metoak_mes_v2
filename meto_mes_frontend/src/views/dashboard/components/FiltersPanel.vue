@@ -76,7 +76,7 @@
           clearable
           filterable
           placeholder="选择工艺"
-          :disabled="loading || !(product && product.length)"
+          :disabled="isProcessDisabled"
           :model-value="processCode"
           @update:model-value="onProcessCodeChange"
         >
@@ -141,7 +141,7 @@ const dateRange = computed(() => dashboardStore.filters.dateRange);
 const product = computed(() =>
   productMultiple.value
     ? dashboardStore.filters.product
-    : dashboardStore.filters.product ?? null
+    : (dashboardStore.filters.product ?? null)
 );
 const origin = computed(() => dashboardStore.filters.origin);
 const processCode = computed(() => dashboardStore.filters.processCode);
@@ -153,8 +153,28 @@ const workOrderCode = computed({
 });
 
 const isProductDisabled = computed(
-  () => loading.value || Boolean(workOrderCode.value) || !productOptions.value.length
+  () =>
+    loading.value ||
+    Boolean(workOrderCode.value) ||
+    !productOptions.value.length
 );
+
+const hasProductSelection = computed(() => {
+  const value = product.value;
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return Boolean(value);
+});
+
+const isProcessDisabled = computed(() => {
+  const hasWorkOrder = Boolean(workOrderCode.value);
+  return (
+    loading.value ||
+    (!hasWorkOrder && !hasProductSelection.value) ||
+    !processOptions.value.length
+  );
+});
 
 const emit = defineEmits(["submit", "reset"]);
 
