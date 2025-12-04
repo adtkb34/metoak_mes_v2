@@ -264,6 +264,96 @@ const fetchPlannedQuantitySafe = async (
   }
 };
 
+const plannedQuantityWorkOrderCode = ref<string | null>(null);
+const plannedQuantityMap = ref<Map<string, number | null>>(new Map());
+let plannedQuantityRequestToken = 0;
+let plannedQuantityLoadPromise: Promise<void> | null = null;
+
+const resetPlannedQuantities = () => {
+  plannedQuantityRequestToken++;
+  plannedQuantityMap.value = new Map();
+  plannedQuantityWorkOrderCode.value = null;
+  plannedQuantityLoadPromise = null;
+};
+
+const getCachedPlannedQuantity = (
+  workOrderCode: string | null,
+  productCode: string | null
+): number | null | undefined => {
+  if (!productCode) return undefined;
+  if (workOrderCode && workOrderCode === plannedQuantityWorkOrderCode.value) {
+    return plannedQuantityMap.value.get(productCode);
+  }
+  return undefined;
+};
+
+const loadPlannedQuantitiesForWorkOrder = async (
+  origin: ProductOrigin | null,
+  workOrderCode: string | null,
+  productCodes: string[]
+) => {
+  if (
+    origin === null ||
+    origin === undefined ||
+    !workOrderCode ||
+    !productCodes.length
+  ) {
+    resetPlannedQuantities();
+    return;
+  }
+
+  const requestToken = ++plannedQuantityRequestToken;
+  plannedQuantityLoadPromise = (async () => {
+    const nextMap = new Map<string, number | null>();
+
+    for (const code of productCodes) {
+      try {
+        const { plannedQuantity } = await fetchPlannedQuantity({
+          origin,
+          workOrderCode,
+          materialCode: code
+        });
+        nextMap.set(code, plannedQuantity ?? null);
+      } catch (error) {
+        console.error("Failed to fetch planned quantity", error);
+        nextMap.set(code, null);
+      }
+
+      if (requestToken !== plannedQuantityRequestToken) {
+        return;
+      }
+    }
+
+    if (requestToken === plannedQuantityRequestToken) {
+      plannedQuantityMap.value = nextMap;
+      plannedQuantityWorkOrderCode.value = workOrderCode;
+    }
+  })();
+
+  await plannedQuantityLoadPromise;
+};
+
+const ensurePlannedQuantitiesForSelection = async (
+  origin: ProductOrigin | null,
+  workOrderCode: string | null,
+  productCodes: string[]
+) => {
+  if (!workOrderCode || !productCodes.length) {
+    resetPlannedQuantities();
+    return;
+  }
+
+  const hasCachedAll =
+    plannedQuantityWorkOrderCode.value === workOrderCode &&
+    productCodes.every(code => plannedQuantityMap.value.has(code));
+
+  if (hasCachedAll) {
+    return;
+  }
+
+  await loadPlannedQuantitiesForWorkOrder(origin, workOrderCode, productCodes);
+};
+
 const buildWipEntriesForWorkOrder = async (options: {
   origin: ProductOrigin | null;
   workOrderCode: string;
@@ -302,11 +392,11 @@ const buildWipEntriesForWorkOrder = async (options: {
       console.error("Failed to fetch metrics for WIP", error);
     }
 
-    const plannedQuantity = await fetchPlannedQuantitySafe(
-      origin,
-      workOrderCode,
-      productCode
-    );
+    const cachedPlanned = getCachedPlannedQuantity(workOrderCode, productCode);
+    const plannedQuantity =
+      cachedPlanned !== undefined
+        ? cachedPlanned
+        : await fetchPlannedQuantitySafe(origin, workOrderCode, productCode);
 
     entries.push({
       productCode,
@@ -335,18 +425,14 @@ const buildSingleWipEntry = async (options: {
     return [];
   }
 
-  const plannedQuantity = await fetchPlannedQuantitySafe(
-    origin,
-    workOrderCode,
-    productCode
-  );
+  const cachedPlanned = getCachedPlannedQuantity(workOrderCode, productCode);
 
   return [
     {
       productCode,
       workOrderMaterialCode: productCode,
       goodQuantity,
-      plannedQuantity: plannedQuantity ?? "-"
+      plannedQuantity: cachedPlanned ?? "-"
     }
   ];
 };
@@ -665,6 +751,7 @@ const clearWorkOrders = () => {
   workOrderRequestToken++;
   workOrders.value = [];
   workOrdersLoading.value = false;
+  resetPlannedQuantities();
 };
 
 const loadWorkOrderMetricsForStep = async (
@@ -1127,7 +1214,7 @@ const handleOverviewSelect = async (id: string) => {
   }
 
   if (level.value === "product") {
-    console.log(11)
+    console.log(11);
     const target = productOverviewItems.value.find(item => item.id === id);
     const workOrderCode = target?.targetWorkOrderCode ?? target?.id ?? null;
     const productCode = target?.targetProductCode ?? null;
@@ -1195,7 +1282,9 @@ const refreshProcessMetrics = async (
   }
 
   const hasWorkOrderSelection = Boolean(selectedWorkOrderCode.value);
-  const selectedProducts = params.product ?? [];
+  const selectedProducts =
+    (params.product?.length ? params.product : activeWorkOrderProducts.value) ??
+    [];
   const productParam = selectedProducts.length ? selectedProducts : undefined;
 
   if (!hasWorkOrderSelection && (!productParam || !productParam.length)) {
@@ -1207,6 +1296,12 @@ const refreshProcessMetrics = async (
   if (!requestableSteps.length) {
     return false;
   }
+
+  await ensurePlannedQuantitiesForSelection(
+    params.origin ?? null,
+    selectedWorkOrderCode.value,
+    selectedProducts
+  );
 
   const requests = requestableSteps.map(step => {
     return (async () => {
@@ -1284,7 +1379,10 @@ watch(
 watch(
   () => selectedWorkOrderCode.value,
   async workOrderCode => {
-    if (!workOrderCode) return;
+    if (!workOrderCode) {
+      resetPlannedQuantities();
+      return;
+    }
 
     const products = workOrderProductMap.value.get(workOrderCode) ?? [];
     const firstProduct = products[0] ?? null;
@@ -1301,6 +1399,12 @@ watch(
     if (defaultProcess) {
       filters.processCode = String(defaultProcess);
     }
+
+    await ensurePlannedQuantitiesForSelection(
+      filters.origin,
+      workOrderCode,
+      products
+    );
   }
 );
 
