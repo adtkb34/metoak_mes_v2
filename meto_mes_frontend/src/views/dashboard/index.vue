@@ -644,10 +644,10 @@ const getProductLabel = (code: string): string => {
 };
 
 const getSelectedProducts = (): string[] => {
-  const workOrderProducts = activeWorkOrderProducts.value;
-  if (workOrderProducts.length) {
-    return workOrderProducts;
-  }
+  // const workOrderProducts = activeWorkOrderProducts.value;
+  // if (workOrderProducts.length) {
+  //   return workOrderProducts;
+  // }
 
   return filters.product;
 };
@@ -1048,7 +1048,8 @@ const handleStepSelect = async (stepTypeNo: string) => {
 
 const handleWorkOrderSelect = async (
   workOrderCode: string,
-  productCode: string | null
+  productCode: string | null,
+  ignoreProductCode: boolean
 ) => {
   if (overviewLoading.value) {
     return;
@@ -1060,8 +1061,10 @@ const handleWorkOrderSelect = async (
   }
 
   selectedWorkOrderCode.value = workOrderCode;
-  selectedProductCode.value = productCode;
-  filters.product = [productCode];
+  if (!ignoreProductCode) {
+    selectedProductCode.value = productCode;
+    filters.product = [productCode];
+  }
 
   const preferredProcess = await ensureProcessCodeForProduct(productCode);
   filters.processCode = preferredProcess ?? null;
@@ -1124,6 +1127,7 @@ const handleOverviewSelect = async (id: string) => {
   }
 
   if (level.value === "product") {
+    console.log(11)
     const target = productOverviewItems.value.find(item => item.id === id);
     const workOrderCode = target?.targetWorkOrderCode ?? target?.id ?? null;
     const productCode = target?.targetProductCode ?? null;
@@ -1131,7 +1135,7 @@ const handleOverviewSelect = async (id: string) => {
       ElMessage.warning("未找到工单信息，无法查看工序详情");
       return;
     }
-    await handleWorkOrderSelect(workOrderCode, productCode);
+    await handleWorkOrderSelect(workOrderCode, productCode, true);
     return;
   }
 
@@ -1207,9 +1211,7 @@ const refreshProcessMetrics = async (
   const requests = requestableSteps.map(step => {
     return (async () => {
       const workOrderCode = selectedWorkOrderCode.value ?? "";
-      const metricsFetcher = hasWorkOrderSelection
-        ? fetchWorkOrderProcessMetrics
-        : fetchProcessMetrics;
+      const metricsFetcher = fetchProcessMetrics;
 
       const summary = await metricsFetcher({
         startDate: params.startDate,

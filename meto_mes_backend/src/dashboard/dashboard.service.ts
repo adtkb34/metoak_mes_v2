@@ -1455,7 +1455,7 @@ export class DashboardService {
     workOrderCode?: string | null, // 工单编号
   ): Promise<ProcessMetricRow[]> {
     let query;
-    if (workOrderCode == null || workOrderCode == '') {
+    if (materialCode != null &&  materialCode != '') {
       query = Prisma.sql`
         ${baseSql}
         INNER JOIN mo_beam_info AS mbi
@@ -1464,6 +1464,7 @@ export class DashboardService {
           ON mpo.work_order_code = mbi.work_order_code
         WHERE  1=1
         ${materialCode ? Prisma.sql`AND mpo.material_code = ${materialCode}` : Prisma.empty}
+        ${workOrderCode ? Prisma.sql`AND mpo.work_order_code = ${workOrderCode}` : Prisma.empty}
         ${filterClause ?? Prisma.empty}
       `;
     } else {
@@ -1492,7 +1493,7 @@ export class DashboardService {
     workOrderCode?: string | null, // 工单编号
   ): Promise<ProcessMetricRow[]> {
     let query;
-    if (workOrderCode == null || workOrderCode == '') {
+    if (materialCode != null && materialCode != '') {
       query = Prisma.sql`
         ${baseSql}
         INNER JOIN mo_tag_info AS mti
@@ -1501,6 +1502,7 @@ export class DashboardService {
           ON mpo.work_order_code = mti.work_order_code
         WHERE  1=1
       ${materialCode ? Prisma.sql`AND mpo.material_code = ${materialCode}` : Prisma.empty}
+      ${workOrderCode ? Prisma.sql`AND mpo.work_order_code = ${workOrderCode}` : Prisma.empty}
           ${filterClause ?? Prisma.empty}
       `;
     } else {

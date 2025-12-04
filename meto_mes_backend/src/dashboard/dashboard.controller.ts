@@ -215,6 +215,35 @@ export class DashboardController {
     return { success: true, data: summary };
   }
 
+  @Get('v2/process-metrics')
+  async getProcessMetricsV2(
+    @Query()
+    query: {
+      origin?: string | number | null;
+      product?: string[] | string | null;
+      workOrderCode?: string | null;
+      stepTypeNo?: string | null;
+      startDate?: string;
+      endDate?: string;
+      deviceNos?: string[] | string | null;
+      stations?: string[] | string | null;
+    },
+  ): Promise<{ success: true; data: ProcessMetricsSummary }> {
+    const origin = this.parseOrigin(query?.origin);
+    const summary = await this.dashboardService.getProcessMetrics({
+      origin,
+      products: this.normalizeStringArray(query?.product),
+      workOrderCode: query?.workOrderCode?.trim(),
+      stepTypeNo: query?.stepTypeNo?.trim(),
+      startDate: query.startDate,
+      endDate: query.endDate,
+      deviceNos: this.normalizeStringArray(query?.deviceNos),
+      stations: this.normalizeStringArray(query?.stations),
+    });
+
+    return { success: true, data: summary };
+  }
+
   @Get('pareto')
   async getParetoData(
     @Query('product') products: string[],

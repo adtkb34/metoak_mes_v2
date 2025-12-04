@@ -30,7 +30,7 @@
               <div class="text-xs font-medium text-gray-500">
                 {{ group.label }}
               </div>
-              <div class="mt-2 grid grid-cols-3 gap-3 text-sm">
+              <div class="mt-2 grid grid-cols-2 gap-2 text-sm">
                 <div
                   v-for="metric in group.items"
                   :key="metric.key"
@@ -53,19 +53,13 @@
                 >
                   <div class="space-y-1">
                     <div class="text-gray-600">{{ wip.productCode }}</div>
-                    <div v-if="wip.workOrderMaterialCode" class="text-xs text-gray-400">
-                      工单物料号：{{ wip.workOrderMaterialCode }}
-                    </div>
                   </div>
                   <div class="text-right">
-                    <div class="text-lg font-semibold text-indigo-600">
-                      {{ formatWipQuantity(wip.goodQuantity) }}
-                      <span class="mx-1 text-xs text-gray-400">/</span>
-                      <span class="text-sm font-medium text-gray-500">
-                        {{ formatWipQuantity(wip.plannedQuantity) }}
-                      </span>
-                    </div>
                     <div class="text-xs text-gray-400">
+                      计划数：
+                      <span class="text-gray-600">
+                        {{ formatWipQuantity(wip.plannedQuantity) }}；
+                      </span>
                       完成率：
                       <span class="text-gray-600">
                         {{ formatCompletionRate(wip.goodQuantity, wip.plannedQuantity) }}

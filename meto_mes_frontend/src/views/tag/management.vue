@@ -35,7 +35,7 @@ const customWorkOrderCode = ref("");
 const customProduceOrderId = ref<number | null>(null);
 const customSnPrefix = ref("");
 const customSnSuffix = ref("");
-const customSerialLength = ref(5);
+const customSerialLength = ref();
 
 const tagStore = useTagStore(store);
 const materialFilterPrefix = ref("800.");
@@ -340,42 +340,29 @@ watch(
           </el-row>
 
           <el-row v-else :gutter="20">
-            <el-col :span="24" class="mb-5">
-              <span>工单号</span>
-              <div class="inline-flex w-1/2 ml-5">
-                <el-input v-model="customWorkOrderCode" placeholder="work_order_code" />
-              </div>
-            </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span>生产订单ID</span>
-              <div class="inline-flex w-1/2 ml-5">
-                <el-input-number v-model="customProduceOrderId" class="w-full" />
-              </div>
-            </el-col>
-
-            <el-col :span="24" class="mb-5">
+            <el-col :span="24" class="mb-5 flex items-center">
               <span>前缀</span>
               <div class="inline-flex w-1/2 ml-5">
                 <el-input v-model="customSnPrefix" placeholder="SN 前缀" />
               </div>
             </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span>后缀</span>
-              <div class="inline-flex w-1/2 ml-5">
-                <el-input v-model="customSnSuffix" placeholder="SN 后缀" />
-              </div>
-            </el-col>
-
-            <el-col :span="24" class="mb-5">
+            <el-col :span="24" class="mb-5 flex items-center">
               <span>流水号长度</span>
               <div class="inline-flex w-1/2 ml-5">
                 <el-input-number v-model="customSerialLength" :min="1" />
               </div>
             </el-col>
 
-            <el-col :span="24" class="mb-5">
+            <el-col :span="24" class="mb-5 flex items-center">
+              <span>后缀</span>
+              <div class="inline-flex w-1/2 ml-5">
+                <el-input v-model="customSnSuffix" placeholder="SN 后缀" />
+              </div>
+            </el-col>
+
+            <el-col :span="24" class="mb-5 flex items-center">
               <span>数量</span>
               <div class="inline-flex w-1/2 ml-5">
                 <el-input-number v-model="customTotal" :min="0" />
@@ -402,7 +389,7 @@ watch(
           <template #header>
             <div class="flex justify-between items-center">
               <span>序列号列表</span>
-              <el-tag type="info">前缀: {{ beamSnPrefix || "-" }}</el-tag>
+              <!-- <el-tag type="info">前缀: {{ beamSnPrefix || "-" }}</el-tag> -->
             </div>
           </template>
           <el-table :data="snList" max-height="595" style="width: 100%" border>

@@ -87,7 +87,7 @@ function applyFilterAndPaginate() {
 
   tableData.value.forEach(item => {
     if (item.datetime) {
-      item.datetime = dayjs(item.datetim).format('YYYY-MM-DD HH:mm:ss')
+      item.datetime = dayjs(item.datetime).format('YYYY-MM-DD HH:mm:ss')
     }
   })
   console.log(tableData.value);
