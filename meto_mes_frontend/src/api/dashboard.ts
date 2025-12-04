@@ -46,7 +46,6 @@ const PROCESS_STAGE_INFO_URL = "/dashboard/process-stage-info";
 const PROCESS_PARETO_URL = "/dashboard/pareto";
 const MATERIAL_CODES_URL = "/dashboard/material-codes";
 const WORK_ORDER_CODES_URL = "/dashboard/work-order-codes";
-const WORK_ORDER_PROCESS_METRICS_URL = "/dashboard/work-order-process-metrics";
 const PLANNED_QUANTITY_URL = "/dashboard/planned-quantity";
 
 const isMockEnabled = (() => {
@@ -274,7 +273,7 @@ export async function fetchWorkOrderProcessMetrics(
 
   const response = await http.request<ApiResponse<ProcessMetricsSummary>>(
     "get",
-    WORK_ORDER_PROCESS_METRICS_URL,
+    PROCESS_METRICS_URL,
     {
       params,
       paramsSerializer: params => {
