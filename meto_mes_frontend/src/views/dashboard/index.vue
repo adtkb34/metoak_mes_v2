@@ -5,6 +5,7 @@
         :product-options="productOptions"
         :process-options="processOptions"
         :origin-options="originOptions"
+        :work-order-options="workOrderOptions"
         :loading="filtersLoading"
         :show-product="showProductFilter"
         :show-process="showProcessFilter"
@@ -153,11 +154,18 @@ const filters = dashboardStore.filters;
 const level = ref<ViewLevel>("step");
 const selectedStepTypeNo = ref<string | null>(null);
 const selectedProductCode = ref<string | null>(null);
-const selectedWorkOrderCode = ref<string | null>(null);
+const selectedWorkOrderCode = computed({
+  get: () => filters.workOrderCode,
+  set: value => {
+    filters.workOrderCode = value;
+  }
+});
 
 const processStore = useProcessStore();
 
 const productOptions = ref<SelectOption[]>([]);
+const workOrderOptions = ref<SelectOption[]>([]);
+const workOrderProductMap = ref<Map<string, string[]>>(new Map());
 const productOptionMap = computed(() => {
   const map = new Map<string, string>();
   productOptions.value.forEach(option => {
@@ -502,6 +510,12 @@ const selectedProductName = computed(() => {
   );
 });
 
+const activeWorkOrderProducts = computed(() => {
+  const code = selectedWorkOrderCode.value;
+  if (!code) return [] as string[];
+  return workOrderProductMap.value.get(code) ?? [];
+});
+
 const isDetailVisible = computed(
   () => level.value === "process" && selectedProcessId.value !== null
 );
@@ -613,6 +627,15 @@ const getRequestRange = () => {
 
 const getProductLabel = (code: string): string => {
   return productOptionMap.value.get(code) ?? code;
+};
+
+const getSelectedProducts = (): string[] => {
+  const workOrderProducts = activeWorkOrderProducts.value;
+  if (workOrderProducts.length) {
+    return workOrderProducts;
+  }
+
+  return filters.product;
 };
 
 const resetProcessDataState = () => {
@@ -969,8 +992,9 @@ const loadProcessOverviewForProduct = async () => {
   summaryError.value = null;
 
   const params = buildSummaryParams();
-  if (!params.product || !params.product.length) {
-    summaryError.value = "请选择产品";
+  const hasWorkOrderSelection = Boolean(selectedWorkOrderCode.value);
+  if (!hasWorkOrderSelection && (!params.product || !params.product.length)) {
+    summaryError.value = "请选择产品或工单";
     overviewLoading.value = false;
     return;
   }
@@ -1044,8 +1068,11 @@ const handleProcessSelect = async (processId: string) => {
   }
 
   const params = buildSummaryParams();
+  const hasWorkOrderSelection = Boolean(selectedWorkOrderCode.value);
   if (!params.product) {
-    detailError.value = "请选择产品后查看工序详情";
+    detailError.value = hasWorkOrderSelection
+      ? "当前工单缺少产品料号，无法查看工序详情"
+      : "请选择产品后查看工序详情";
     return;
   }
 
@@ -1127,7 +1154,7 @@ const handleNavigateBack = async () => {
 
 const buildSummaryParams = (): DashboardSummaryParams => {
   const { startDate, endDate } = getRequestRange();
-  const normalizedProducts = filters.product
+  const normalizedProducts = getSelectedProducts()
     .map(code => (typeof code === "string" ? code.trim() : String(code).trim()))
     .filter(code => code.length > 0);
   return {
@@ -1150,7 +1177,10 @@ const refreshProcessMetrics = async (
   }
 
   const hasWorkOrderSelection = Boolean(selectedWorkOrderCode.value);
-  if (!hasWorkOrderSelection && (!params.product || !params.product.length)) {
+  const selectedProducts = params.product ?? [];
+  const productParam = selectedProducts.length ? selectedProducts : undefined;
+
+  if (!hasWorkOrderSelection && (!productParam || !productParam.length)) {
     return false;
   }
 
@@ -1162,19 +1192,24 @@ const refreshProcessMetrics = async (
 
   const requests = requestableSteps.map(step => {
     return (async () => {
-      const summary = await fetchProcessMetrics({
+      const workOrderCode = selectedWorkOrderCode.value ?? "";
+      const metricsFetcher = hasWorkOrderSelection
+        ? fetchWorkOrderProcessMetrics
+        : fetchProcessMetrics;
+
+      const summary = await metricsFetcher({
         startDate: params.startDate,
         endDate: params.endDate,
         origin: params.origin,
-        product: params.product!,
+        product: productParam,
         stepTypeNo: step.code!,
-        workOrderCode: selectedWorkOrderCode.value!
+        workOrderCode
       });
 
       const wipEntries = await buildSingleWipEntry({
         origin: params.origin ?? null,
         workOrderCode: selectedWorkOrderCode.value,
-        productCode: params.product?.[0] ?? null,
+        productCode: productParam?.[0] ?? null,
         goodQuantity: summary.数量.良品
       });
 
@@ -1235,6 +1270,14 @@ const handleFiltersSubmit = async () => {
   detailError.value = null;
   paretoData.value = createEmptyParetoData();
 
+  if (selectedWorkOrderCode.value) {
+    const products = getSelectedProducts();
+    selectedProductCode.value = products[0] ?? null;
+    level.value = "process";
+    await loadProcessOverviewForProduct();
+    return;
+  }
+
   // ✅ 优先判断产品是否选中
   if (filters.product.length > 0) {
     level.value = "process";
@@ -1261,9 +1304,9 @@ const handleFiltersSubmit = async () => {
     return;
   }
 
-  const product = filters.product[0] ?? selectedProductCode.value;
+  const product = getSelectedProducts()[0] ?? selectedProductCode.value;
   if (!product) {
-    summaryError.value = "请选择产品";
+    summaryError.value = "请选择产品或工单";
     return;
   }
 
@@ -1286,10 +1329,13 @@ const handleFiltersReset = async () => {
   paretoData.value = createEmptyParetoData();
   selectedWorkOrderCode.value = null;
   clearWorkOrders();
+  await refreshProductOptions();
+  await refreshWorkOrderOptions();
   await loadStepOverview();
 };
 
 let productOptionsRequestToken = 0;
+let workOrderOptionsRequestToken = 0;
 
 const resetProductSelection = () => {
   productOptionsRequestToken++;
@@ -1352,31 +1398,113 @@ const refreshProductOptions = async () => {
   }
 };
 
-// watch(
-//   () => filters.origin,
-//   async value => {
-//     // resetProductSelection();
-//     selectedStepTypeNo.value = null;
-//     selectedProductCode.value = null;
-//     level.value = "step";
-//     clearWorkOrders();
-//     try {
-//       await processStore.setProcessFlow(true, value ?? null);
-//     } catch (error: any) {
-//       const message = error?.message ?? "获取工艺流程失败";
-//       ElMessage.error(message);
-//     }
-//     await refreshProductOptions();
-//     await loadStepOverview();
-//   }
-// );
+const refreshWorkOrderOptions = async () => {
+  const { startDate, endDate } = getRequestRange();
+  const selectedOrigin = filters.origin ?? undefined;
 
-// watch(
-//   () => filters.dateRange.slice(),
-//   () => {
-//     refreshProductOptions();
-//   }
-// );
+  if (!startDate || !endDate || selectedOrigin === undefined) {
+    workOrderOptions.value = [];
+    workOrderProductMap.value = new Map();
+    return;
+  }
+
+  const requestToken = ++workOrderOptionsRequestToken;
+  const aggregation = new Map<string, Set<string>>();
+
+  try {
+    const responses = await Promise.allSettled(
+      STEP_OVERVIEW_CODES.map(stepTypeNo =>
+        fetchWorkOrderCodes({
+          origin: selectedOrigin,
+          stepTypeNo,
+          startDate,
+          endDate
+        })
+      )
+    );
+
+    responses.forEach(result => {
+      if (result.status !== "fulfilled") return;
+
+      const codeMap = result.value ?? {};
+      Object.entries(codeMap).forEach(([workOrderCode, rawProducts]) => {
+        const normalizedWorkOrder = normalizeStringValue(workOrderCode);
+        if (!normalizedWorkOrder) return;
+
+        const productSet =
+          aggregation.get(normalizedWorkOrder) ?? new Set<string>();
+
+        (rawProducts ?? []).forEach(productCode => {
+          const normalized = normalizeStringValue(productCode);
+          if (normalized) {
+            productSet.add(normalized);
+          }
+        });
+
+        aggregation.set(normalizedWorkOrder, productSet);
+      });
+    });
+
+    if (requestToken !== workOrderOptionsRequestToken) {
+      return;
+    }
+
+    const nextWorkOrderProductMap = new Map<string, string[]>();
+    const nextOptions: SelectOption[] = [];
+
+    aggregation.forEach((products, workOrderCode) => {
+      const productList = Array.from(products);
+      nextWorkOrderProductMap.set(workOrderCode, productList);
+      const productLabel = productList.length
+        ? `（${productList.join("、")}）`
+        : "";
+      const label = productLabel
+        ? `${workOrderCode} ${productLabel}`
+        : workOrderCode;
+      nextOptions.push({ label, value: workOrderCode });
+    });
+
+    workOrderProductMap.value = nextWorkOrderProductMap;
+    workOrderOptions.value = nextOptions;
+
+    if (selectedWorkOrderCode.value && !aggregation.has(selectedWorkOrderCode.value)) {
+      selectedWorkOrderCode.value = null;
+    }
+  } catch (error: any) {
+    if (requestToken !== workOrderOptionsRequestToken) {
+      return;
+    }
+
+    workOrderOptions.value = [];
+    workOrderProductMap.value = new Map();
+    selectedWorkOrderCode.value = null;
+
+    const message = error?.message ?? "获取工单选项失败";
+    ElMessage.warning(message);
+  }
+};
+
+watch(
+  () => ({
+    origin: filters.origin,
+    dateRange: filters.dateRange.slice()
+  }),
+  async ({ origin }) => {
+    selectedStepTypeNo.value = null;
+    selectedProductCode.value = null;
+    selectedWorkOrderCode.value = null;
+    level.value = "step";
+    clearWorkOrders();
+    await refreshProductOptions();
+    await refreshWorkOrderOptions();
+    try {
+      await processStore.setProcessFlow(true, origin ?? null);
+    } catch (error: any) {
+      const message = error?.message ?? "获取工艺流程失败";
+      ElMessage.error(message);
+    }
+  }
+);
 
 watch(processOptions, options => {
   if (
@@ -1395,6 +1523,7 @@ onMounted(async () => {
     ElMessage.error(message);
   }
   await refreshProductOptions();
+  await refreshWorkOrderOptions();
   await loadStepOverview();
 });
 </script>
