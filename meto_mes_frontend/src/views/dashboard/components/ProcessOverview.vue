@@ -3,7 +3,7 @@
     <el-skeleton v-if="loading" animated :rows="4" />
     <template v-else>
       <el-empty v-if="!processes.length" description="暂无工序数据" />
-      <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <div
           v-for="item in processes"
           :key="item.id"
@@ -221,7 +221,7 @@ const formatCompletionRate = (
 
 <style scoped>
 .process-card {
-  @apply rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg;
+  @apply rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg;
   cursor: pointer;
 }
 
