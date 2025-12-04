@@ -409,34 +409,6 @@ const buildWipEntriesForWorkOrder = async (options: {
   return entries;
 };
 
-const buildSingleWipEntry = async (options: {
-  origin: ProductOrigin | null;
-  workOrderCode: string | null;
-  productCode: string | null;
-  goodQuantity: number | string;
-}): Promise<ProcessMetricsSummary["WIP"]> => {
-  const { origin, workOrderCode, productCode, goodQuantity } = options;
-  if (
-    origin === null ||
-    origin === undefined ||
-    !workOrderCode ||
-    !productCode
-  ) {
-    return [];
-  }
-
-  const cachedPlanned = getCachedPlannedQuantity(workOrderCode, productCode);
-
-  return [
-    {
-      productCode,
-      workOrderMaterialCode: productCode,
-      goodQuantity,
-      plannedQuantity: cachedPlanned ?? "-"
-    }
-  ];
-};
-
 const processStagesInfo = ref<ProcessStageInfo[]>([]);
 let processStageRequestToken = 0;
 let workOrderRequestToken = 0;
@@ -1317,11 +1289,13 @@ const refreshProcessMetrics = async (
         workOrderCode
       });
 
-      const wipEntries = await buildSingleWipEntry({
+      const wipEntries = await buildWipEntriesForWorkOrder({
         origin: params.origin ?? null,
-        workOrderCode: selectedWorkOrderCode.value,
-        productCode: productParam?.[0] ?? null,
-        goodQuantity: summary.数量.良品
+        workOrderCode: selectedWorkOrderCode.value ?? "",
+        productCodes: productParam ?? [],
+        stepTypeNo: step.code!,
+        startDate: params.startDate,
+        endDate: params.endDate
       });
 
       return { id: step.id, summary: { ...summary, WIP: wipEntries } };
