@@ -43,6 +43,8 @@ function handleSelectionChange(selections: any[]) {
     tableRef.value!.toggleRowSelection(latest, true);
 
     multiSelection.value = [latest];
+  } else {
+    multiSelection.value = selections;
   }
 
   if (multiSelection.value.length === 1) {

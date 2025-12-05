@@ -19,5 +19,6 @@ export class UpdateMoProduceOrderDto {
     order_state?: number;
     completed_count?: number;
     product_type?: string;
+    params_detail_id?: number | null;
 }
 
