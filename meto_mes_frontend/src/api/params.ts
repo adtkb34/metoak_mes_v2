@@ -14,6 +14,7 @@ export interface ParamsPresetPayload {
   name: string;
   description: string;
   params: string;
+  created_by: string;
 }
 
 function unwrapParamsResponse<T>(response: any, errorMessage: string): T {

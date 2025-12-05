@@ -88,6 +88,8 @@ import { ElMessage } from "element-plus";
 import { getAllMaterilsFromK3, MaterialsInfo } from "@/api/order";
 import { useOrderStore } from "@/store/modules/order";
 import { useProcessStore } from "@/store/modules/processFlow";
+import { useUserListStore } from "@/store/modules/system";
+import { store } from "@/store";
 import {
   createParamsPreset,
   getParamsDetail,
@@ -103,6 +105,7 @@ interface ParamsFormState {
 }
 
 const processStore = useProcessStore();
+const userStore = useUserListStore(store);
 const materials = ref<MaterialsInfo[]>([])
 const paramsOptions = ref<ParamsDetail[]>([]);
 const paramsDetailLoading = ref(false);
@@ -319,7 +322,8 @@ function handleParamsSubmit() {
     const payload: ParamsPresetPayload = {
       name: paramsForm.value.name,
       description: paramsForm.value.description,
-      params: JSON.stringify(parsedParams)
+      params: JSON.stringify(parsedParams),
+      created_by: userStore.getUsername || ""
     };
 
     try {
