@@ -5,7 +5,6 @@
         :product-options="productOptions"
         :process-options="processOptions"
         :origin-options="originOptions"
-        :work-order-options="workOrderOptions"
         :loading="filtersLoading"
         :show-product="showProductFilter"
         :show-process="showProcessFilter"
@@ -70,7 +69,6 @@
           v-else
           :processes="displayedOverviewItems"
           :loading="overviewLoading"
-          :show-wip="level === 'product' || level === 'process'"
           @select="handleOverviewSelect"
         />
       </template>
@@ -78,7 +76,6 @@
         <process-overview
           :processes="displayedOverviewItems"
           :loading="overviewLoading"
-          :show-wip="level === 'product' || level === 'process'"
           @select="handleOverviewSelect"
         />
       </template>
@@ -124,8 +121,7 @@ import {
   fetchStepTypeProcessMetrics,
   fetchProcessStageInfo,
   fetchWorkOrderCodes,
-  fetchWorkOrderProcessMetrics,
-  fetchPlannedQuantity
+  fetchWorkOrderProcessMetrics
 } from "@/api/dashboard";
 import type { DashboardSummaryParams, ProcessStageInfo } from "@/api/dashboard";
 import { PRODUCT_ORIGIN_OPTIONS, ProductOrigin } from "@/enums/product-origin";
@@ -139,15 +135,13 @@ type ViewLevel = "step" | "product" | "process";
 const STEP_OVERVIEW_CODES: string[] = [
   STEP_NO.AUTO_ADJUST,
   STEP_NO.CALIB,
-  STEP_NO.FQC,
-  STEP_NO.PACKING
+  STEP_NO.FQC
 ];
 
 const STEP_TITLE_MAP: Record<string, string> = {
   [STEP_NO.AUTO_ADJUST]: "AA",
   [STEP_NO.FQC]: "FQC",
-  [STEP_NO.CALIB]: "标定",
-  [STEP_NO.PACKING]: "封箱出货"
+  [STEP_NO.CALIB]: "标定"
 };
 
 const dashboardStore = useDashboardStore();
@@ -156,18 +150,11 @@ const filters = dashboardStore.filters;
 const level = ref<ViewLevel>("step");
 const selectedStepTypeNo = ref<string | null>(null);
 const selectedProductCode = ref<string | null>(null);
-const selectedWorkOrderCode = computed({
-  get: () => filters.workOrderCode,
-  set: value => {
-    filters.workOrderCode = value;
-  }
-});
+const selectedWorkOrderCode = ref<string | null>(null);
 
 const processStore = useProcessStore();
 
 const productOptions = ref<SelectOption[]>([]);
-const workOrderOptions = ref<SelectOption[]>([]);
-const workOrderProductMap = ref<Map<string, string[]>>(new Map());
 const productOptionMap = computed(() => {
   const map = new Map<string, string>();
   productOptions.value.forEach(option => {
@@ -210,8 +197,7 @@ const buildDefaultActiveSteps = (): ProcessStepInfo[] =>
 const createEmptyProcessMetricsSummary = (): ProcessMetricsSummary => ({
   数量: { 良品: "-", 产品: "-", 总体: "-" },
   良率: { 一次: "-", 最终: "-", 总体: "-" },
-  良品用时: { mean: "-", min: "-", max: "-" },
-  WIP: []
+  良品用时: { mean: "-", min: "-", max: "-" }
 });
 
 const buildEmptyMetricsMap = (
@@ -236,177 +222,7 @@ const hasMeaningfulMetrics = (summary: ProcessMetricsSummary): boolean => {
     summary.良品用时.max
   ];
 
-  const wipValues = (summary.WIP ?? []).flatMap(item => [
-    item.goodQuantity,
-    item.plannedQuantity
-  ]);
-
-  return [...values, ...wipValues].some(value => typeof value === "number");
-};
-
-const fetchPlannedQuantitySafe = async (
-  origin: ProductOrigin | null,
-  workOrderCode: string | null,
-  materialCode: string | null
-): Promise<number | null> => {
-  if (origin === null || origin === undefined) return null;
-  if (!workOrderCode || !materialCode) return null;
-  try {
-    const { plannedQuantity } = await fetchPlannedQuantity({
-      origin,
-      workOrderCode,
-      materialCode
-    });
-    return plannedQuantity ?? null;
-  } catch (error) {
-    console.error("Failed to fetch planned quantity", error);
-    return null;
-  }
-};
-
-const plannedQuantityWorkOrderCode = ref<string | null>(null);
-const plannedQuantityMap = ref<Map<string, number | null>>(new Map());
-let plannedQuantityRequestToken = 0;
-let plannedQuantityLoadPromise: Promise<void> | null = null;
-
-const resetPlannedQuantities = () => {
-  plannedQuantityRequestToken++;
-  plannedQuantityMap.value = new Map();
-  plannedQuantityWorkOrderCode.value = null;
-  plannedQuantityLoadPromise = null;
-};
-
-const getCachedPlannedQuantity = (
-  workOrderCode: string | null,
-  productCode: string | null
-): number | null | undefined => {
-  if (!productCode) return undefined;
-  if (workOrderCode && workOrderCode === plannedQuantityWorkOrderCode.value) {
-    return plannedQuantityMap.value.get(productCode);
-  }
-  return undefined;
-};
-
-const loadPlannedQuantitiesForWorkOrder = async (
-  origin: ProductOrigin | null,
-  workOrderCode: string | null,
-  productCodes: string[]
-) => {
-  if (
-    origin === null ||
-    origin === undefined ||
-    !workOrderCode ||
-    !productCodes.length
-  ) {
-    resetPlannedQuantities();
-    return;
-  }
-
-  const requestToken = ++plannedQuantityRequestToken;
-  plannedQuantityLoadPromise = (async () => {
-    const nextMap = new Map<string, number | null>();
-
-    for (const code of productCodes) {
-      try {
-        const { plannedQuantity } = await fetchPlannedQuantity({
-          origin,
-          workOrderCode,
-          materialCode: code
-        });
-        nextMap.set(code, plannedQuantity ?? null);
-      } catch (error) {
-        console.error("Failed to fetch planned quantity", error);
-        nextMap.set(code, null);
-      }
-
-      if (requestToken !== plannedQuantityRequestToken) {
-        return;
-      }
-    }
-
-    if (requestToken === plannedQuantityRequestToken) {
-      plannedQuantityMap.value = nextMap;
-      plannedQuantityWorkOrderCode.value = workOrderCode;
-    }
-  })();
-
-  await plannedQuantityLoadPromise;
-};
-
-const ensurePlannedQuantitiesForSelection = async (
-  origin: ProductOrigin | null,
-  workOrderCode: string | null,
-  productCodes: string[]
-) => {
-  if (!workOrderCode || !productCodes.length) {
-    resetPlannedQuantities();
-    return;
-  }
-
-  const hasCachedAll =
-    plannedQuantityWorkOrderCode.value === workOrderCode &&
-    productCodes.every(code => plannedQuantityMap.value.has(code));
-
-  if (hasCachedAll) {
-    return;
-  }
-
-  await loadPlannedQuantitiesForWorkOrder(origin, workOrderCode, productCodes);
-};
-
-const buildWipEntriesForWorkOrder = async (options: {
-  origin: ProductOrigin | null;
-  workOrderCode: string;
-  productCodes: string[];
-  stepTypeNo: string;
-  startDate?: string;
-  endDate?: string;
-}): Promise<NonNullable<ProcessMetricsSummary["WIP"]>> => {
-  const {
-    origin,
-    workOrderCode,
-    productCodes,
-    stepTypeNo,
-    startDate,
-    endDate
-  } = options;
-  const entries: NonNullable<ProcessMetricsSummary["WIP"]> = [];
-
-  if (origin === null || origin === undefined || !productCodes.length) {
-    return entries;
-  }
-
-  for (const productCode of productCodes) {
-    let goodQuantity: number | string = "-";
-    try {
-      const metrics = await fetchWorkOrderProcessMetrics({
-        origin,
-        stepTypeNo,
-        workOrderCode,
-        startDate,
-        endDate,
-        product: [productCode]
-      });
-      goodQuantity = metrics.数量.良品;
-    } catch (error) {
-      console.error("Failed to fetch metrics for WIP", error);
-    }
-
-    const cachedPlanned = getCachedPlannedQuantity(workOrderCode, productCode);
-    const plannedQuantity =
-      cachedPlanned !== undefined
-        ? cachedPlanned
-        : await fetchPlannedQuantitySafe(origin, workOrderCode, productCode);
-
-    entries.push({
-      productCode,
-      workOrderMaterialCode: productCode,
-      goodQuantity,
-      plannedQuantity: plannedQuantity ?? "-"
-    });
-  }
-
-  return entries;
+  return values.some(value => typeof value === "number");
 };
 
 const processStagesInfo = ref<ProcessStageInfo[]>([]);
@@ -582,12 +398,6 @@ const selectedProductName = computed(() => {
   );
 });
 
-const activeWorkOrderProducts = computed(() => {
-  const code = selectedWorkOrderCode.value;
-  if (!code) return [] as string[];
-  return workOrderProductMap.value.get(code) ?? [];
-});
-
 const isDetailVisible = computed(
   () => level.value === "process" && selectedProcessId.value !== null
 );
@@ -701,15 +511,6 @@ const getProductLabel = (code: string): string => {
   return productOptionMap.value.get(code) ?? code;
 };
 
-const getSelectedProducts = (): string[] => {
-  // const workOrderProducts = activeWorkOrderProducts.value;
-  // if (workOrderProducts.length) {
-  //   return workOrderProducts;
-  // }
-
-  return filters.product;
-};
-
 const resetProcessDataState = () => {
   processMetricsMap.value = {
     ...buildEmptyMetricsMap(activeProcessSteps.value)
@@ -723,7 +524,6 @@ const clearWorkOrders = () => {
   workOrderRequestToken++;
   workOrders.value = [];
   workOrdersLoading.value = false;
-  resetPlannedQuantities();
 };
 
 const loadWorkOrderMetricsForStep = async (
@@ -998,36 +798,23 @@ const loadProductOverview = async (stepTypeNo: string) => {
         ? normalizedProducts.join("、")
         : "-";
 
-      return (async () => {
-        const summary = await fetchWorkOrderProcessMetrics({
-          origin,
-          stepTypeNo,
-          workOrderCode,
-          startDate,
-          endDate
-        });
-
-        const wipEntries = await buildWipEntriesForWorkOrder({
-          origin,
-          workOrderCode,
-          productCodes: normalizedProducts,
-          stepTypeNo,
-          startDate,
-          endDate
-        });
-
-        return {
-          id: workOrderCode,
-          name: workOrderCode,
-          code: null,
-          titleLabel: "工单号",
-          metaLabel: "产品料号",
-          metaValue: productCodeLabel,
-          targetProductCode: normalizedProducts[0] ?? null,
-          targetWorkOrderCode: workOrderCode,
-          metrics: { ...summary, WIP: wipEntries }
-        };
-      })();
+      return fetchWorkOrderProcessMetrics({
+        origin,
+        stepTypeNo,
+        workOrderCode,
+        startDate,
+        endDate
+      }).then(summary => ({
+        id: workOrderCode,
+        name: workOrderCode,
+        code: null,
+        titleLabel: "工单号",
+        metaLabel: "产品料号",
+        metaValue: productCodeLabel,
+        targetProductCode: normalizedProducts[0] ?? null,
+        targetWorkOrderCode: workOrderCode,
+        metrics: summary
+      }));
     });
 
     const results = await Promise.allSettled(requests);
@@ -1065,9 +852,8 @@ const loadProcessOverviewForProduct = async () => {
   summaryError.value = null;
 
   const params = buildSummaryParams();
-  const hasWorkOrderSelection = Boolean(selectedWorkOrderCode.value);
-  if (!hasWorkOrderSelection && (!params.product || !params.product.length)) {
-    summaryError.value = "请选择产品或工单";
+  if (!params.product || !params.product.length) {
+    summaryError.value = "请选择产品";
     overviewLoading.value = false;
     return;
   }
@@ -1107,8 +893,7 @@ const handleStepSelect = async (stepTypeNo: string) => {
 
 const handleWorkOrderSelect = async (
   workOrderCode: string,
-  productCode: string | null,
-  ignoreProductCode: boolean
+  productCode: string | null
 ) => {
   if (overviewLoading.value) {
     return;
@@ -1120,10 +905,8 @@ const handleWorkOrderSelect = async (
   }
 
   selectedWorkOrderCode.value = workOrderCode;
-  if (!ignoreProductCode) {
-    selectedProductCode.value = productCode;
-    filters.product = [productCode];
-  }
+  selectedProductCode.value = productCode;
+  filters.product = [productCode];
 
   const preferredProcess = await ensureProcessCodeForProduct(productCode);
   filters.processCode = preferredProcess ?? null;
@@ -1144,11 +927,8 @@ const handleProcessSelect = async (processId: string) => {
   }
 
   const params = buildSummaryParams();
-  const hasWorkOrderSelection = Boolean(selectedWorkOrderCode.value);
   if (!params.product) {
-    detailError.value = hasWorkOrderSelection
-      ? "当前工单缺少产品料号，无法查看工序详情"
-      : "请选择产品后查看工序详情";
+    detailError.value = "请选择产品后查看工序详情";
     return;
   }
 
@@ -1186,7 +966,6 @@ const handleOverviewSelect = async (id: string) => {
   }
 
   if (level.value === "product") {
-    console.log(11);
     const target = productOverviewItems.value.find(item => item.id === id);
     const workOrderCode = target?.targetWorkOrderCode ?? target?.id ?? null;
     const productCode = target?.targetProductCode ?? null;
@@ -1194,7 +973,7 @@ const handleOverviewSelect = async (id: string) => {
       ElMessage.warning("未找到工单信息，无法查看工序详情");
       return;
     }
-    await handleWorkOrderSelect(workOrderCode, productCode, true);
+    await handleWorkOrderSelect(workOrderCode, productCode);
     return;
   }
 
@@ -1231,7 +1010,7 @@ const handleNavigateBack = async () => {
 
 const buildSummaryParams = (): DashboardSummaryParams => {
   const { startDate, endDate } = getRequestRange();
-  const normalizedProducts = getSelectedProducts()
+  const normalizedProducts = filters.product
     .map(code => (typeof code === "string" ? code.trim() : String(code).trim()))
     .filter(code => code.length > 0);
   return {
@@ -1254,12 +1033,7 @@ const refreshProcessMetrics = async (
   }
 
   const hasWorkOrderSelection = Boolean(selectedWorkOrderCode.value);
-  const selectedProducts =
-    (params.product?.length ? params.product : activeWorkOrderProducts.value) ??
-    [];
-  const productParam = selectedProducts.length ? selectedProducts : undefined;
-
-  if (!hasWorkOrderSelection && (!productParam || !productParam.length)) {
+  if (!hasWorkOrderSelection && (!params.product || !params.product.length)) {
     return false;
   }
 
@@ -1269,37 +1043,15 @@ const refreshProcessMetrics = async (
     return false;
   }
 
-  await ensurePlannedQuantitiesForSelection(
-    params.origin ?? null,
-    selectedWorkOrderCode.value,
-    selectedProducts
-  );
-
   const requests = requestableSteps.map(step => {
-    return (async () => {
-      const workOrderCode = selectedWorkOrderCode.value ?? "";
-      const metricsFetcher = fetchProcessMetrics;
-
-      const summary = await metricsFetcher({
-        startDate: params.startDate,
-        endDate: params.endDate,
-        origin: params.origin,
-        product: productParam,
-        stepTypeNo: step.code!,
-        workOrderCode
-      });
-
-      const wipEntries = await buildWipEntriesForWorkOrder({
-        origin: params.origin ?? null,
-        workOrderCode: selectedWorkOrderCode.value ?? "",
-        productCodes: productParam ?? [],
-        stepTypeNo: step.code!,
-        startDate: params.startDate,
-        endDate: params.endDate
-      });
-
-      return { id: step.id, summary: { ...summary, WIP: wipEntries } };
-    })();
+    return fetchProcessMetrics({
+      startDate: params.startDate,
+      endDate: params.endDate,
+      origin: params.origin,
+      product: params.product!,
+      stepTypeNo: step.code!,
+      workOrderCode: selectedWorkOrderCode.value!
+    }).then(summary => ({ id: step.id, summary }));
   });
 
   const results = await Promise.allSettled(requests);
@@ -1350,50 +1102,10 @@ watch(
   }
 );
 
-watch(
-  () => selectedWorkOrderCode.value,
-  async workOrderCode => {
-    if (!workOrderCode) {
-      resetPlannedQuantities();
-      return;
-    }
-
-    const products = workOrderProductMap.value.get(workOrderCode) ?? [];
-    const firstProduct = products[0] ?? null;
-    const preferredProcess = firstProduct
-      ? await ensureProcessCodeForProduct(firstProduct)
-      : null;
-
-    if (preferredProcess) {
-      filters.processCode = preferredProcess;
-      return;
-    }
-
-    const defaultProcess = processOptions.value[0]?.value;
-    if (defaultProcess) {
-      filters.processCode = String(defaultProcess);
-    }
-
-    await ensurePlannedQuantitiesForSelection(
-      filters.origin,
-      workOrderCode,
-      products
-    );
-  }
-);
-
 const handleFiltersSubmit = async () => {
   selectedProcessId.value = null;
   detailError.value = null;
   paretoData.value = createEmptyParetoData();
-
-  if (selectedWorkOrderCode.value) {
-    const products = getSelectedProducts();
-    selectedProductCode.value = products[0] ?? null;
-    level.value = "process";
-    await loadProcessOverviewForProduct();
-    return;
-  }
 
   // ✅ 优先判断产品是否选中
   if (filters.product.length > 0) {
@@ -1421,9 +1133,9 @@ const handleFiltersSubmit = async () => {
     return;
   }
 
-  const product = getSelectedProducts()[0] ?? selectedProductCode.value;
+  const product = filters.product[0] ?? selectedProductCode.value;
   if (!product) {
-    summaryError.value = "请选择产品或工单";
+    summaryError.value = "请选择产品";
     return;
   }
 
@@ -1446,13 +1158,10 @@ const handleFiltersReset = async () => {
   paretoData.value = createEmptyParetoData();
   selectedWorkOrderCode.value = null;
   clearWorkOrders();
-  await refreshProductOptions();
-  await refreshWorkOrderOptions();
   await loadStepOverview();
 };
 
 let productOptionsRequestToken = 0;
-let workOrderOptionsRequestToken = 0;
 
 const resetProductSelection = () => {
   productOptionsRequestToken++;
@@ -1515,116 +1224,31 @@ const refreshProductOptions = async () => {
   }
 };
 
-const refreshWorkOrderOptions = async () => {
-  const { startDate, endDate } = getRequestRange();
-  const selectedOrigin = filters.origin ?? undefined;
+// watch(
+//   () => filters.origin,
+//   async value => {
+//     // resetProductSelection();
+//     selectedStepTypeNo.value = null;
+//     selectedProductCode.value = null;
+//     level.value = "step";
+//     clearWorkOrders();
+//     try {
+//       await processStore.setProcessFlow(true, value ?? null);
+//     } catch (error: any) {
+//       const message = error?.message ?? "获取工艺流程失败";
+//       ElMessage.error(message);
+//     }
+//     await refreshProductOptions();
+//     await loadStepOverview();
+//   }
+// );
 
-  if (!startDate || !endDate || selectedOrigin === undefined) {
-    workOrderOptions.value = [];
-    workOrderProductMap.value = new Map();
-    return;
-  }
-
-  const requestToken = ++workOrderOptionsRequestToken;
-  const aggregation = new Map<string, Set<string>>();
-
-  try {
-    const responses = await Promise.allSettled(
-      STEP_OVERVIEW_CODES.map(stepTypeNo =>
-        fetchWorkOrderCodes({
-          origin: selectedOrigin,
-          stepTypeNo,
-          startDate,
-          endDate
-        })
-      )
-    );
-
-    responses.forEach(result => {
-      if (result.status !== "fulfilled") return;
-
-      const codeMap = result.value ?? {};
-      Object.entries(codeMap).forEach(([workOrderCode, rawProducts]) => {
-        const normalizedWorkOrder = normalizeStringValue(workOrderCode);
-        if (!normalizedWorkOrder) return;
-
-        const productSet =
-          aggregation.get(normalizedWorkOrder) ?? new Set<string>();
-
-        (rawProducts ?? []).forEach(productCode => {
-          const normalized = normalizeStringValue(productCode);
-          if (normalized) {
-            productSet.add(normalized);
-          }
-        });
-
-        aggregation.set(normalizedWorkOrder, productSet);
-      });
-    });
-
-    if (requestToken !== workOrderOptionsRequestToken) {
-      return;
-    }
-
-    const nextWorkOrderProductMap = new Map<string, string[]>();
-    const nextOptions: SelectOption[] = [];
-
-    aggregation.forEach((products, workOrderCode) => {
-      const productList = Array.from(products);
-      nextWorkOrderProductMap.set(workOrderCode, productList);
-      const productLabel = productList.length
-        ? `（${productList.join("、")}）`
-        : "";
-      const label = productLabel
-        ? `${workOrderCode} ${productLabel}`
-        : workOrderCode;
-      nextOptions.push({ label, value: workOrderCode });
-    });
-
-    workOrderProductMap.value = nextWorkOrderProductMap;
-    workOrderOptions.value = nextOptions;
-
-    if (
-      selectedWorkOrderCode.value &&
-      !aggregation.has(selectedWorkOrderCode.value)
-    ) {
-      selectedWorkOrderCode.value = null;
-    }
-  } catch (error: any) {
-    if (requestToken !== workOrderOptionsRequestToken) {
-      return;
-    }
-
-    workOrderOptions.value = [];
-    workOrderProductMap.value = new Map();
-    selectedWorkOrderCode.value = null;
-
-    const message = error?.message ?? "获取工单选项失败";
-    ElMessage.warning(message);
-  }
-};
-
-watch(
-  () => ({
-    origin: filters.origin,
-    dateRange: filters.dateRange.slice()
-  }),
-  async ({ origin }) => {
-    selectedStepTypeNo.value = null;
-    selectedProductCode.value = null;
-    selectedWorkOrderCode.value = null;
-    level.value = "step";
-    clearWorkOrders();
-    await refreshProductOptions();
-    await refreshWorkOrderOptions();
-    try {
-      await processStore.setProcessFlow(true, origin ?? null);
-    } catch (error: any) {
-      const message = error?.message ?? "获取工艺流程失败";
-      ElMessage.error(message);
-    }
-  }
-);
+// watch(
+//   () => filters.dateRange.slice(),
+//   () => {
+//     refreshProductOptions();
+//   }
+// );
 
 watch(processOptions, options => {
   if (
@@ -1643,7 +1267,6 @@ onMounted(async () => {
     ElMessage.error(message);
   }
   await refreshProductOptions();
-  await refreshWorkOrderOptions();
   await loadStepOverview();
 });
 </script>

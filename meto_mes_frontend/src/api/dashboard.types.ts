@@ -52,16 +52,6 @@ export interface ParetoChartData {
   cumulative: number[];
 }
 
-export interface PlannedQuantityParams {
-  origin: ProductOrigin;
-  workOrderCode: string;
-  materialCode: string;
-}
-
-export interface PlannedQuantityResult {
-  plannedQuantity: number | null;
-}
-
 export interface ProcessMetricsSummary {
   数量: {
     良品: number | string;
@@ -78,12 +68,6 @@ export interface ProcessMetricsSummary {
     min: number | string;
     max: number | string;
   };
-  WIP?: {
-    productCode: string;
-    workOrderMaterialCode?: string | null;
-    goodQuantity: number | string;
-    plannedQuantity: number | string;
-  }[];
 }
 
 export interface DashboardProductsParams {

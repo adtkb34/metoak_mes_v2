@@ -3,7 +3,7 @@
     <el-skeleton v-if="loading" animated :rows="4" />
     <template v-else>
       <el-empty v-if="!processes.length" description="暂无工序数据" />
-      <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div
           v-for="item in processes"
           :key="item.id"
@@ -30,7 +30,7 @@
               <div class="text-xs font-medium text-gray-500">
                 {{ group.label }}
               </div>
-              <div class="mt-2 grid grid-cols-2 gap-2 text-sm">
+              <div class="mt-2 grid grid-cols-3 gap-3 text-sm">
                 <div
                   v-for="metric in group.items"
                   :key="metric.key"
@@ -42,33 +42,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-            <div v-if="showWip" class="metric-group">
-              <div class="text-xs font-medium text-gray-500">WIP</div>
-              <div v-if="item.metrics.WIP?.length" class="mt-2 space-y-2">
-                <div
-                  v-for="wip in item.metrics.WIP"
-                  :key="`${wip.productCode}-${wip.workOrderMaterialCode ?? ''}`"
-                  class="flex items-start justify-between rounded-md border border-gray-100 bg-white px-3 py-2"
-                >
-                  <div class="space-y-1">
-                    <div class="text-gray-600">{{ wip.productCode }}</div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-xs text-gray-400">
-                      计划数：
-                      <span class="text-gray-600">
-                        {{ formatWipQuantity(wip.plannedQuantity) }}；
-                      </span>
-                      完成率：
-                      <span class="text-gray-600">
-                        {{ formatCompletionRate(wip.goodQuantity, wip.plannedQuantity) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="mt-2 text-xs text-gray-400">暂无 WIP 数据</div>
             </div>
           </div>
         </div>
@@ -84,14 +57,13 @@ import type { ProcessMetricsSummary, ProcessOverviewItem } from "../types";
 interface Props {
   processes: ProcessOverviewItem[];
   loading?: boolean;
-  showWip?: boolean;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
   (event: "select", id: string): void;
 }>();
-const { processes, loading, showWip } = toRefs(props);
+const { processes, loading } = toRefs(props);
 
 const METRIC_GROUPS = [
   {
@@ -182,40 +154,11 @@ const getMetricClass = (groupKey: string) => {
   }
   return "text-gray-700";
 };
-
-const parseNumericValue = (value: number | string | undefined): number | null => {
-  if (typeof value === "number") return value;
-  if (value === undefined) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const formatWipQuantity = (value: number | string | undefined) => {
-  if (typeof value === "number") {
-    return numberFormatter.format(value);
-  }
-  if (value === undefined || value === null) {
-    return "-";
-  }
-  return String(value);
-};
-
-const formatCompletionRate = (
-  goodQuantity: number | string | undefined,
-  plannedQuantity: number | string | undefined
-) => {
-  const good = parseNumericValue(goodQuantity);
-  const planned = parseNumericValue(plannedQuantity);
-  if (good === null || planned === null || planned <= 0) {
-    return "-";
-  }
-  return `${((good / planned) * 100).toFixed(1)}%`;
-};
 </script>
 
 <style scoped>
 .process-card {
-  @apply rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg;
+  @apply rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg;
   cursor: pointer;
 }
 

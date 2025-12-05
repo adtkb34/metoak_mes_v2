@@ -43,15 +43,6 @@ export type TagCreationResponse<T> = {
   count: number;
 };
 
-export interface CustomSerialPayload {
-  work_order_code?: string;
-  produced_order_id?: number;
-  sn_prefix: string;
-  sn_suffix?: string;
-  serial_length: number;
-  total: number;
-}
-
 export type TagListResponse<T> = {
   data: T[];
   length: number;

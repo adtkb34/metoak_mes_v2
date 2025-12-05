@@ -33,24 +33,6 @@
           />
         </el-select>
       </el-form-item> -->
-      <el-form-item label="工单">
-        <el-select
-          class="filter-select"
-          clearable
-          filterable
-          placeholder="选择工单"
-          :disabled="loading || !workOrderOptions.length"
-          :model-value="workOrderCode"
-          @update:model-value="onWorkOrderChange"
-        >
-          <el-option
-            v-for="item in workOrderOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
-      </el-form-item>
       <el-form-item label="产品">
         <el-select
           class="filter-select"
@@ -58,7 +40,7 @@
           filterable
           multiple
           placeholder="选择产品"
-          :disabled="isProductDisabled"
+          :disabled="loading || !productOptions.length"
           :model-value="product"
           @update:model-value="onProductChange"
         >
@@ -76,7 +58,7 @@
           clearable
           filterable
           placeholder="选择工艺"
-          :disabled="isProcessDisabled"
+          :disabled="loading || !(product && product.length)"
           :model-value="processCode"
           @update:model-value="onProcessCodeChange"
         >
@@ -112,7 +94,6 @@ interface Props {
   productOptions: SelectOption[];
   processOptions: SelectOption[];
   originOptions: SelectOption[];
-  workOrderOptions: SelectOption[];
   loading?: boolean;
   showProduct?: boolean;
   showProcess?: boolean;
@@ -124,16 +105,8 @@ const props = withDefaults(defineProps<Props>(), {
   showProcess: true,
   productMultiple: true
 });
-const {
-  productOptions,
-  processOptions,
-  originOptions,
-  workOrderOptions,
-  loading,
-  showProduct,
-  showProcess,
-  productMultiple
-} = toRefs(props);
+const { productOptions, processOptions, originOptions, loading, showProduct, showProcess, productMultiple } =
+  toRefs(props);
 
 const dashboardStore = useDashboardStore();
 
@@ -141,40 +114,10 @@ const dateRange = computed(() => dashboardStore.filters.dateRange);
 const product = computed(() =>
   productMultiple.value
     ? dashboardStore.filters.product
-    : (dashboardStore.filters.product ?? null)
+    : dashboardStore.filters.product ?? null
 );
 const origin = computed(() => dashboardStore.filters.origin);
 const processCode = computed(() => dashboardStore.filters.processCode);
-const workOrderCode = computed({
-  get: () => dashboardStore.filters.workOrderCode,
-  set: value => {
-    dashboardStore.filters.workOrderCode = value ?? null;
-  }
-});
-
-const isProductDisabled = computed(
-  () =>
-    loading.value ||
-    Boolean(workOrderCode.value) ||
-    !productOptions.value.length
-);
-
-const hasProductSelection = computed(() => {
-  const value = product.value;
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-  return Boolean(value);
-});
-
-const isProcessDisabled = computed(() => {
-  const hasWorkOrder = Boolean(workOrderCode.value);
-  return (
-    loading.value ||
-    (!hasWorkOrder && !hasProductSelection.value) ||
-    !processOptions.value.length
-  );
-});
 
 const emit = defineEmits(["submit", "reset"]);
 
@@ -185,10 +128,6 @@ const onDateRangeChange = (value: string[] | null) => {
 const onProductChange = (
   value: Array<string | number> | string | number | null
 ) => {
-  if (workOrderCode.value) {
-    workOrderCode.value = null;
-  }
-
   if (Array.isArray(value)) {
     if (!value.length) {
       dashboardStore.filters.product = [];
@@ -216,15 +155,6 @@ const onProcessCodeChange = (value: string | number | null) => {
   const nextValue =
     value === null || value === undefined ? null : String(value);
   dashboardStore.filters.processCode = nextValue;
-};
-
-const onWorkOrderChange = (value: string | number | null) => {
-  const nextValue =
-    value === null || value === undefined ? null : String(value);
-  workOrderCode.value = nextValue;
-  if (nextValue) {
-    dashboardStore.filters.product = [];
-  }
 };
 </script>
 

@@ -29,6 +29,5 @@ export enum STEP_NO {
   S315FQC = "027",
   IMU_CALIB = "028",
   ASSEMBLE_PCBA = "029",
-  PACKING = "030",
   FQC = "031"
 }

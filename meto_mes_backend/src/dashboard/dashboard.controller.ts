@@ -17,6 +17,7 @@ import {
   type ProcessStageInfo,
   type ParetoChartData,
 } from './dashboard.service';
+import { STEP_NO } from 'src/utils/stepNo';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -199,7 +200,8 @@ export class DashboardController {
       deviceNos?: string[] | string | null;
       stations?: string[] | string | null;
     },
-  ): Promise<{ success: true; data: ProcessMetricsSummary }> {
+  ): Promise<{ success: true; data: ProcessMetricsSummary | {}}> {
+    if (query.stepTypeNo != "020") return { success: true, data: {} }
     const origin = this.parseOrigin(query?.origin);
     const summary = await this.dashboardService.getProcessMetrics({
       origin,

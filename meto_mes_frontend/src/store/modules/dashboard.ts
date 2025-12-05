@@ -23,8 +23,7 @@ export const useDashboardStore = defineStore("dashboard", {
       dateRange: getDefaultDateRange(),
       product: [] as string[],
       origin: getDefaultOrigin(),
-      processCode: null,
-      workOrderCode: null
+      processCode: null
     } as FilterState
   }),
   actions: {
@@ -33,7 +32,6 @@ export const useDashboardStore = defineStore("dashboard", {
       this.filters.product = [];
       this.filters.origin = getDefaultOrigin();
       this.filters.processCode = null;
-      this.filters.workOrderCode = null;
     }
   }
 });

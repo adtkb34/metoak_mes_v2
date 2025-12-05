@@ -575,7 +575,8 @@ export class DashboardService {
       const client = this.prisma.getClientByOrigin(params.origin);
       let allRows: ProcessMetricRow[] = [];
       let rows: ProcessMetricRow[] | undefined = [];
-      if (workOrderCode) {
+      if (!products?.length && workOrderCode) {
+        
         rows = await this.fetchProcessMetrics(
           normalizedStepTypeNo,
           null,
@@ -593,7 +594,7 @@ export class DashboardService {
             client,
             start,
             end,
-            null,
+            workOrderCode,
           );
           if (rows) allRows.push(...rows);
         }
@@ -618,7 +619,7 @@ export class DashboardService {
     client,
     start,
     end,
-    workOrderCode: string | null,
+    workOrderCode: string | null | undefined,
   ) {
     if (stepTypeNo == STEP_NO.CALIB) {
       return await this.fetchCalibMetricRows({
@@ -1505,6 +1506,7 @@ export class DashboardService {
       ${workOrderCode ? Prisma.sql`AND mpo.work_order_code = ${workOrderCode}` : Prisma.empty}
           ${filterClause ?? Prisma.empty}
       `;
+      console.log(query)
     } else {
       query = Prisma.sql`
         ${baseSql}

@@ -14,7 +14,6 @@ export interface FilterState {
   product: string[];
   origin: ProductOrigin | null;
   processCode: string | null;
-  workOrderCode: string | null;
 }
 
 export interface ProcessMetric {
