@@ -216,11 +216,9 @@ function formatVersion(detail?: Pick<ParamsDetail, "versionMajor" | "versionMino
 }
 
 function formatParamsOptionLabel(detail: ParamsDetail) {
-  const version = formatVersion(detail);
-  const paramsPreview = detail.params ? JSON.stringify(detail.params) : "";
-  const versionText = version ? `(${version})` : "";
-  const paramsText = paramsPreview ? ` ${paramsPreview}` : "";
-  return `${detail.name || "参数集"}${versionText}${paramsText}`.trim();
+  const name = detail.name || (detail.id ? `参数集 ${detail.id}` : "参数集");
+  const extras = [formatVersion(detail), formatParamsPreview(detail)].filter(Boolean).join(" | ");
+  return extras ? `${name} (${extras})` : name;
 }
 
 function formatParamsPreview(detail?: ParamsDetail) {
