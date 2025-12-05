@@ -32,7 +32,7 @@ function extractJavaBackendVersion(
 }
 
 export async function getJavaBackendVersion() {
-  const spcUrl = import.meta.env.VITE_SPC_URL;
+  const spcUrl = import.meta.env.VITE_JAVA_BACKEND_URL;
   if (!spcUrl) {
     throw new Error("未配置 SPC 服务地址");
   }

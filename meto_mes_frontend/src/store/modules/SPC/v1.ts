@@ -40,7 +40,7 @@ export const useSpcStore = defineStore('SPC v1', () => {
       });
 
       // 规则
-      const BASE_URL = `${import.meta.env.VITE_SPC_URL}`;
+      const BASE_URL = `${import.meta.env.VITE_JAVA_BACKEND_URL}`;
       const res = await fetch(`${BASE_URL}/spc/series?${params}`);
       let result = await res.json();
       result = result.map(item => item.value)

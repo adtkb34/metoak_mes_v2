@@ -65,7 +65,7 @@ export const createSpcStore = (id?: string) => {
         stage?: number;
         stepNo?: string;
       }) => {
-        const baseUrl = `${import.meta.env.VITE_SPC_URL}/api/mes/v1/production-record-query/spc`;
+        const baseUrl = `${import.meta.env.VITE_JAVA_BACKEND_URL}/api/mes/v1/production-record-query/spc`;
         const query = new URLSearchParams({
           attrKeys: params?.attrKeys ?? 'mtf_center_value',
           origin: String(params?.origin ?? 1),
