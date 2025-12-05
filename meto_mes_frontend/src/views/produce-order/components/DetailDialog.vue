@@ -46,7 +46,9 @@
               :value="item.id">
               <div class="flex flex-col">
                 <span class="font-medium">{{ item.name || `参数集 ${item.id}` }}</span>
-                <span class="text-xs text-gray-500">{{ formatVersion(item) }}</span>
+                <span class="text-xs text-gray-500">
+                  {{ [formatVersion(item), formatParamsPreview(item)].filter(Boolean).join(' | ') }}
+                </span>
               </div>
             </el-option>
           </el-select>
@@ -215,7 +217,15 @@ function formatVersion(detail?: Pick<ParamsDetail, "versionMajor" | "versionMino
 
 function formatParamsOptionLabel(detail: ParamsDetail) {
   const version = formatVersion(detail);
-  return `${detail.name || "参数集"} ${version ? `(${version})` : ""}`.trim();
+  const paramsPreview = detail.params ? JSON.stringify(detail.params) : "";
+  const versionText = version ? `(${version})` : "";
+  const paramsText = paramsPreview ? ` ${paramsPreview}` : "";
+  return `${detail.name || "参数集"}${versionText}${paramsText}`.trim();
+}
+
+function formatParamsPreview(detail?: ParamsDetail) {
+  if (!detail) return "";
+  return detail.params ? JSON.stringify(detail.params) : "";
 }
 
 async function loadParamsOptions() {
@@ -312,7 +322,7 @@ function handleParamsSubmit() {
     const payload: ParamsPresetPayload = {
       name: paramsForm.value.name,
       description: paramsForm.value.description,
-      params: parsedParams
+      params: JSON.stringify(parsedParams)
     };
 
     try {
