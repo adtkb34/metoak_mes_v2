@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { store } from "@/store";
 import { useOrderStore } from "@/store/modules/order";
-import { createOrder, updateOrder, getAllMaterilsFromK3, MaterialsInfo } from "@/api/order";
-import { onMounted, ref, defineOptions } from "vue";
-import { Delete, Edit, DocumentAdd, Plus } from "@element-plus/icons-vue";
+import { onMounted, ref, defineOptions, watch } from "vue";
+import { ElMessage } from "element-plus";
+import { createOrder, updateOrder } from "@/api/order";
+import { getParamsDetail, type ParamsDetail } from "@/api/params";
+import { Delete, Edit, Plus } from "@element-plus/icons-vue";
 import { getUserAuth } from "@/utils/auth";
 import { DIALOG_TYPE } from "../../../../types/dialog";
 import DetailDialog from "../components/DetailDialog.vue";
@@ -17,6 +19,7 @@ const orderStore = useOrderStore(store);
 const dialogVisible = ref(false);
 const dialogType = ref(DIALOG_TYPE.PREVIEW);
 const multiSelection = ref<any[]>([]);
+const paramsDetailMap = ref<Record<number, ParamsDetail>>({});
 
 
 
@@ -44,11 +47,53 @@ function handleSelectionChange(selections: any[]) {
 
   if (multiSelection.value.length === 1) {
     orderStore.setCurrentOrder(multiSelection.value[0].id);
+    loadParamsDetails(multiSelection.value);
   }
 }
 
 function isBtnDisabled() {
   return getUserAuth().isBtnDisabled || multiSelection.value.length !== 1;
+}
+
+function formatVersion(detail?: Pick<ParamsDetail, "versionMajor" | "versionMinor" | "versionPatch">) {
+  if (!detail) return "";
+  const version = [detail.versionMajor, detail.versionMinor, detail.versionPatch]
+    .filter(v => v !== undefined && v !== null)
+    .join(".");
+  return version ? `v${version}` : "";
+}
+
+function formatParamsPreview(id?: number) {
+  if (!id) return "--";
+  const detail = paramsDetailMap.value[id];
+  if (!detail) return "加载中";
+  const paramsText = detail.params ? JSON.stringify(detail.params) : "";
+  return paramsText || "--";
+}
+
+function formatParamsFull(id?: number) {
+  const detail = id ? paramsDetailMap.value[id] : undefined;
+  if (!detail) return "暂无数据";
+  return JSON.stringify(detail.params ?? {}, null, 2);
+}
+
+async function loadParamsDetails(orders: any[]) {
+  const ids = Array.from(
+    new Set(
+      (orders || [])
+        .map(order => order.params_detail_id)
+        .filter((id: number | null | undefined) => id !== null && id !== undefined)
+    )
+  ).filter(id => !paramsDetailMap.value[id]);
+
+  for (const id of ids) {
+    try {
+      const detail = await getParamsDetail(id as number);
+      paramsDetailMap.value[id as number] = detail;
+    } catch (error) {
+      ElMessage.error((error as Error)?.message || "获取参数集失败");
+    }
+  }
 }
 
 function handleDelete() {
@@ -70,7 +115,8 @@ async function handleSubmit(formData: any) {
     } else if (dialogType.value === 'update') {
       await updateOrder(formData);
     }
-    orderStore.reloadOrderList();
+    await orderStore.reloadOrderList();
+    await loadParamsDetails(orderStore.getOrderList);
     // 成功提示
   } catch (error) {
     console.log(error)
@@ -80,10 +126,17 @@ async function handleSubmit(formData: any) {
   }
 }
 
-onMounted(() => {
-  orderStore.setOrderList();
-
+onMounted(async () => {
+  await orderStore.setOrderList();
+  await loadParamsDetails(orderStore.getOrderList);
 });
+
+watch(
+  () => orderStore.getOrderList,
+  (newList) => {
+    loadParamsDetails(newList);
+  }
+);
 </script>
 
 <template>
@@ -120,6 +173,22 @@ onMounted(() => {
         <el-table-column prop="planned_starttime" label="计划开工时间" align="center" />
         <el-table-column prop="planned_endtime" label="计划完工时间" align="center" />
         <el-table-column prop="flow_code" label="工艺流程" align="center" />
+        <el-table-column label="参数集" align="center" min-width="220">
+          <template #default="scope">
+            <div v-if="scope.row.params_detail_id" class="flex flex-col items-center gap-1">
+              <span class="font-medium">{{ formatVersion(paramsDetailMap[scope.row.params_detail_id]) || '加载中' }}</span>
+              <el-popover placement="top" trigger="hover" width="420">
+                <template #reference>
+                  <el-text class="max-w-[260px]" truncated type="info">
+                    {{ formatParamsPreview(scope.row.params_detail_id) }}
+                  </el-text>
+                </template>
+                <pre class="whitespace-pre-wrap break-all text-sm">{{ formatParamsFull(scope.row.params_detail_id) }}</pre>
+              </el-popover>
+            </div>
+            <span v-else>--</span>
+          </template>
+        </el-table-column>
         <!-- <el-table-column prop="completed_count" label="" align="center" /> -->
 
         <el-table-column fixed="right" label="操作" align="center" v-if="false">

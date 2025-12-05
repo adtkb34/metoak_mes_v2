@@ -36,6 +36,21 @@
               :label="`${item.process_code} (${item.process_name})`" :value="item.process_code" />
           </el-select>
         </el-form-item>
+        <el-form-item prop="params_detail_id">
+          <template #label>
+            <span class="cursor-pointer text-primary" @click="paramsDialogVisible = true">参数集</span>
+          </template>
+          <el-select v-model="currentOrder.params_detail_id" placeholder="请选择参数集" filterable clearable
+            :loading="paramsDetailLoading">
+            <el-option v-for="item in paramsOptions" :key="item.id" :label="formatParamsOptionLabel(item)"
+              :value="item.id">
+              <div class="flex flex-col">
+                <span class="font-medium">{{ item.name || `参数集 ${item.id}` }}</span>
+                <span class="text-xs text-gray-500">{{ formatVersion(item) }}</span>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="工单状态">
           <el-select v-model="currentOrder.order_state" placeholder="Select" filterable>
             <el-option v-for="item in moStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -50,16 +65,59 @@
       </span>
     </template>
   </el-dialog>
+  <el-dialog v-model="paramsDialogVisible" title="新增参数集" width="520px" :close-on-click-modal="false">
+    <el-form ref="paramsFormRef" :model="paramsForm" label-width="100px" :rules="paramsRules">
+      <el-form-item label="名称" prop="name">
+        <el-input v-model="paramsForm.name" placeholder="请输入名称" />
+      </el-form-item>
+      <el-form-item label="描述" prop="description">
+        <el-input v-model="paramsForm.description" placeholder="请输入描述" />
+      </el-form-item>
+      <el-form-item label="参数" prop="params">
+        <el-input v-model="paramsForm.params" type="textarea" :rows="6" placeholder="请输入 JSON 格式的参数" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <el-button @click="paramsDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="handleParamsSubmit">确 定</el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from 'vue';
-import { useOrderStore } from "@/store/modules/order";
+import { computed, onMounted, ref, watch } from "vue";
+import { ElMessage } from "element-plus";
 import { getAllMaterilsFromK3, MaterialsInfo } from "@/api/order";
+import { useOrderStore } from "@/store/modules/order";
 import { useProcessStore } from "@/store/modules/processFlow";
+import {
+  createParamsPreset,
+  getParamsDetail,
+  getParamsDetailList,
+  type ParamsDetail,
+  type ParamsPresetPayload
+} from "@/api/params";
+
+interface ParamsFormState {
+  name: string;
+  description: string;
+  params: string;
+}
 
 const processStore = useProcessStore();
 const materials = ref<MaterialsInfo[]>([])
+const paramsOptions = ref<ParamsDetail[]>([]);
+const paramsDetailLoading = ref(false);
+const paramsDialogVisible = ref(false);
+const paramsFormRef = ref();
+const paramsForm = ref<ParamsFormState>({
+  name: "",
+  description: "",
+  params: "{}"
+});
+const paramsDetailMap = ref<Record<number, ParamsDetail>>({});
 
 enum DIALOG_TYPE {
   CREATE = 'create',
@@ -99,6 +157,24 @@ const rules = {
   ]
 };
 
+const paramsRules = {
+  name: [{ required: true, message: "名称不能为空", trigger: "blur" }],
+  description: [{ required: true, message: "描述不能为空", trigger: "blur" }],
+  params: [
+    {
+      validator: (_: unknown, value: string, callback: Function) => {
+        try {
+          JSON.parse(value);
+          callback();
+        } catch (error) {
+          callback(new Error("请输入正确的 JSON 格式"));
+        }
+      },
+      trigger: "blur"
+    }
+  ]
+};
+
 const orderForm = ref(null);
 
 const props = defineProps<{
@@ -118,6 +194,7 @@ watch(
   () => orderStore.getCurrentOrder,
   newVal => {
     if (newVal) currentOrder.value = newVal;
+    ensureParamsDetailLoaded(currentOrder.value.params_detail_id);
   },
   { immediate: true }
 );
@@ -126,6 +203,52 @@ watch(
 const isDialogEditable = computed(() => {
   return props.dialogType === DIALOG_TYPE.CREATE || props.dialogType === DIALOG_TYPE.UPDATE;
 });
+
+
+function formatVersion(detail?: Pick<ParamsDetail, "versionMajor" | "versionMinor" | "versionPatch">) {
+  if (!detail) return "";
+  const version = [detail.versionMajor, detail.versionMinor, detail.versionPatch]
+    .filter(v => v !== undefined && v !== null)
+    .join(".");
+  return version ? `v${version}` : "";
+}
+
+function formatParamsOptionLabel(detail: ParamsDetail) {
+  const version = formatVersion(detail);
+  return `${detail.name || "参数集"} ${version ? `(${version})` : ""}`.trim();
+}
+
+async function loadParamsOptions() {
+  paramsDetailLoading.value = true;
+  try {
+    const list = await getParamsDetailList();
+    paramsOptions.value = Array.isArray(list) ? list : [];
+    list?.forEach(item => {
+      if (item.id) {
+        paramsDetailMap.value[item.id] = item;
+      }
+    });
+  } catch (error) {
+    ElMessage.error((error as Error)?.message || "获取参数集失败");
+  } finally {
+    paramsDetailLoading.value = false;
+  }
+}
+
+async function ensureParamsDetailLoaded(id?: number | null) {
+  if (!id || paramsDetailMap.value[id]) return;
+  try {
+    const detail = await getParamsDetail(id);
+    if (detail) {
+      paramsDetailMap.value[id] = detail;
+      if (!paramsOptions.value.some(item => item.id === id)) {
+        paramsOptions.value = [...paramsOptions.value, detail];
+      }
+    }
+  } catch (error) {
+    ElMessage.error((error as Error)?.message || "获取参数集详情失败");
+  }
+}
 
 
 function formatYYYYMMDD(date = new Date()) {
@@ -149,6 +272,7 @@ watch(
         planned_endtime: null,
         flow_code: null,
         order_state: 4,
+        params_detail_id: null,
       };
     }
   }
@@ -174,10 +298,46 @@ function submit() {
 
 }
 
+function handleParamsSubmit() {
+  paramsFormRef.value?.validate(async (valid: boolean) => {
+    if (!valid) return;
+    let parsedParams: Record<string, any> = {};
+    try {
+      parsedParams = JSON.parse(paramsForm.value.params || "{}");
+    } catch (error) {
+      ElMessage.error("参数格式不正确");
+      return;
+    }
+
+    const payload: ParamsPresetPayload = {
+      name: paramsForm.value.name,
+      description: paramsForm.value.description,
+      params: parsedParams
+    };
+
+    try {
+      const result = await createParamsPreset(payload);
+      if (result?.id) {
+        currentOrder.value.params_detail_id = result.id;
+      }
+      paramsDialogVisible.value = false;
+      await loadParamsOptions();
+      if (result?.id) {
+        ensureParamsDetailLoaded(result.id);
+      }
+      paramsForm.value = { name: "", description: "", params: "{}" };
+      ElMessage.success("新增参数集成功");
+    } catch (error) {
+      ElMessage.error((error as Error)?.message || "新增参数集失败");
+    }
+  });
+}
+
 
 
 onMounted(() => {
   processStore.setProcessFlow();
+  loadParamsOptions();
   getAllMaterilsFromK3().then(res => {
     materials.value = res.data;
   });
