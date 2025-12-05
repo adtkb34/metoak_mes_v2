@@ -13,7 +13,7 @@ export interface ParamsDetail {
 export interface ParamsPresetPayload {
   name: string;
   description: string;
-  params: Record<string, any>;
+  params: string;
 }
 
 function unwrapParamsResponse<T>(response: any, errorMessage: string): T {

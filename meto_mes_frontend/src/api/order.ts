@@ -2,6 +2,7 @@ import { getUserAuth } from "@/utils/auth";
 import { http } from "@/utils/http";
 
 export interface OrderInfo {
+  id?: number;
   work_order_code: string;
   order_date: Date;
   material_code: string;
@@ -13,6 +14,7 @@ export interface OrderInfo {
   planned_starttime: string;
   planned_endtime: string;
   flow_code: string;
+  params_detail_id?: number | null;
 }
 
 export interface MaterialsInfo {
