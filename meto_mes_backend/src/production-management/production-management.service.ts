@@ -23,7 +23,8 @@ export class ProductionManagementService {
         CAST(planned_endtime AS CHAR) AS planned_endtime,
         flow_code,
         order_state,
-        description
+        description,
+        params_detail_id
       FROM mo_produce_order
       WHERE order_state = 3 or order_state = 4
       ORDER BY order_date desc
