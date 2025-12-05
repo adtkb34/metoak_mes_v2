@@ -38,7 +38,7 @@
         </el-form-item>
         <el-form-item prop="params_detail_id">
           <template #label>
-            <span class="cursor-pointer text-primary" @click="paramsDialogVisible = true">参数集</span>
+            <span class="cursor-pointer text-primary" @click.stop="openParamsDialog">参数集</span>
           </template>
           <el-select v-model="currentOrder.params_detail_id" placeholder="请选择参数集" filterable clearable
             :loading="paramsDetailLoading">
@@ -235,6 +235,11 @@ async function loadParamsOptions() {
   } finally {
     paramsDetailLoading.value = false;
   }
+}
+
+function openParamsDialog(event?: MouseEvent) {
+  event?.stopPropagation();
+  paramsDialogVisible.value = true;
 }
 
 async function ensureParamsDetailLoaded(id?: number | null) {
