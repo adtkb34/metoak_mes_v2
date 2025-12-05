@@ -43,14 +43,7 @@
           <el-select v-model="currentOrder.params_detail_id" placeholder="请选择参数集" filterable clearable
             :loading="paramsDetailLoading">
             <el-option v-for="item in paramsOptions" :key="item.id" :label="formatParamsOptionLabel(item)"
-              :value="item.id">
-              <div class="flex flex-col">
-                <span class="font-medium">{{ item.name || `参数集 ${item.id}` }}</span>
-                <span class="text-xs text-gray-500">
-                  {{ [formatVersion(item), formatParamsPreview(item)].filter(Boolean).join(' | ') }}
-                </span>
-              </div>
-            </el-option>
+              :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="工单状态">
@@ -67,7 +60,8 @@
       </span>
     </template>
   </el-dialog>
-  <el-dialog v-model="paramsDialogVisible" title="新增参数集" width="520px" :close-on-click-modal="false">
+  <el-dialog v-model="paramsDialogVisible" title="新增参数集" width="520px" :close-on-click-modal="false"
+    :append-to-body="true">
     <el-form ref="paramsFormRef" :model="paramsForm" label-width="100px" :rules="paramsRules">
       <el-form-item label="名称" prop="name">
         <el-input v-model="paramsForm.name" placeholder="请输入名称" />
