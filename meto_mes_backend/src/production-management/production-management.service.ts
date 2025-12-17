@@ -30,7 +30,11 @@ export class ProductionManagementService {
       ORDER BY order_date desc
     `);
 
-    return orders;
+    return orders.map(o => ({
+        ...o,
+        params_detail_id: o.params_detail_id?.toString()
+      }));
+      ;
   }
 
   async createProduceOrder(dto: CreateMoProduceOrderDto) {
@@ -63,16 +67,17 @@ export class ProductionManagementService {
   }
 
   async updateProduceOrder(code: string, dto: UpdateMoProduceOrderDto) {
+    const updateId = dto.id
     const existing = await this.prisma.mo_produce_order.findFirst({
-      where: { work_order_code: code }
+      where: { id: updateId }
     });
 
     if (!existing) {
       throw new Error('Order Code Not Exist');
     }
-
+    delete dto.id
     return this.prisma.mo_produce_order.updateMany({
-      where: { work_order_code: code },
+      where: { id: updateId },
       data: { ...dto }
     })
   }

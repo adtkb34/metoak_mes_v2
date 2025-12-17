@@ -46,7 +46,7 @@ export class K3CloudService {
           return reject(new Error(`Python error: ${stderr}`));
         }
 
-        try {
+        // try {
           const result = JSON.parse(stdout);
           console.log(result)
           const fields = [
@@ -101,10 +101,10 @@ export class K3CloudService {
           }
 
           resolve(result);
-        } catch (err) {
-          this.logger.error(`JSON parse error: ${err.message}, raw stdout: ${stdout}`);
-          reject(new Error('Failed to parse Python output'));
-        }
+        // } catch (err) {
+        //   this.logger.error(`JSON parse error: ${err.message}, raw stdout: ${stdout}`);
+        //   reject(new Error('Failed to parse Python output'));
+        // }
       });
     });
   }

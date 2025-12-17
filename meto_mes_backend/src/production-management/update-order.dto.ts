@@ -1,4 +1,5 @@
 export class UpdateMoProduceOrderDto {
+    id?: number;
     order_date: string;
     material_code?: string;
     material_name?: string;

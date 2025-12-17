@@ -323,7 +323,7 @@ function handleParamsSubmit() {
       name: paramsForm.value.name,
       description: paramsForm.value.description,
       params: JSON.stringify(parsedParams),
-      created_by: userStore.getUsername || ""
+      username: userStore.getUsername || ""
     };
 
     try {

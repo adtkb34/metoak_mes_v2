@@ -10,4 +10,5 @@ export interface MoProduceOrder{
     planned_starttime: string; // 这里是 string（可能是 '0000-00-00 00:00:00'）
     planned_endtime: string;
     flow_code: string;
+    params_detail_id: string;
 }

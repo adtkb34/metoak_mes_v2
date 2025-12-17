@@ -68,7 +68,6 @@ export class ProductionManagementController {
     @Body() dto: UpdateMoProduceOrderDto
   ) {
     this.validate(user_level);
-
     return this.productionService.updateProduceOrder(order_code, dto);
   }
 
