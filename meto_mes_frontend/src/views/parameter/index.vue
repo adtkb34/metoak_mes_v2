@@ -138,7 +138,7 @@ onMounted(async () => {
       <div class="card-content">
         <el-form inline>
           <el-form-item label="参数类型">
-            <el-select v-model="selectedType" placeholder="请选择参数类型">
+            <el-select v-model="selectedType" placeholder="请选择参数类型" style="width: 100px;">
               <el-option
                 v-for="item in parameterTypes"
                 :key="item.value"
@@ -147,7 +147,7 @@ onMounted(async () => {
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="关联项">
+          <el-form-item label="关联项" style="width: 300px;">
             <el-select
               v-model="selectedOption"
               :placeholder="optionPlaceholder"
