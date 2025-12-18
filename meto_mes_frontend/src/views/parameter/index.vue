@@ -48,6 +48,7 @@ const optionLabel = computed(
 );
 const optionPlaceholder = computed(() => `请选择${optionLabel.value}`);
 const isProjectType = computed(() => selectedType.value === 3);
+const isProcessType = computed(() => selectedType.value === 0);
 
 interface AddParamsForm {
   name: string;
@@ -395,7 +396,11 @@ onMounted(async () => {
               </p>
             </el-form-item>
             <el-form-item label="参数版本" class="version-form-item">
+              <p v-if="isProcessType" class="parameter-version-text">
+                {{ parameterVersionOptions[0]?.label ?? "" }}
+              </p>
               <el-select
+                v-else
                 v-model="selectedVersion"
                 placeholder="请选择参数版本"
                 :loading="versionLoading"
@@ -493,7 +498,8 @@ onMounted(async () => {
     margin-bottom: 0;
   }
 
-  .parameter-name-text {
+  .parameter-name-text,
+  .parameter-version-text {
     min-width: 200px;
     margin: 0;
     padding: 4px 12px;
