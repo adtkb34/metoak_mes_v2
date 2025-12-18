@@ -32,6 +32,15 @@ export default {
         title: "工艺流程",
         showParent: true
       }
+    },
+    {
+      path: "/basic/parameter-management",
+      name: "ParameterManagement",
+      component: () => import("@/views/parameter/index.vue"),
+      meta: {
+        title: "参数管理",
+        showParent: true
+      }
     }
   ]
 };
