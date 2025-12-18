@@ -10,6 +10,7 @@ import type {
   TagCreationResponse,
   TagListResponse
 } from "types/tag";
+import type { CustomSerialPayload } from "types/tag";
 
 export function getBeamSN(
   work_order_code: string,
@@ -68,6 +69,14 @@ export function generatebeamSN(
   });
 }
 
+export function generateCustomBeamSN(
+  data: CustomSerialPayload
+): Promise<TagCreationResponse<BeamSerialItem>> {
+  return http.request("post", "/tag/v2/beamSN", {
+    data
+  });
+}
+
 export function generateShellSN(data: {
   total: number;
   work_order_code: string;
@@ -78,6 +87,14 @@ export function generateShellSN(data: {
   operator?: string;
 }): Promise<TagCreationResponse<ShellSerialItem>> {
   return http.request("post", "/tag/shellSN", {
+    data
+  });
+}
+
+export function generateCustomShellSN(
+  data: CustomSerialPayload
+): Promise<TagCreationResponse<ShellSerialItem>> {
+  return http.request("post", "/tag/v2/shellSN", {
     data
   });
 }

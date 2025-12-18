@@ -53,3 +53,12 @@ export interface MarkSerialPayload {
   label_type: LabelType;
   serial_numbers: string[];
 }
+
+export interface CustomSerialPayload {
+  total: number;
+  serial_length: number;
+  sn_prefix: string;
+  sn_suffix?: string;
+  produced_order_id?: number;
+  work_order_code?: string;
+}
