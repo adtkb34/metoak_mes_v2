@@ -253,18 +253,21 @@ function formatVersionLabel(item: {
   versionMinor?: number;
   versionPatch?: number;
 }) {
-  if (item.version) return item.version;
+  let label = item.version ?? "";
   const hasMajor =
     item.versionMajor !== undefined ||
     item.versionMinor !== undefined ||
     item.versionPatch !== undefined;
-  if (hasMajor) {
+  if (!label && hasMajor) {
     const major = item.versionMajor ?? 0;
     const minor = item.versionMinor ?? 0;
     const patch = item.versionPatch ?? 0;
-    return `${major}.${minor}.${patch}`;
+    label = `${major}.${minor}.${patch}`;
   }
-  return "";
+  if (selectedType.value === 0 && label) {
+    return /^p/i.test(label) ? label : `p${label}`;
+  }
+  return label;
 }
 
 async function fetchParameterVersions(paramsId?: string | number | null) {
