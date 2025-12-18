@@ -338,7 +338,6 @@ onMounted(async () => {
   <div class="parameter-management-page">
     <el-card class="parameter-type-card" shadow="never">
       <div class="card-content">
-        <el-button type="primary" @click="openAddDialog">添加</el-button>
         <div class="card-form">
           <el-form inline>
             <el-form-item label="参数类型" style="margin-bottom: 0;">
@@ -413,6 +412,9 @@ onMounted(async () => {
             </el-form-item>
           </el-form>
         </div>
+        <el-button class="add-button" type="primary" @click="openAddDialog">
+          添加
+        </el-button>
       </div>
     </el-card>
 
@@ -497,6 +499,10 @@ onMounted(async () => {
     padding: 4px 12px;
     background-color: #f5f7fa;
     border-radius: 4px;
+  }
+
+  .add-button {
+    margin-left: auto;
   }
 }
 
