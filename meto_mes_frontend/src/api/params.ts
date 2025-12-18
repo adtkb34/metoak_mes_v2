@@ -19,11 +19,27 @@ export interface ParamsPresetPayload {
 
 export interface ParamsBaseQuery {
   type: number;
+  relationId?: string | number | null;
 }
 
 export interface ParamsBaseItem {
   id?: number;
   name?: string;
+}
+
+export interface ParamsVersionQuery {
+  type: number;
+  relationId?: string | number | null;
+  paramsId?: string | number | null;
+}
+
+export interface ParamsVersionItem {
+  id?: number;
+  name?: string;
+  version?: string;
+  versionMajor?: number;
+  versionMinor?: number;
+  versionPatch?: number;
 }
 
 function unwrapParamsResponse<T>(response: any, errorMessage: string): T {
@@ -86,5 +102,38 @@ export async function getParamsBaseList(
   return unwrapParamsResponse<ParamsBaseItem[]>(
     response,
     "获取参数基础数据失败"
+  );
+}
+
+export async function getParamsNameList(
+  query: ParamsBaseQuery
+): Promise<ParamsBaseItem[]> {
+  const baseUrl = import.meta.env.VITE_JAVA_BACKEND_URL;
+  if (!baseUrl) throw new Error("未配置 Java 后端地址");
+  const response = await http.request(
+    "get",
+    `${baseUrl}/api/mes/v1/params/name`,
+    {
+      params: query
+    }
+  );
+  return unwrapParamsResponse<ParamsBaseItem[]>(response, "获取参数名称失败");
+}
+
+export async function getParamsVersionList(
+  query: ParamsVersionQuery
+): Promise<ParamsVersionItem[]> {
+  const baseUrl = import.meta.env.VITE_JAVA_BACKEND_URL;
+  if (!baseUrl) throw new Error("未配置 Java 后端地址");
+  const response = await http.request(
+    "get",
+    `${baseUrl}/api/mes/v1/params/version`,
+    {
+      params: query
+    }
+  );
+  return unwrapParamsResponse<ParamsVersionItem[]>(
+    response,
+    "获取参数版本失败"
   );
 }
