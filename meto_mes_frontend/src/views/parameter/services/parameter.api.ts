@@ -77,11 +77,8 @@ export const createParameterBase = async (
     response,
     ParameterApiErrorMessage.BaseCreate
   );
-  const baseId = data.baseId ?? data.id;
-  if (baseId === undefined || baseId === null) {
-    throw new Error(ParameterApiErrorMessage.BaseIdMissing);
-  }
-  return baseId;
+
+  return Number(data);
 };
 
 export const createParameterDetail = async (

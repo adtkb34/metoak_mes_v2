@@ -27,11 +27,11 @@ const handleEdit = (row: ParameterRow) => emit("edit", row);
       style="width: 100%"
       :loading="loading"
     >
-      <el-table-column label="类型" align="center" prop="type" min-width="90">
+      <!-- <el-table-column label="类型" align="center" prop="type" min-width="90">
         <template #default="scope">
           {{ formatType(scope.row.type) }}
         </template>
-      </el-table-column>
+      </el-table-column> -->
       <el-table-column
         label="关联项"
         align="center"
