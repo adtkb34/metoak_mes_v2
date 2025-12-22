@@ -1,5 +1,17 @@
 import { http } from "@/utils/http";
 
+export type ParamsContentValue =
+  | string
+  | number
+  | boolean
+  | null
+  | ParamsContent
+  | ParamsContentValue[];
+
+export interface ParamsContent {
+  [key: string]: ParamsContentValue;
+}
+
 export interface ParamsDetail {
   id?: number;
   name?: string;
@@ -7,7 +19,15 @@ export interface ParamsDetail {
   versionMajor?: number;
   versionMinor?: number;
   versionPatch?: number;
-  params?: Record<string, any>;
+  version?: string;
+  type?: number;
+  relationId?: string | number | null;
+  relationName?: string;
+  username?: string;
+  createTime?: string;
+  createdAt?: string;
+  updateTime?: string;
+  params?: ParamsContent | string | null;
 }
 
 export interface ParamsPresetPayload {
@@ -40,6 +60,10 @@ export interface ParamsVersionItem {
   versionMajor?: number;
   versionMinor?: number;
   versionPatch?: number;
+  description?: string;
+  username?: string;
+  createTime?: string;
+  createdAt?: string;
 }
 
 function unwrapParamsResponse<T>(response: any, errorMessage: string): T {
@@ -85,6 +109,22 @@ export async function createParamsPreset(
     data: payload
   });
   return unwrapParamsResponse<ParamsDetail>(response, "新增参数集失败");
+}
+
+export async function updateParamsPreset(
+  id: number | string,
+  payload: ParamsPresetPayload
+): Promise<ParamsDetail> {
+  const baseUrl = import.meta.env.VITE_JAVA_BACKEND_URL;
+  if (!baseUrl) throw new Error("未配置 Java 后端地址");
+  const response = await http.request(
+    "put",
+    `${baseUrl}/api/mes/v1/params/${id}`,
+    {
+      data: payload
+    }
+  );
+  return unwrapParamsResponse<ParamsDetail>(response, "更新参数集失败");
 }
 
 export async function getParamsBaseList(

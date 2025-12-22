@@ -17,6 +17,7 @@ export type ProcessFlow = {
   process_name: string;
   process_desc: string;
   stage_codes: StageCode[];
+  flow_no?: string;
 };
 
 const user_level = getUserAuth().user_level;
