@@ -17,7 +17,7 @@ const formattedContent = computed(() =>
 );
 
 const typeLabel = computed(() =>
-  props.detail ? PARAMETER_TYPE_LABELS[props.detail.type] ?? "--" : "--"
+  props.detail ? (PARAMETER_TYPE_LABELS[props.detail.type] ?? "--") : "--"
 );
 </script>
 

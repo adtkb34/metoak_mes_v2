@@ -1,7 +1,5 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import { getProcessSteps, getProcessFlow } from "@/api/processFlow";
-import { getAllOrders } from "@/api/order";
 import { getParamsNameList } from "@/api/params";
 import {
   PARAMETER_TYPE_LABELS,
@@ -10,6 +8,7 @@ import {
   type ParameterTypeOption,
   ParameterTypeEnum
 } from "../types";
+import { useParameterOptionsLoader } from "./useParameterOptionsLoader";
 
 export interface ParameterFilterContext {
   parameterTypes: ParameterTypeOption[];
@@ -28,6 +27,7 @@ export interface ParameterFilterContext {
 }
 
 export function useParameterFilters(): ParameterFilterContext {
+  const { loadOptions } = useParameterOptionsLoader();
   const parameterTypes = PARAMETER_TYPE_OPTIONS;
   const selectedType = ref<ParameterTypeEnum>(ParameterTypeEnum.Process);
   const selectedOption = ref<string | number | null>(null);
@@ -48,66 +48,6 @@ export function useParameterFilters(): ParameterFilterContext {
       parameterOptions.value.find(item => item.value === selectedOption.value)
         ?.label ?? optionLabel.value
   );
-
-  const fetchProcessOptions = async () => {
-    optionLoading.value = true;
-    try {
-      const steps = await getProcessSteps();
-      parameterOptions.value = steps
-        .map(step => ({
-          label: step.stage_name ?? step.stage_code,
-          value: step.step_type_no?.trim() ?? step.stage_code
-        }))
-        .filter(
-          (item): item is ParameterOption =>
-            item.value !== undefined && item.value !== null
-        );
-    } catch (error) {
-      ElMessage.error("获取工序失败");
-    } finally {
-      optionLoading.value = false;
-    }
-  };
-
-  const fetchFlowOptions = async () => {
-    optionLoading.value = true;
-    try {
-      const flows = await getProcessFlow();
-      parameterOptions.value = flows
-        .map(flow => ({
-          label: flow.process_name ?? flow.process_code,
-          value: flow.flow_no ?? flow.process_code
-        }))
-        .filter(
-          (item): item is ParameterOption =>
-            item.value !== undefined && item.value !== null
-        );
-    } catch (error) {
-      ElMessage.error("获取工艺失败");
-    } finally {
-      optionLoading.value = false;
-    }
-  };
-
-  const fetchWorkOrderOptions = async () => {
-    optionLoading.value = true;
-    try {
-      const orders = await getAllOrders();
-      parameterOptions.value = orders
-        .map(order => ({
-          label: order.work_order_code ?? order.id ?? "",
-          value: order.id ?? order.work_order_code ?? ""
-        }))
-        .filter(
-          (item): item is ParameterOption =>
-            item.value !== undefined && item.value !== null && item.value !== ""
-        );
-    } catch (error) {
-      ElMessage.error("获取工单失败");
-    } finally {
-      optionLoading.value = false;
-    }
-  };
 
   const fetchParameterNames = async () => {
     if (!isProjectType.value && selectedOption.value === null) {
@@ -130,7 +70,7 @@ export function useParameterFilters(): ParameterFilterContext {
             item.value !== undefined && item.value !== null && item.value !== ""
         );
     } catch (error) {
-      ElMessage.error("获取参数集失败");
+      ElMessage.error((error as Error)?.message ?? "获取参数集失败");
     } finally {
       nameLoading.value = false;
     }
@@ -146,13 +86,10 @@ export function useParameterFilters(): ParameterFilterContext {
       return;
     }
 
-    if (type === ParameterTypeEnum.Process) {
-      await fetchProcessOptions();
-    } else if (type === ParameterTypeEnum.Craft) {
-      await fetchFlowOptions();
-    } else if (type === ParameterTypeEnum.WorkOrder) {
-      await fetchWorkOrderOptions();
-    }
+    optionLoading.value = true;
+    const options = await loadOptions(type);
+    parameterOptions.value = options;
+    optionLoading.value = false;
   };
 
   watch(
