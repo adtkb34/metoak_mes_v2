@@ -374,47 +374,6 @@ onMounted(async () => {
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="参数名称" class="name-form-item">
-              <el-select
-                v-if="isProjectType"
-                v-model="selectedParameterName"
-                placeholder="请选择参数名称"
-                :loading="nameLoading"
-                :disabled="nameLoading && !parameterNameOptions.length"
-                clearable
-                style="width: 200px"
-              >
-                <el-option
-                  v-for="item in parameterNameOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </el-select>
-              <p v-else class="parameter-name-text">
-                {{ parameterNameOptions[0]?.label ?? "" }}
-              </p>
-            </el-form-item>
-            <el-form-item label="参数版本" class="version-form-item">
-              <p v-if="isProcessType" class="parameter-version-text">
-                {{ parameterVersionOptions[0]?.label ?? "" }}
-              </p>
-              <el-select
-                v-else
-                v-model="selectedVersion"
-                placeholder="请选择参数版本"
-                :loading="versionLoading"
-                :disabled="versionLoading && !parameterVersionOptions.length"
-                style="width: 200px"
-              >
-                <el-option
-                  v-for="item in parameterVersionOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </el-select>
-            </el-form-item>
           </el-form>
         </div>
         <el-button class="add-button" type="primary" @click="openAddDialog">
