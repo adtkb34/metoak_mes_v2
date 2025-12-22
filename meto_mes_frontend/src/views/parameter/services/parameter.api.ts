@@ -1,6 +1,10 @@
 import { http } from "@/utils/http";
 import type { ParamsDetail } from "@/api/params";
-import type { ParameterTypeEnum } from "../types";
+import type {
+  ParameterListItem,
+  ParameterListQuery,
+  ParameterTypeEnum
+} from "../types";
 
 interface ApiResponse<T> {
   code?: number;
@@ -11,6 +15,7 @@ interface ApiResponse<T> {
 export interface CreateParameterBasePayload {
   name: string;
   type: ParameterTypeEnum;
+  createdBy: string;
   flowNo?: string | number | null;
   orderId?: string | number | null;
   stepTypeNo?: string | number | null;
@@ -31,14 +36,17 @@ export enum ParameterApiErrorMessage {
   MissingBackend = "未配置 Java 后端地址",
   BaseCreate = "创建参数集基础信息失败",
   BaseIdMissing = "参数集基础ID缺失",
-  DetailCreate = "创建参数集详情失败"
+  DetailCreate = "创建参数集详情失败",
+  ListFetch = "获取参数清单失败"
 }
 
-const isApiResponse = <T>(response: unknown): response is ApiResponse<T> =>
-  typeof response === "object" && response !== null;
+const isApiResponse = <T>(
+  response: ApiResponse<T> | T
+): response is ApiResponse<T> =>
+  typeof response === "object" && response !== null && "code" in response;
 
 const unwrapResponse = <T>(
-  response: unknown,
+  response: ApiResponse<T> | T,
   errorMessage: ParameterApiErrorMessage
 ): T => {
   if (isApiResponse<T>(response)) {
@@ -56,6 +64,21 @@ const unwrapResponse = <T>(
   return response as T;
 };
 
+const extractBaseId = (
+  response: CreateParameterBaseResponse | number | string
+): number | string => {
+  if (typeof response === "number" || typeof response === "string") {
+    return response;
+  }
+  if (response.baseId !== undefined && response.baseId !== null) {
+    return response.baseId;
+  }
+  if (response.id !== undefined && response.id !== null) {
+    return response.id;
+  }
+  throw new Error(ParameterApiErrorMessage.BaseIdMissing);
+};
+
 const getJavaBackendUrl = (): string => {
   const baseUrl = import.meta.env.VITE_JAVA_BACKEND_URL;
   if (!baseUrl) throw new Error(ParameterApiErrorMessage.MissingBackend);
@@ -66,34 +89,69 @@ export const createParameterBase = async (
   payload: CreateParameterBasePayload
 ): Promise<number | string> => {
   const baseUrl = getJavaBackendUrl();
-  const response = await http.request(
-    "post",
-    `${baseUrl}/api/mes/v1/params/base`,
-    {
-      data: payload
-    }
-  );
+  const response: ApiResponse<CreateParameterBaseResponse> | CreateParameterBaseResponse =
+    await http.request(
+      "post",
+      `${baseUrl}/api/mes/v1/params/base`,
+      {
+        data: payload
+      }
+    );
   const data = unwrapResponse<CreateParameterBaseResponse>(
     response,
     ParameterApiErrorMessage.BaseCreate
   );
 
-  return Number(data);
+  return extractBaseId(data);
 };
 
 export const createParameterDetail = async (
   payload: CreateParameterDetailPayload
 ): Promise<ParamsDetail> => {
   const baseUrl = getJavaBackendUrl();
-  const response = await http.request(
-    "post",
-    `${baseUrl}/api/mes/v1/params/detail`,
-    {
-      data: payload
-    }
-  );
+  const response: ApiResponse<ParamsDetail> | ParamsDetail =
+    await http.request(
+      "post",
+      `${baseUrl}/api/mes/v1/params/detail`,
+      {
+        data: payload
+      }
+    );
   return unwrapResponse<ParamsDetail>(
     response,
     ParameterApiErrorMessage.DetailCreate
+  );
+};
+
+const buildListQueryParams = (
+  query: ParameterListQuery
+): ParameterListQuery => {
+  const params: ParameterListQuery = {
+    type: query.type
+  };
+  if (query.flowNo !== null && query.flowNo !== undefined) {
+    params.flowNo = query.flowNo;
+  }
+  if (query.orderId !== null && query.orderId !== undefined) {
+    params.orderId = query.orderId;
+  }
+  if (query.stepTypeNo !== null && query.stepTypeNo !== undefined) {
+    params.stepTypeNo = query.stepTypeNo;
+  }
+  return params;
+};
+
+export const getParameterList = async (
+  query: ParameterListQuery
+): Promise<ParameterListItem[]> => {
+  const baseUrl = getJavaBackendUrl();
+  const params = buildListQueryParams(query);
+  const response: ApiResponse<ParameterListItem[]> | ParameterListItem[] =
+    await http.request("get", `${baseUrl}/api/mes/v1/params`, {
+      params
+    });
+  return unwrapResponse<ParameterListItem[]>(
+    response,
+    ParameterApiErrorMessage.ListFetch
   );
 };

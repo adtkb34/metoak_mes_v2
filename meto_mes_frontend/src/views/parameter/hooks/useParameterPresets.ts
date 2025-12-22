@@ -2,23 +2,31 @@ import { computed, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import {
   getParamsDetail,
-  getParamsVersionList,
   type ParamsContent,
   type ParamsDetail
 } from "@/api/params";
 import {
   type ParameterDetailResponse,
   type ParameterDetailState,
+  type ParameterListItem,
+  type ParameterListQuery,
   type ParameterRow,
-  type ParameterVersionResponse,
   type ParameterOption,
+  ParameterRelationField,
   ParameterTypeEnum
 } from "../types";
+import { getParameterList } from "../services/parameter.api";
 import type { ParameterFilterContext } from "./useParameterFilters";
+
+enum ParameterPresetMessage {
+  TableLoadFailed = "获取参数清单失败",
+  DetailFetchFailed = "获取参数集详情失败",
+  InvalidDetailId = "参数ID无效"
+}
 
 const formatVersionLabel = (
   item: Pick<
-    ParameterVersionResponse | ParamsDetail,
+    ParameterListItem | ParamsDetail,
     "version" | "versionMajor" | "versionMinor" | "versionPatch"
   >
 ): string => {
@@ -84,7 +92,7 @@ export function useParameterPresets(
   const detailDialogVisible = ref(false);
   const detailLoading = ref(false);
   const activeDetail = ref<ParameterDetailState | null>(null);
-  const detailCache = ref<Record<number, ParameterDetailState>>({});
+  const detailCache = ref<Record<string, ParameterDetailState>>({});
 
   const shouldLoadTable = computed(
     () =>
@@ -93,21 +101,53 @@ export function useParameterPresets(
         filters.selectedOption.value !== undefined)
   );
 
-  const buildRow = (
-    nameOption: ParameterOption,
-    version: ParameterVersionResponse,
-    relationName: string
-  ): ParameterRow => ({
-    id: version.id,
-    paramsId: nameOption.value,
+  const buildRelationId = (): string | number | null =>
+    filters.isProjectType.value ? null : filters.selectedOption.value ?? null;
+
+  const buildListQuery = (): ParameterListQuery => {
+    const relationId = buildRelationId();
+    if (filters.selectedType.value === ParameterTypeEnum.Craft) {
+      return {
+        type: filters.selectedType.value,
+        [ParameterRelationField.FlowNo]: relationId
+      };
+    }
+    if (filters.selectedType.value === ParameterTypeEnum.WorkOrder) {
+      return {
+        type: filters.selectedType.value,
+        [ParameterRelationField.OrderId]: relationId
+      };
+    }
+    if (filters.selectedType.value === ParameterTypeEnum.Process) {
+      return {
+        type: filters.selectedType.value,
+        [ParameterRelationField.StepTypeNo]: relationId
+      };
+    }
+    return {
+      type: filters.selectedType.value
+    };
+  };
+
+  const resolveRelationName = (item: ParameterListItem): string => {
+    if (item.relation) return item.relation;
+    const relationId =
+      item.relationId ?? (filters.isProjectType.value ? null : buildRelationId());
+    return findRelationName(filters.parameterOptions.value, relationId);
+  };
+
+  const buildRow = (item: ParameterListItem): ParameterRow => ({
+    id: item.id,
+    paramsId: item.paramsId ?? item.id,
     type: filters.selectedType.value,
-    relationId: filters.selectedOption.value,
-    relationName,
-    name: nameOption.label,
-    description: version.description ?? "",
-    versionLabel: formatVersionLabel(version),
-    createdBy: version.username ?? "",
-    createdAt: version.createdAt ?? version.createTime ?? ""
+    relationId:
+      item.relationId ?? (filters.isProjectType.value ? null : buildRelationId()),
+    relationName: resolveRelationName(item),
+    name: item.name,
+    description: item.description ?? "",
+    versionLabel: formatVersionLabel(item),
+    createdBy: item.createdBy ?? item.username ?? "",
+    createdAt: item.createdAt ?? item.createTime ?? ""
   });
 
   const reloadTable = async () => {
@@ -117,27 +157,13 @@ export function useParameterPresets(
     }
     tableLoading.value = true;
     try {
-      const relationName = findRelationName(
-        filters.parameterOptions.value,
-        filters.selectedOption.value
-      );
-      const rows: ParameterRow[] = [];
-      for (const nameOption of filters.parameterNameOptions.value) {
-        const versions = await getParamsVersionList({
-          type: filters.selectedType.value,
-          relationId:
-            filters.selectedType.value === ParameterTypeEnum.Project
-              ? undefined
-              : filters.selectedOption.value,
-          paramsId: nameOption.value
-        });
-        versions.forEach(version => {
-          rows.push(buildRow(nameOption, version, relationName));
-        });
-      }
-      tableData.value = rows;
+      const query = buildListQuery();
+      const list = await getParameterList(query);
+      tableData.value = list.map(item => buildRow(item));
     } catch (error) {
-      ElMessage.error((error as Error)?.message || "获取参数版本失败");
+      ElMessage.error(
+        (error as Error)?.message ?? ParameterPresetMessage.TableLoadFailed
+      );
     } finally {
       tableLoading.value = false;
     }
@@ -146,20 +172,28 @@ export function useParameterPresets(
   const fetchDetail = async (
     row: ParameterRow
   ): Promise<ParameterDetailState | null> => {
-    if (row.id && detailCache.value[row.id]) {
-      return detailCache.value[row.id];
+    const cacheKey = row.id !== undefined && row.id !== null ? String(row.id) : null;
+    if (cacheKey && detailCache.value[cacheKey]) {
+      return detailCache.value[cacheKey];
     }
     let detail: ParameterDetailResponse | null = null;
-    if (row.id) {
+    const detailId =
+      row.id === undefined || row.id === null ? null : Number(row.id);
+    if (detailId !== null && !Number.isNaN(detailId)) {
       try {
-        detail = await getParamsDetail(row.id);
+        detail = await getParamsDetail(detailId);
       } catch (error) {
-        ElMessage.error((error as Error)?.message || "获取参数集详情失败");
+        ElMessage.error(
+          (error as Error)?.message ?? ParameterPresetMessage.DetailFetchFailed
+        );
       }
+    } else if (cacheKey) {
+      ElMessage.error(ParameterPresetMessage.InvalidDetailId);
     }
 
     const paramsContent = normalizeParamsContent(detail?.params);
-    const versionSource: ParameterVersionResponse = detail ?? {
+    const versionSource: ParameterListItem = detail ?? {
+      name: row.name,
       version: row.versionLabel
     };
     const merged: ParameterDetailState = {
@@ -175,8 +209,8 @@ export function useParameterPresets(
       content: paramsContent
     };
 
-    if (row.id) {
-      detailCache.value[row.id] = merged;
+    if (cacheKey) {
+      detailCache.value[cacheKey] = merged;
     }
     return merged;
   };
@@ -191,8 +225,7 @@ export function useParameterPresets(
   watch(
     () => ({
       type: filters.selectedType.value,
-      option: filters.selectedOption.value,
-      names: filters.parameterNameOptions.value.map(item => item.value)
+      option: filters.selectedOption.value
     }),
     () => {
       reloadTable();
