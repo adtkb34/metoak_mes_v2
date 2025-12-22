@@ -40,7 +40,7 @@ const triggerAdd = () => {
     <div class="card-content">
       <div class="card-form">
         <el-form inline>
-          <el-form-item label="参数类型" style="margin-bottom: 0;">
+          <el-form-item label="参数类型" style="margin-bottom: 0">
             <el-select
               :model-value="selectedType"
               placeholder="请选择参数类型"
@@ -55,14 +55,19 @@ const triggerAdd = () => {
               />
             </el-select>
           </el-form-item>
-          <el-form-item :label="optionLabel" style="width: 300px;margin-bottom: 0;">
+          <el-form-item
+            :label="optionLabel"
+            style="width: 300px; margin-bottom: 0"
+          >
             <el-select
               :model-value="selectedOption"
               :placeholder="optionPlaceholder"
               :loading="optionLoading"
               clearable
               filterable
-              :disabled="isProjectType || (optionLoading && !parameterOptions.length)"
+              :disabled="
+                isProjectType || (optionLoading && !parameterOptions.length)
+              "
               @update:model-value="handleOptionChange"
             >
               <el-option

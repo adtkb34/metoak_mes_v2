@@ -17,7 +17,10 @@ import {
 import type { ParameterFilterContext } from "./useParameterFilters";
 
 const formatVersionLabel = (
-  item: Pick<ParameterVersionResponse | ParamsDetail, "version" | "versionMajor" | "versionMinor" | "versionPatch">
+  item: Pick<
+    ParameterVersionResponse | ParamsDetail,
+    "version" | "versionMajor" | "versionMinor" | "versionPatch"
+  >
 ): string => {
   if (item.version) return item.version;
   const hasMajor =
@@ -58,7 +61,8 @@ const findRelationName = (
   relationId: string | number | null | undefined
 ) =>
   options.find(item => item.value === relationId)?.label ??
-  options.find(item => String(item.value) === String(relationId ?? ""))?.label ??
+  options.find(item => String(item.value) === String(relationId ?? ""))
+    ?.label ??
   "";
 
 export interface ParameterPresetsContext {
@@ -85,7 +89,8 @@ export function useParameterPresets(
   const shouldLoadTable = computed(
     () =>
       filters.isProjectType.value ||
-      (filters.selectedOption.value !== null && filters.selectedOption.value !== undefined)
+      (filters.selectedOption.value !== null &&
+        filters.selectedOption.value !== undefined)
   );
 
   const buildRow = (

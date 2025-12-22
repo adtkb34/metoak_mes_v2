@@ -1,4 +1,8 @@
-import type { ParamsContent, ParamsDetail, ParamsVersionItem } from "@/api/params";
+import type {
+  ParamsContent,
+  ParamsDetail,
+  ParamsVersionItem
+} from "@/api/params";
 
 export enum ParameterTypeEnum {
   Process = 0,
@@ -36,6 +40,20 @@ export interface ParameterOption {
   value: string | number;
 }
 
+export interface ParameterFormState {
+  name: string;
+  description: string;
+  content: string;
+  type: ParameterTypeEnum;
+  relationId: string | number | null;
+}
+
+export enum ParameterRelationField {
+  FlowNo = "flowNo",
+  OrderId = "orderId",
+  StepTypeNo = "stepTypeNo"
+}
+
 export interface ParameterRow {
   id?: number;
   paramsId?: string | number;
@@ -51,6 +69,13 @@ export interface ParameterRow {
 
 export interface ParameterDetailState extends ParameterRow {
   content: ParamsContent;
+}
+
+export interface ParameterDialogDefaults {
+  type: ParameterTypeEnum;
+  relationId: string | number | null;
+  relationName?: string;
+  relationOptions?: ParameterOption[];
 }
 
 export type ParameterDetailResponse = ParamsDetail & {

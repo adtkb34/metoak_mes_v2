@@ -1,31 +1,46 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
-import { ParameterDialogMode } from "../types";
+import {
+  ParameterDialogMode,
+  type ParameterOption,
+  type ParameterFormState,
+  type ParameterTypeEnum,
+  type ParameterTypeOption
+} from "../types";
+import ParameterBaseSelector from "./ParameterBaseSelector.vue";
+import {
+  ParameterFormLabel,
+  ParameterFormPlaceholder
+} from "./parameterForm.constants";
 
 const props = defineProps<{
   visible: boolean;
   mode: ParameterDialogMode;
-  formState: { name: string; description: string; content: string };
-  formRules: FormRules<{ name: string; description: string; content: string }>;
+  formState: ParameterFormState;
+  formRules: FormRules<ParameterFormState>;
   nameDisabled: boolean;
+  typeOptions: ParameterTypeOption[];
+  relationOptions: ParameterOption[];
+  relationLoading: boolean;
+  relationLabel: string;
+  relationPlaceholder: string;
+  typeDisabled: boolean;
+  relationDisabled: boolean;
 }>();
 
 const emit = defineEmits<{
   (event: "close"): void;
   (event: "submit"): void;
   (event: "form-ready", ref: FormInstance | undefined): void;
+  (event: "update:form-state", value: ParameterFormState): void;
 }>();
 
 const dialogTitle = computed(() =>
   props.mode === ParameterDialogMode.Edit ? "编辑参数集" : "新增参数集"
 );
-
 const formRef = ref<FormInstance>();
-
-const notifyFormRef = () => {
-  emit("form-ready", formRef.value);
-};
+const notifyFormRef = () => emit("form-ready", formRef.value);
 
 onMounted(() => {
   notifyFormRef();
@@ -37,6 +52,26 @@ watch(
     notifyFormRef();
   }
 );
+
+const updateFormState = <K extends keyof ParameterFormState>(
+  key: K,
+  value: ParameterFormState[K]
+) => {
+  emit("update:form-state", {
+    ...props.formState,
+    [key]: value
+  });
+};
+
+const handleTypeChange = (value: ParameterTypeEnum) =>
+  updateFormState("type", value);
+const handleRelationChange = (value: string | number | null | undefined) =>
+  updateFormState("relationId", value ?? null);
+const handleNameChange = (value: string) => updateFormState("name", value);
+const handleDescriptionChange = (value: string) =>
+  updateFormState("description", value);
+const handleContentChange = (value: string) =>
+  updateFormState("content", value);
 </script>
 
 <template>
@@ -52,24 +87,45 @@ watch(
       ref="formRef"
       :model="formState"
       :rules="formRules"
-      label-width="90px"
+      label-width="110px"
     >
-      <el-form-item label="名称" prop="name">
+      <ParameterBaseSelector
+        :type-value="formState.type"
+        :type-options="typeOptions"
+        :relation-value="formState.relationId"
+        :relation-options="relationOptions"
+        :relation-label="relationLabel"
+        :relation-placeholder="relationPlaceholder"
+        :relation-loading="relationLoading"
+        :type-disabled="typeDisabled"
+        :relation-disabled="relationDisabled"
+        :type-label="ParameterFormLabel.Type"
+        :type-placeholder="ParameterFormPlaceholder.Type"
+        @update:type="handleTypeChange"
+        @update:relation="handleRelationChange"
+      />
+      <el-form-item :label="ParameterFormLabel.Name" prop="name">
         <el-input
-          v-model="formState.name"
-          placeholder="请输入名称"
+          :model-value="formState.name"
+          :placeholder="ParameterFormPlaceholder.Name"
           :disabled="nameDisabled"
+          @update:model-value="handleNameChange"
         />
       </el-form-item>
-      <el-form-item label="描述" prop="description">
-        <el-input v-model="formState.description" placeholder="请输入描述" />
-      </el-form-item>
-      <el-form-item label="内容" prop="content">
+      <el-form-item :label="ParameterFormLabel.Description" prop="description">
         <el-input
-          v-model="formState.content"
+          :model-value="formState.description"
+          :placeholder="ParameterFormPlaceholder.Description"
+          @update:model-value="handleDescriptionChange"
+        />
+      </el-form-item>
+      <el-form-item :label="ParameterFormLabel.Content" prop="content">
+        <el-input
+          :model-value="formState.content"
           type="textarea"
           :rows="6"
-          placeholder="请输入 JSON 格式的内容"
+          :placeholder="ParameterFormPlaceholder.Content"
+          @update:model-value="handleContentChange"
         />
       </el-form-item>
     </el-form>

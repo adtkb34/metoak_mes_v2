@@ -17,6 +17,12 @@ const filters = useParameterFilters();
 const presets = useParameterPresets(filters);
 const dialog = useParameterDialog({
   fetchDetail: presets.fetchDetail,
+  getDefaultSelection: () => ({
+    type: filters.selectedType.value,
+    relationId: filters.selectedOption.value,
+    relationName: filters.relationLabel.value,
+    relationOptions: filters.parameterOptions.value
+  }),
   onSuccess: async () => {
     await filters.fetchParameterNames();
     await presets.reloadTable();
@@ -31,8 +37,8 @@ const handleOptionChange = (value: string | number | null) => {
   filters.selectedOption.value = value;
 };
 
-const handleAdd = () => {
-  dialog.openCreateDialog();
+const handleAdd = async () => {
+  await dialog.openCreateDialog();
 };
 
 const handleViewDetail = async (row: ParameterRow) => {
@@ -85,9 +91,17 @@ const handleFormReady = (ref: FormInstance | undefined) => {
       :form-state="dialog.formState.value"
       :form-rules="dialog.formRules"
       :name-disabled="dialog.nameDisabled.value"
+      :type-options="dialog.typeOptions"
+      :relation-options="dialog.relationOptions.value"
+      :relation-label="dialog.relationLabel.value"
+      :relation-placeholder="dialog.relationPlaceholder.value"
+      :relation-loading="dialog.relationLoading.value"
+      :type-disabled="dialog.typeDisabled.value"
+      :relation-disabled="dialog.relationDisabled.value"
       @close="handleDialogClose"
       @submit="dialog.submitDialog"
       @form-ready="handleFormReady"
+      @update:form-state="dialog.updateFormState"
     />
 
     <ParameterDetailDialog
