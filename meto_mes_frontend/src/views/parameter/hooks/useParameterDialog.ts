@@ -85,12 +85,14 @@ const buildUpdatePayload = (
 });
 
 const buildBasePayload = (
-  form: ParameterFormState
+  form: ParameterFormState,
+  createdBy: string
 ): CreateParameterBasePayload => {
   const relationId = form.relationId ?? null;
   return {
     name: form.name,
     type: form.type,
+    createdBy,
     [ParameterRelationField.FlowNo]:
       form.type === ParameterTypeEnum.Craft ? relationId : null,
     [ParameterRelationField.OrderId]:
@@ -325,16 +327,20 @@ export function useParameterDialog(
     const normalizedContent = normalizeContent(formState.value.content);
     if (!normalizedContent) return;
 
+    const currentUsername = userStore.getUsername ?? "";
     try {
       if (dialogMode.value === ParameterDialogMode.Edit && editingId.value) {
         const payload = buildUpdatePayload(
           { ...formState.value, content: normalizedContent },
-          userStore.getUsername || ""
+          currentUsername
         );
         await updateParamsPreset(editingId.value, payload);
         ElMessage.success(ParameterDialogMessage.UpdateSuccess);
       } else {
-        const basePayload = buildBasePayload(formState.value);
+        const basePayload = buildBasePayload(
+          formState.value,
+          currentUsername
+        );
         const baseId = await createParameterBase(basePayload);
         const detailPayload = buildDetailPayload(
           baseId,

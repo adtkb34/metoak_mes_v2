@@ -54,8 +54,15 @@ export enum ParameterRelationField {
   StepTypeNo = "stepTypeNo"
 }
 
+export interface ParameterListQuery {
+  type: ParameterTypeEnum;
+  flowNo?: string | number | null;
+  orderId?: string | number | null;
+  stepTypeNo?: string | number | null;
+}
+
 export interface ParameterRow {
-  id?: number;
+  id?: number | string;
   paramsId?: string | number;
   type: ParameterTypeEnum;
   relationId?: string | number | null;
@@ -85,3 +92,13 @@ export type ParameterDetailResponse = ParamsDetail & {
 export type ParameterVersionResponse = ParamsVersionItem & {
   paramsId?: string | number | null;
 };
+
+export interface ParameterListItem extends ParamsVersionItem {
+  id?: number | string;
+  relation?: string;
+  relationId?: string | number | null;
+  paramsId?: string | number | null;
+  name: string;
+  createdBy?: string;
+  createdAt?: string;
+}

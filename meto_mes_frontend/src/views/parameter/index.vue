@@ -24,7 +24,6 @@ const dialog = useParameterDialog({
     relationOptions: filters.parameterOptions.value
   }),
   onSuccess: async () => {
-    await filters.fetchParameterNames();
     await presets.reloadTable();
   }
 });
