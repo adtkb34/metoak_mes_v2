@@ -25,6 +25,7 @@ export interface CreateParameterDetailPayload {
   baseId: number | string;
   description: string;
   params: string;
+  createdBy: string;
 }
 
 interface CreateParameterBaseResponse {
