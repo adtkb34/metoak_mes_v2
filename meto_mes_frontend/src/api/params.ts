@@ -39,6 +39,7 @@ export interface ParamsContent {
 
 export interface ParamsDetail {
   id?: number;
+  baseId?: number | string | null;
   name?: string;
   description?: string;
   versionMajor?: number;
@@ -46,8 +47,12 @@ export interface ParamsDetail {
   versionPatch?: number;
   version?: string;
   type?: number;
+  paramsId?: string | number | null;
   relationId?: string | number | null;
   relationName?: string;
+  flowNo?: string | number | null;
+  orderId?: string | number | null;
+  stepTypeNo?: string | number | null;
   username?: string;
   createTime?: string;
   createdAt?: string;

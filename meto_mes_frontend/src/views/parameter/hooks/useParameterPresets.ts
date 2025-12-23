@@ -2,6 +2,7 @@ import { ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import type { ParamsContent, ParamsDetail } from "@/api/params";
 import {
+  type ParameterDetailContent,
   type ParameterDetailState,
   type ParameterListItem,
   type ParameterListQuery,
@@ -71,6 +72,54 @@ const findRelationName = (
     ?.label ??
   "";
 
+const normalizeRelationValue = (
+  value?: string | number | null
+): string | number | null => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+  return value;
+};
+
+const resolveRelationIdByType = (
+  type: ParameterTypeEnum,
+  source: {
+    flowNo?: string | number | null;
+    orderId?: string | number | null;
+    stepTypeNo?: string | number | null;
+    relationId?: string | number | null;
+  }
+): string | number | null => {
+  if (type === ParameterTypeEnum.Craft) {
+    return normalizeRelationValue(source.flowNo);
+  }
+  if (type === ParameterTypeEnum.WorkOrder) {
+    return normalizeRelationValue(source.orderId);
+  }
+  if (type === ParameterTypeEnum.Process) {
+    return normalizeRelationValue(source.stepTypeNo);
+  }
+  return normalizeRelationValue(source.relationId);
+};
+
+const resolveBaseId = (item: ParameterListItem): string | number | null => {
+  const candidates = [item.baseId, item.paramsId, item.id, item.detailId];
+  const matched = candidates.find(
+    candidate =>
+      candidate !== undefined && candidate !== null && candidate !== ""
+  );
+  return matched ?? null;
+};
+
+const resolveDetailId = (item: ParameterListItem): string | number | null => {
+  const candidates = [item.detailId, item.id, item.paramsId];
+  const matched = candidates.find(
+    candidate =>
+      candidate !== undefined && candidate !== null && candidate !== ""
+  );
+  return matched ?? null;
+};
+
 export interface ParameterPresetsContext {
   tableLoading: ReturnType<typeof ref<boolean>>;
   tableData: ReturnType<typeof ref<ParameterRow[]>>;
@@ -120,30 +169,42 @@ export function useParameterPresets(
     };
   };
 
-  const resolveRelationName = (item: ParameterListItem): string => {
-    if (item.relation) return item.relation;
-    const relationId =
-      item.relationId ??
-      (filters.isProjectType.value ? null : buildRelationId());
-    return findRelationName(filters.parameterOptions.value, relationId);
-  };
+  const resolveRelationName = (
+    item: ParameterListItem,
+    relationId: string | number | null
+  ): string =>
+    item.relation ||
+    findRelationName(filters.parameterOptions.value, relationId) ||
+    findRelationName(filters.parameterOptions.value, buildRelationId());
 
-  const buildRow = (item: ParameterListItem): ParameterRow => ({
-    id: item.id,
-    baseId: item.baseId,
-    detailId: item.detailId,
-    paramsId: item.paramsId ?? item.id,
-    type: filters.selectedType.value,
-    relationId:
-      item.relationId ??
-      (filters.isProjectType.value ? null : buildRelationId()),
-    relationName: resolveRelationName(item),
-    name: item.name,
-    description: item.description ?? "",
-    versionLabel: formatVersionLabel(item),
-    createdBy: item.createdBy ?? item.username ?? "",
-    createdAt: item.createdAt ?? item.createTime ?? ""
-  });
+  const buildRow = (item: ParameterListItem): ParameterRow => {
+    const relationId = resolveRelationIdByType(filters.selectedType.value, {
+      flowNo: item.flowNo,
+      orderId: item.orderId,
+      stepTypeNo: item.stepTypeNo,
+      relationId: item.relationId
+    });
+    const baseId = resolveBaseId(item);
+    const detailId = resolveDetailId(item);
+    return {
+      id: item.id ?? baseId ?? detailId ?? item.paramsId,
+      baseId,
+      detailId,
+      paramsId: item.paramsId ?? item.id,
+      type: filters.selectedType.value,
+      flowNo: item.flowNo ?? null,
+      orderId: item.orderId ?? null,
+      stepTypeNo: item.stepTypeNo ?? null,
+      relationId:
+        relationId ?? (filters.isProjectType.value ? null : buildRelationId()),
+      relationName: resolveRelationName(item, relationId),
+      name: item.name,
+      description: item.description ?? "",
+      versionLabel: formatVersionLabel(item),
+      createdBy: item.createdBy ?? item.username ?? "",
+      createdAt: item.createdAt ?? item.createTime ?? ""
+    };
+  };
 
   const reloadTable = async () => {
     tableLoading.value = true;
@@ -163,18 +224,20 @@ export function useParameterPresets(
   const fetchDetail = async (
     row: ParameterRow
   ): Promise<ParameterDetailState | null> => {
-    console.log(row)
     const cacheKey =
       row.id !== undefined && row.id !== null ? String(row.id) : null;
     if (cacheKey && detailCache.value[cacheKey]) {
       return detailCache.value[cacheKey];
     }
-    const detailId =  Number(row.detailId);
+    const detailIdentifier =
+      row.detailId ?? row.id ?? row.paramsId ?? row.baseId ?? null;
     let paramsContent: ParamsContent = {};
-    if (detailId !== null && !Number.isNaN(detailId)) {
+    let detailData: ParameterDetailContent | null = null;
+    if (detailIdentifier !== null && detailIdentifier !== undefined) {
       try {
-        const detail = await getParameterDetailContent(detailId);
+        const detail = await getParameterDetailContent(detailIdentifier);
         paramsContent = normalizeParamsContent(detail?.params);
+        detailData = detail;
       } catch (error) {
         ElMessage.error(
           (error as Error)?.message ?? ParameterPresetMessage.DetailFetchFailed
@@ -188,16 +251,37 @@ export function useParameterPresets(
       name: row.name,
       version: row.versionLabel
     };
+    const relationId = resolveRelationIdByType(row.type, {
+      flowNo: detailData?.flowNo ?? row.flowNo ?? row.relationId,
+      orderId: detailData?.orderId ?? row.orderId ?? row.relationId,
+      stepTypeNo: detailData?.stepTypeNo ?? row.stepTypeNo ?? row.relationId,
+      relationId: detailData?.relationId ?? row.relationId
+    });
+    const resolvedBaseId =
+      detailData?.baseId ?? row.baseId ?? row.paramsId ?? row.id ?? null;
+    const resolvedDetailId =
+      detailData?.detailId ?? detailData?.id ?? row.detailId ?? row.id ?? null;
+
     const merged: ParameterDetailState = {
       ...row,
+      ...detailData,
+      baseId: resolvedBaseId ?? undefined,
+      detailId: resolvedDetailId ?? undefined,
+      flowNo: detailData?.flowNo ?? row.flowNo ?? null,
+      orderId: detailData?.orderId ?? row.orderId ?? null,
+      stepTypeNo: detailData?.stepTypeNo ?? row.stepTypeNo ?? null,
+      relationId,
       relationName:
+        detailData?.relationName ||
         row.relationName ||
-        findRelationName(filters.parameterOptions.value, row.relationId),
-      name: row.name,
-      description: row.description,
-      versionLabel: row.versionLabel || formatVersionLabel(versionSource),
-      createdBy: row.createdBy,
-      createdAt: row.createdAt,
+        findRelationName(filters.parameterOptions.value, relationId),
+      name: detailData?.name ?? row.name,
+      description: detailData?.description ?? row.description,
+      versionLabel:
+        detailData?.versionLabel ??
+        (row.versionLabel || formatVersionLabel(versionSource)),
+      createdBy: detailData?.createdBy ?? row.createdBy,
+      createdAt: detailData?.createdAt ?? row.createdAt,
       content: paramsContent
     };
 
