@@ -1,12 +1,14 @@
 import { ElMessage } from "element-plus";
 import { getAllOrders } from "@/api/order";
 import { getProcessSteps, getProcessFlow } from "@/api/processFlow";
+import { getParameterBaseByType } from "../services/parameter.api";
 import { ParameterTypeEnum, type ParameterOption } from "../types";
 
 export enum ParameterOptionErrorMessage {
   Process = "获取工序失败",
   Craft = "获取工艺失败",
-  WorkOrder = "获取工单失败"
+  WorkOrder = "获取工单失败",
+  Project = "获取工程失败"
 }
 
 const normalizeOptions = (
@@ -73,13 +75,26 @@ const buildWorkOrderOptions = async (): Promise<ParameterOption[]> => {
   }
 };
 
+const buildProjectOptions = async (): Promise<ParameterOption[]> => {
+  try {
+    const bases = await getParameterBaseByType(ParameterTypeEnum.Project);
+    const mappedOptions = bases.map(base => ({
+      label: base.name ?? "",
+      value: base.name ?? ""
+    }));
+    return normalizeOptions(mappedOptions);
+  } catch (error) {
+    ElMessage.error(
+      (error as Error)?.message ?? ParameterOptionErrorMessage.Project
+    );
+    return [];
+  }
+};
+
 export function useParameterOptionsLoader() {
   const loadOptions = async (
     type: ParameterTypeEnum
   ): Promise<ParameterOption[]> => {
-    if (type === ParameterTypeEnum.Project) {
-      return [];
-    }
     if (type === ParameterTypeEnum.Step) {
       return buildProcessOptions();
     }
@@ -88,6 +103,9 @@ export function useParameterOptionsLoader() {
     }
     if (type === ParameterTypeEnum.WorkOrder) {
       return buildWorkOrderOptions();
+    }
+    if (type === ParameterTypeEnum.Project) {
+      return buildProjectOptions();
     }
     return [];
   };

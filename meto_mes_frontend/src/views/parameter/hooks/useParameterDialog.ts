@@ -260,9 +260,7 @@ export function useParameterDialog(
   const typeDisabled = computed(
     () => dialogMode.value === ParameterDialogMode.Edit
   );
-  const relationDisabled = computed(
-    () => typeDisabled.value || isProjectType.value
-  );
+  const relationDisabled = computed(() => typeDisabled.value);
 
   const resetFormState = (defaults?: ParameterDialogDefaults | null) => {
     formState.value = {
@@ -275,12 +273,6 @@ export function useParameterDialog(
   };
 
   const refreshRelationOptions = async (type: ParameterTypeEnum) => {
-    if (isProjectType.value) {
-      relationLoading.value = false;
-      relationOptions.value = [];
-      formState.value.relationId = null;
-      return;
-    }
     relationLoading.value = true;
     const preset = pendingRelation.value;
     pendingRelation.value = null;

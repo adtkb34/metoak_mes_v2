@@ -16,7 +16,6 @@ export interface ParameterFilterContext {
   optionLabel: ReturnType<typeof computed<string>>;
   optionPlaceholder: ReturnType<typeof computed<string>>;
   relationLabel: ReturnType<typeof computed<string>>;
-  isProjectType: ReturnType<typeof computed<boolean>>;
   optionLoading: ReturnType<typeof ref<boolean>>;
   refreshOptions: (type: ParameterTypeEnum) => Promise<void>;
 }
@@ -33,9 +32,6 @@ export function useParameterFilters(): ParameterFilterContext {
     () => PARAMETER_TYPE_LABELS[selectedType.value] ?? "关联项"
   );
   const optionPlaceholder = computed(() => `请选择${optionLabel.value}`);
-  const isProjectType = computed(
-    () => selectedType.value === ParameterTypeEnum.Project
-  );
   const relationLabel = computed(
     () =>
       parameterOptions.value.find(item => item.value === selectedOption.value)
@@ -46,12 +42,13 @@ export function useParameterFilters(): ParameterFilterContext {
     selectedOption.value = null;
     parameterOptions.value = [];
 
-    if (type === ParameterTypeEnum.Project) return;
-
     optionLoading.value = true;
-    const options = await loadOptions(type);
-    parameterOptions.value = options;
-    optionLoading.value = false;
+    try {
+      const options = await loadOptions(type);
+      parameterOptions.value = options;
+    } finally {
+      optionLoading.value = false;
+    }
   };
 
   watch(
@@ -73,7 +70,6 @@ export function useParameterFilters(): ParameterFilterContext {
     optionLabel,
     optionPlaceholder,
     relationLabel,
-    isProjectType,
     optionLoading,
     refreshOptions
   };

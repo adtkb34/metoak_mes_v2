@@ -51,7 +51,8 @@ export interface ParameterFormState {
 export enum ParameterRelationField {
   FlowNo = "flowNo",
   OrderId = "orderId",
-  StepTypeNo = "stepTypeNo"
+  StepTypeNo = "stepTypeNo",
+  Name = "name"
 }
 
 export interface ParameterListQuery {
@@ -59,6 +60,7 @@ export interface ParameterListQuery {
   flowNo?: string | number | null;
   orderId?: string | number | null;
   stepTypeNo?: string | number | null;
+  name?: string;
 }
 
 export interface ParameterRow {
