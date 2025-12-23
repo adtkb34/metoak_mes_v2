@@ -89,14 +89,15 @@ export const createParameterBase = async (
   payload: CreateParameterBasePayload
 ): Promise<number | string> => {
   const baseUrl = getJavaBackendUrl();
-  const response: ApiResponse<CreateParameterBaseResponse> | CreateParameterBaseResponse =
-    await http.request(
-      "post",
-      `${baseUrl}/api/mes/v1/params/base`,
-      {
-        data: payload
-      }
-    );
+  const response:
+    | ApiResponse<CreateParameterBaseResponse>
+    | CreateParameterBaseResponse = await http.request(
+    "post",
+    `${baseUrl}/api/mes/v1/params/base`,
+    {
+      data: payload
+    }
+  );
   const data = unwrapResponse<CreateParameterBaseResponse>(
     response,
     ParameterApiErrorMessage.BaseCreate
@@ -109,14 +110,13 @@ export const createParameterDetail = async (
   payload: CreateParameterDetailPayload
 ): Promise<ParamsDetail> => {
   const baseUrl = getJavaBackendUrl();
-  const response: ApiResponse<ParamsDetail> | ParamsDetail =
-    await http.request(
-      "post",
-      `${baseUrl}/api/mes/v1/params/detail`,
-      {
-        data: payload
-      }
-    );
+  const response: ApiResponse<ParamsDetail> | ParamsDetail = await http.request(
+    "post",
+    `${baseUrl}/api/mes/v1/params/detail`,
+    {
+      data: payload
+    }
+  );
   return unwrapResponse<ParamsDetail>(
     response,
     ParameterApiErrorMessage.DetailCreate
@@ -141,6 +141,24 @@ const buildListQueryParams = (
   return params;
 };
 
+const normalizeOptionalId = (
+  value?: string | number | null
+): string | number | undefined =>
+  value === null || value === undefined ? undefined : value;
+
+const attachParameterIdentifiers = (
+  item: ParameterListItem
+): ParameterListItem => {
+  const normalizedParamsId = normalizeOptionalId(item.paramsId);
+  const normalizedId = normalizeOptionalId(item.id);
+
+  return {
+    ...item,
+    baseId: normalizedParamsId ?? normalizedId,
+    detailId: normalizedId ?? normalizedParamsId
+  };
+};
+
 export const getParameterList = async (
   query: ParameterListQuery
 ): Promise<ParameterListItem[]> => {
@@ -150,8 +168,9 @@ export const getParameterList = async (
     await http.request("get", `${baseUrl}/api/mes/v1/params`, {
       params
     });
-  return unwrapResponse<ParameterListItem[]>(
+  const list = unwrapResponse<ParameterListItem[]>(
     response,
     ParameterApiErrorMessage.ListFetch
   );
+  return list.map(item => attachParameterIdentifiers(item));
 };
