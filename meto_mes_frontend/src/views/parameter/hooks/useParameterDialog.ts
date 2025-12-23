@@ -290,7 +290,7 @@ export function useParameterDialog(
       description: detail?.description ?? "",
       content: JSON.stringify(detail?.content ?? {}, null, 2),
       type: detail?.type ?? row.type,
-      relationId
+      relationId,
     };
     pendingRelation.value = {
       relationId,

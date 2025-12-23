@@ -186,7 +186,7 @@ export const getParameterList = async (
     response,
     ParameterApiErrorMessage.ListFetch
   );
-  return list.map(item => attachParameterIdentifiers(item));
+  return list;
 };
 
 export const getParameterDetailContent = async (

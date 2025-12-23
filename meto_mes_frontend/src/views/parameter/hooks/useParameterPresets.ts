@@ -130,6 +130,8 @@ export function useParameterPresets(
 
   const buildRow = (item: ParameterListItem): ParameterRow => ({
     id: item.id,
+    baseId: item.baseId,
+    detailId: item.detailId,
     paramsId: item.paramsId ?? item.id,
     type: filters.selectedType.value,
     relationId:
@@ -161,13 +163,13 @@ export function useParameterPresets(
   const fetchDetail = async (
     row: ParameterRow
   ): Promise<ParameterDetailState | null> => {
+    console.log(row)
     const cacheKey =
       row.id !== undefined && row.id !== null ? String(row.id) : null;
     if (cacheKey && detailCache.value[cacheKey]) {
       return detailCache.value[cacheKey];
     }
-    const detailId =
-      row.id === undefined || row.id === null ? null : Number(row.id);
+    const detailId =  Number(row.detailId);
     let paramsContent: ParamsContent = {};
     if (detailId !== null && !Number.isNaN(detailId)) {
       try {
