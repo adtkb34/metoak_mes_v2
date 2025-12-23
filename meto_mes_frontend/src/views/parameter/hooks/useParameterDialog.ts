@@ -105,11 +105,13 @@ const buildBasePayload = (
 const buildDetailPayload = (
   baseId: number | string,
   form: ParameterFormState,
-  normalizedContent: string
+  normalizedContent: string,
+  createdBy: string
 ): CreateParameterDetailPayload => ({
   baseId,
   description: form.description,
-  params: normalizedContent
+  params: normalizedContent,
+  createdBy
 });
 
 const createRelationPreset = (
@@ -345,7 +347,8 @@ export function useParameterDialog(
         const detailPayload = buildDetailPayload(
           baseId,
           formState.value,
-          normalizedContent
+          normalizedContent,
+          currentUsername
         );
         await createParameterDetail(detailPayload);
         ElMessage.success(ParameterDialogMessage.CreateSuccess);
