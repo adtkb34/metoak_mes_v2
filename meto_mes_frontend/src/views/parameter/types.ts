@@ -95,6 +95,8 @@ export type ParameterVersionResponse = ParamsVersionItem & {
 
 export interface ParameterListItem extends ParamsVersionItem {
   id?: number | string;
+  baseId?: number | string;
+  detailId?: number | string;
   relation?: string;
   relationId?: string | number | null;
   paramsId?: string | number | null;
