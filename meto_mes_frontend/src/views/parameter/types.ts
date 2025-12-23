@@ -5,10 +5,10 @@ import type {
 } from "@/api/params";
 
 export enum ParameterTypeEnum {
-  Process = 0,
-  Craft = 1,
-  WorkOrder = 2,
-  Project = 3
+  Process = 1,
+  Craft = 2,
+  WorkOrder = 3,
+  Project = 4
 }
 
 export const PARAMETER_TYPE_LABELS: Record<ParameterTypeEnum, string> = {

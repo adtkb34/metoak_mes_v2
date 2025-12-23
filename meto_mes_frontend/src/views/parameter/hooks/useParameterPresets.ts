@@ -151,10 +151,10 @@ export function useParameterPresets(
   });
 
   const reloadTable = async () => {
-    if (!shouldLoadTable.value) {
-      tableData.value = [];
-      return;
-    }
+    // if (!shouldLoadTable.value) {
+    //   tableData.value = [];
+    //   return;
+    // }
     tableLoading.value = true;
     try {
       const query = buildListQuery();
@@ -229,6 +229,9 @@ export function useParameterPresets(
     }),
     () => {
       reloadTable();
+    },
+    {
+      immediate: true
     }
   );
 
