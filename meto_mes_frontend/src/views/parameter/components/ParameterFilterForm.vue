@@ -13,7 +13,6 @@ const props = defineProps<{
   optionLabel: string;
   optionPlaceholder: string;
   optionLoading: boolean;
-  isProjectType: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -65,9 +64,7 @@ const triggerAdd = () => {
               :loading="optionLoading"
               clearable
               filterable
-              :disabled="
-                isProjectType || (optionLoading && !parameterOptions.length)
-              "
+              :disabled="optionLoading && !parameterOptions.length"
               @update:model-value="handleOptionChange"
             >
               <el-option

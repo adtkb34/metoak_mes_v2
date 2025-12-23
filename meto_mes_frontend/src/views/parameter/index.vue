@@ -71,7 +71,6 @@ const handleFormReady = (ref: FormInstance | undefined) => {
       :option-label="filters.optionLabel.value"
       :option-placeholder="filters.optionPlaceholder.value"
       :option-loading="filters.optionLoading.value"
-      :is-project-type="filters.isProjectType.value"
       @update:selected-type="handleTypeChange"
       @update:selected-option="handleOptionChange"
       @add="handleAdd"

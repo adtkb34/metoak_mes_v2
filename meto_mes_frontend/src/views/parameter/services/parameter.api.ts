@@ -3,6 +3,7 @@ import type { ParamsDetail } from "@/api/params";
 import type {
   ParameterListItem,
   ParameterListQuery,
+  ParameterRelationField,
   ParameterTypeEnum
 } from "../types";
 
@@ -33,6 +34,10 @@ interface CreateParameterBaseResponse {
   id?: number | string;
 }
 
+export interface ParameterBaseItem {
+  name?: string;
+}
+
 export enum ParameterApiPath {
   Base = "/api/mes/v1/params/base",
   Detail = "/api/mes/v1/params/detail",
@@ -45,6 +50,7 @@ export enum ParameterApiErrorMessage {
   MissingBackend = "未配置 Java 后端地址",
   BaseCreate = "创建参数集基础信息失败",
   BaseIdMissing = "参数集基础ID缺失",
+  BaseFetch = "获取参数基础信息失败",
   DetailCreate = "创建参数集详情失败",
   DetailFetch = "获取参数内容失败",
   ListFetch = "获取参数清单失败"
@@ -115,6 +121,20 @@ const getJavaBackendUrl = (): string => {
   return baseUrl;
 };
 
+export const getParameterBaseByType = async (
+  type: ParameterTypeEnum
+): Promise<ParameterBaseItem[]> => {
+  const baseUrl = getJavaBackendUrl();
+  const response: ApiResponse<ParameterBaseItem[]> | ParameterBaseItem[] =
+    await http.request("get", `${baseUrl}${ParameterApiPath.Base}`, {
+      params: { type }
+    });
+  return unwrapResponse<ParameterBaseItem[]>(
+    response,
+    ParameterApiErrorMessage.BaseFetch
+  );
+};
+
 export const createParameterBase = async (
   payload: CreateParameterBasePayload
 ): Promise<number | string> => {
@@ -167,6 +187,13 @@ const buildListQueryParams = (
   }
   if (query.stepTypeNo !== null && query.stepTypeNo !== undefined) {
     params.stepTypeNo = query.stepTypeNo;
+  }
+  if (
+    query.name !== undefined &&
+    query.name !== null &&
+    query.name !== ""
+  ) {
+    params[ParameterRelationField.Name] = query.name;
   }
   return params;
 };
