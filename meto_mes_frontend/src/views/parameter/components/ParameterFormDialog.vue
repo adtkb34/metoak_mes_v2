@@ -87,7 +87,7 @@ const handleContentChange = (value: string) =>
       ref="formRef"
       :model="formState"
       :rules="formRules"
-      label-width="110px"
+      label-width="70px"
     >
       <ParameterBaseSelector
         :type-value="formState.type"

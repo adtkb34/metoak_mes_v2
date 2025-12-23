@@ -94,11 +94,11 @@ const buildBasePayload = (
     type: form.type,
     createdBy,
     [ParameterRelationField.FlowNo]:
-      form.type === ParameterTypeEnum.Craft ? relationId : null,
+      form.type === ParameterTypeEnum.Flow ? relationId : null,
     [ParameterRelationField.OrderId]:
       form.type === ParameterTypeEnum.WorkOrder ? relationId : null,
     [ParameterRelationField.StepTypeNo]:
-      form.type === ParameterTypeEnum.Process ? relationId : null
+      form.type === ParameterTypeEnum.Step ? relationId : null
   };
 };
 
@@ -142,13 +142,13 @@ const resolveRelationId = (
   const flowNo = detail?.flowNo ?? row.flowNo;
   const orderId = detail?.orderId ?? row.orderId;
   const stepTypeNo = detail?.stepTypeNo ?? row.stepTypeNo;
-  if (type === ParameterTypeEnum.Craft) {
+  if (type === ParameterTypeEnum.Flow) {
     return normalizeRelationValue(flowNo ?? row.relationId);
   }
   if (type === ParameterTypeEnum.WorkOrder) {
     return normalizeRelationValue(orderId ?? row.relationId);
   }
-  if (type === ParameterTypeEnum.Process) {
+  if (type === ParameterTypeEnum.Step) {
     return normalizeRelationValue(stepTypeNo ?? row.relationId);
   }
   return normalizeRelationValue(detail?.relationId ?? row.relationId);
@@ -185,7 +185,7 @@ export function useParameterDialog(
     name: "",
     description: "",
     content: "{}",
-    type: ParameterTypeEnum.Process,
+    type: ParameterTypeEnum.Step,
     relationId: null
   });
   const relationOptions = ref<ParameterOption[]>([]);
@@ -269,7 +269,7 @@ export function useParameterDialog(
       name: "",
       description: "",
       content: "{}",
-      type: defaults?.type ?? ParameterTypeEnum.Process,
+      type: defaults?.type ?? ParameterTypeEnum.Step,
       relationId: defaults?.relationId ?? null
     };
   };
@@ -388,6 +388,8 @@ export function useParameterDialog(
           { ...formState.value, content: normalizedContent },
           currentUsername
         );
+        payload.baseId = editingId.value
+        payload.createdBy = "szdev"
         await updateParamsPreset(editingId.value, payload);
         ElMessage.success(ParameterDialogMessage.UpdateSuccess);
       } else {

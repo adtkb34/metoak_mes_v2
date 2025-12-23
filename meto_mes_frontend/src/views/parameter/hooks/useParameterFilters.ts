@@ -24,7 +24,7 @@ export interface ParameterFilterContext {
 export function useParameterFilters(): ParameterFilterContext {
   const { loadOptions } = useParameterOptionsLoader();
   const parameterTypes = PARAMETER_TYPE_OPTIONS;
-  const selectedType = ref<ParameterTypeEnum>(ParameterTypeEnum.Process);
+  const selectedType = ref<ParameterTypeEnum>(ParameterTypeEnum.Step);
   const selectedOption = ref<string | number | null>(null);
   const parameterOptions = ref<ParameterOption[]>([]);
   const optionLoading = ref(false);

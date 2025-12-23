@@ -181,12 +181,13 @@ export async function updateParamsPreset(
 ): Promise<ParamsDetail> {
   const baseUrl = getJavaBackendUrl();
   const response = await http.request<ApiResponse<ParamsDetail> | ParamsDetail>(
-    "put",
-    `${baseUrl}${ParamsApiPath.Root}/${id}`,
+    "post",
+    `${baseUrl}${ParamsApiPath.Detail}`,
     {
       data: payload
     }
   );
+  console.log(payload)
   return unwrapParamsResponse<ParamsDetail>(
     response,
     ParamsApiErrorMessage.UpdateFailed

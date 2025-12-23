@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type {
   ParameterOption,
-  ParameterTypeEnum,
   ParameterTypeOption
 } from "../types";
+
+import { computed } from 'vue'
+import { ParameterTypeEnum } from "../types";
 
 const props = defineProps<{
   typeValue: ParameterTypeEnum;
@@ -29,6 +31,11 @@ const handleTypeChange = (value: ParameterTypeEnum) =>
 
 const handleRelationChange = (value: string | number | null | undefined) =>
   emit("update:relation", value ?? null);
+
+const showRelation = computed(
+  () => props.typeValue !== ParameterTypeEnum.Project
+);
+
 </script>
 
 <template>
@@ -47,7 +54,7 @@ const handleRelationChange = (value: string | number | null | undefined) =>
       />
     </el-select>
   </el-form-item>
-  <el-form-item :label="relationLabel" prop="relationId">
+  <el-form-item v-if="showRelation" :label="relationLabel" prop="relationId">
     <el-select
       :model-value="relationValue"
       :disabled="relationDisabled"

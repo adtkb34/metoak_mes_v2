@@ -1,5 +1,5 @@
 export enum ParameterFormLabel {
-  Type = "参数集类型",
+  Type = "类型",
   Name = "名称",
   Description = "描述",
   Content = "内容"

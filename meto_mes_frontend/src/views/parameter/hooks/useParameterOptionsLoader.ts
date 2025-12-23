@@ -61,7 +61,7 @@ const buildWorkOrderOptions = async (): Promise<ParameterOption[]> => {
   try {
     const orders = await getAllOrders();
     const mappedOptions = orders.map(order => ({
-      label: order.work_order_code ?? order.id ?? "",
+      label: `${order.work_order_code}(${order.material_name}--${order.material_code})`,
       value: order.id ?? order.work_order_code ?? ""
     }));
     return normalizeOptions(mappedOptions);
@@ -80,10 +80,10 @@ export function useParameterOptionsLoader() {
     if (type === ParameterTypeEnum.Project) {
       return [];
     }
-    if (type === ParameterTypeEnum.Process) {
+    if (type === ParameterTypeEnum.Step) {
       return buildProcessOptions();
     }
-    if (type === ParameterTypeEnum.Craft) {
+    if (type === ParameterTypeEnum.Flow) {
       return buildCraftOptions();
     }
     if (type === ParameterTypeEnum.WorkOrder) {

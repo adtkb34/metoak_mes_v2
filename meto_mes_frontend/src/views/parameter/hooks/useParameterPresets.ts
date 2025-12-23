@@ -90,13 +90,13 @@ const resolveRelationIdByType = (
     relationId?: string | number | null;
   }
 ): string | number | null => {
-  if (type === ParameterTypeEnum.Craft) {
+  if (type === ParameterTypeEnum.Flow) {
     return normalizeRelationValue(source.flowNo);
   }
   if (type === ParameterTypeEnum.WorkOrder) {
     return normalizeRelationValue(source.orderId);
   }
-  if (type === ParameterTypeEnum.Process) {
+  if (type === ParameterTypeEnum.Step) {
     return normalizeRelationValue(source.stepTypeNo);
   }
   return normalizeRelationValue(source.relationId);
@@ -146,7 +146,7 @@ export function useParameterPresets(
 
   const buildListQuery = (): ParameterListQuery => {
     const relationId = buildRelationId();
-    if (filters.selectedType.value === ParameterTypeEnum.Craft) {
+    if (filters.selectedType.value === ParameterTypeEnum.Flow) {
       return {
         type: filters.selectedType.value,
         [ParameterRelationField.FlowNo]: relationId
@@ -158,7 +158,7 @@ export function useParameterPresets(
         [ParameterRelationField.OrderId]: relationId
       };
     }
-    if (filters.selectedType.value === ParameterTypeEnum.Process) {
+    if (filters.selectedType.value === ParameterTypeEnum.Step) {
       return {
         type: filters.selectedType.value,
         [ParameterRelationField.StepTypeNo]: relationId
@@ -225,7 +225,7 @@ export function useParameterPresets(
     row: ParameterRow
   ): Promise<ParameterDetailState | null> => {
     const cacheKey =
-      row.id !== undefined && row.id !== null ? String(row.id) : null;
+      row.detailId !== undefined && row.id !== null ? String(row.detailId) : null;
     if (cacheKey && detailCache.value[cacheKey]) {
       return detailCache.value[cacheKey];
     }

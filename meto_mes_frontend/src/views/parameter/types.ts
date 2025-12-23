@@ -5,15 +5,15 @@ import type {
 } from "@/api/params";
 
 export enum ParameterTypeEnum {
-  Process = 1,
-  Craft = 2,
+  Step = 1,
+  Flow = 2,
   WorkOrder = 3,
   Project = 4
 }
 
 export const PARAMETER_TYPE_LABELS: Record<ParameterTypeEnum, string> = {
-  [ParameterTypeEnum.Process]: "工序",
-  [ParameterTypeEnum.Craft]: "工艺",
+  [ParameterTypeEnum.Step]: "工序",
+  [ParameterTypeEnum.Flow]: "工艺",
   [ParameterTypeEnum.WorkOrder]: "工单",
   [ParameterTypeEnum.Project]: "工程"
 };
