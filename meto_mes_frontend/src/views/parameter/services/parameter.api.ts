@@ -51,6 +51,22 @@ export enum ParameterApiErrorMessage {
 }
 
 export interface ParameterDetailContent {
+  id?: number | string;
+  baseId?: number | string | null;
+  paramsId?: string | number | null;
+  detailId?: number | string | null;
+  name?: string;
+  description?: string;
+  type?: ParameterTypeEnum;
+  relationId?: string | number | null;
+  relationName?: string;
+  flowNo?: string | number | null;
+  orderId?: string | number | null;
+  stepTypeNo?: string | number | null;
+  createdBy?: string;
+  createdAt?: string;
+  version?: string;
+  versionLabel?: string;
   params?: ParamsDetail["params"];
 }
 
@@ -153,24 +169,6 @@ const buildListQueryParams = (
     params.stepTypeNo = query.stepTypeNo;
   }
   return params;
-};
-
-const normalizeOptionalId = (
-  value?: string | number | null
-): string | number | undefined =>
-  value === null || value === undefined ? undefined : value;
-
-const attachParameterIdentifiers = (
-  item: ParameterListItem
-): ParameterListItem => {
-  const normalizedParamsId = normalizeOptionalId(item.paramsId);
-  const normalizedId = normalizeOptionalId(item.id);
-
-  return {
-    ...item,
-    baseId: normalizedParamsId ?? normalizedId,
-    detailId: normalizedId ?? normalizedParamsId
-  };
 };
 
 export const getParameterList = async (
