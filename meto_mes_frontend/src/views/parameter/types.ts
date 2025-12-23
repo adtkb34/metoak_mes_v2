@@ -67,6 +67,9 @@ export interface ParameterRow {
   baseId?: string | number;
   detailId?: string | number;
   type: ParameterTypeEnum;
+  flowNo?: string | number | null;
+  orderId?: string | number | null;
+  stepTypeNo?: string | number | null;
   relationId?: string | number | null;
   relationName?: string;
   name: string;
@@ -100,9 +103,9 @@ export interface ParameterListItem extends ParamsVersionItem {
   baseId?: number | string;
   detailId?: number | string;
   relation?: string;
-  flowNo?: string;
-  orderId?: number;
-  stepTypeNo?: string;
+  flowNo?: string | number | null;
+  orderId?: string | number | null;
+  stepTypeNo?: string | number | null;
   relationId?: string | number | null;
   paramsId?: string | number | null;
   name: string;

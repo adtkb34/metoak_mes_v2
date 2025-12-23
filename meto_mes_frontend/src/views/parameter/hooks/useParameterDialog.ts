@@ -125,6 +125,55 @@ const createRelationPreset = (
       }
     : null;
 
+const normalizeRelationValue = (
+  value?: string | number | null
+): string | number | null => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+  return value;
+};
+
+const resolveRelationId = (
+  type: ParameterTypeEnum,
+  row: ParameterRow,
+  detail?: ParameterDetailState | null
+): string | number | null => {
+  const flowNo = detail?.flowNo ?? row.flowNo;
+  const orderId = detail?.orderId ?? row.orderId;
+  const stepTypeNo = detail?.stepTypeNo ?? row.stepTypeNo;
+  if (type === ParameterTypeEnum.Craft) {
+    return normalizeRelationValue(flowNo ?? row.relationId);
+  }
+  if (type === ParameterTypeEnum.WorkOrder) {
+    return normalizeRelationValue(orderId ?? row.relationId);
+  }
+  if (type === ParameterTypeEnum.Process) {
+    return normalizeRelationValue(stepTypeNo ?? row.relationId);
+  }
+  return normalizeRelationValue(detail?.relationId ?? row.relationId);
+};
+
+const resolveEditingIdentifier = (
+  row: ParameterRow,
+  detail?: ParameterDetailState | null
+): string | number | null => {
+  const candidates = [
+    detail?.baseId,
+    row.baseId,
+    row.id,
+    detail?.id,
+    detail?.detailId,
+    row.detailId,
+    row.paramsId
+  ];
+  const matched = candidates.find(
+    candidate =>
+      candidate !== undefined && candidate !== null && candidate !== ""
+  );
+  return matched ?? null;
+};
+
 export function useParameterDialog(
   options: UseParameterDialogOptions
 ): ParameterDialogContext {
@@ -141,7 +190,7 @@ export function useParameterDialog(
   });
   const relationOptions = ref<ParameterOption[]>([]);
   const relationLoading = ref(false);
-  const editingId = ref<number | null>(null);
+  const editingId = ref<number | string | null>(null);
   const userStore = useUserListStore(store);
   const typeOptions = PARAMETER_TYPE_OPTIONS;
   const pendingRelation = ref<RelationPreset | null>(null);
@@ -280,18 +329,18 @@ export function useParameterDialog(
 
   const openEditDialog = async (row: ParameterRow) => {
     dialogMode.value = ParameterDialogMode.Edit;
-    editingId.value = row.id ?? null;
     shouldSkipTypeWatcher.value = true;
     const detail = await options.fetchDetail(row);
-    const relationId = detail?.relationId ?? row.relationId ?? null;
+    const relationId = resolveRelationId(detail?.type ?? row.type, row, detail);
     const relationName = detail?.relationName ?? row.relationName;
     formState.value = {
       name: detail?.name ?? row.name,
       description: detail?.description ?? "",
       content: JSON.stringify(detail?.content ?? {}, null, 2),
       type: detail?.type ?? row.type,
-      relationId,
+      relationId
     };
+    editingId.value = resolveEditingIdentifier(row, detail);
     pendingRelation.value = {
       relationId,
       relationName
@@ -331,7 +380,10 @@ export function useParameterDialog(
 
     const currentUsername = userStore.getUsername ?? "";
     try {
-      if (dialogMode.value === ParameterDialogMode.Edit && editingId.value) {
+      if (dialogMode.value === ParameterDialogMode.Edit) {
+        if (!editingId.value) {
+          throw new Error(ParameterDialogMessage.UpdateFailed);
+        }
         const payload = buildUpdatePayload(
           { ...formState.value, content: normalizedContent },
           currentUsername
