@@ -1,12 +1,7 @@
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import { ElMessage } from "element-plus";
+import type { ParamsContent, ParamsDetail } from "@/api/params";
 import {
-  getParamsDetail,
-  type ParamsContent,
-  type ParamsDetail
-} from "@/api/params";
-import {
-  type ParameterDetailResponse,
   type ParameterDetailState,
   type ParameterListItem,
   type ParameterListQuery,
@@ -15,7 +10,10 @@ import {
   ParameterRelationField,
   ParameterTypeEnum
 } from "../types";
-import { getParameterList } from "../services/parameter.api";
+import {
+  getParameterDetailContent,
+  getParameterList
+} from "../services/parameter.api";
 import type { ParameterFilterContext } from "./useParameterFilters";
 
 enum ParameterPresetMessage {
@@ -94,15 +92,8 @@ export function useParameterPresets(
   const activeDetail = ref<ParameterDetailState | null>(null);
   const detailCache = ref<Record<string, ParameterDetailState>>({});
 
-  const shouldLoadTable = computed(
-    () =>
-      filters.isProjectType.value ||
-      (filters.selectedOption.value !== null &&
-        filters.selectedOption.value !== undefined)
-  );
-
   const buildRelationId = (): string | number | null =>
-    filters.isProjectType.value ? null : filters.selectedOption.value ?? null;
+    filters.isProjectType.value ? null : (filters.selectedOption.value ?? null);
 
   const buildListQuery = (): ParameterListQuery => {
     const relationId = buildRelationId();
@@ -132,7 +123,8 @@ export function useParameterPresets(
   const resolveRelationName = (item: ParameterListItem): string => {
     if (item.relation) return item.relation;
     const relationId =
-      item.relationId ?? (filters.isProjectType.value ? null : buildRelationId());
+      item.relationId ??
+      (filters.isProjectType.value ? null : buildRelationId());
     return findRelationName(filters.parameterOptions.value, relationId);
   };
 
@@ -141,7 +133,8 @@ export function useParameterPresets(
     paramsId: item.paramsId ?? item.id,
     type: filters.selectedType.value,
     relationId:
-      item.relationId ?? (filters.isProjectType.value ? null : buildRelationId()),
+      item.relationId ??
+      (filters.isProjectType.value ? null : buildRelationId()),
     relationName: resolveRelationName(item),
     name: item.name,
     description: item.description ?? "",
@@ -151,10 +144,6 @@ export function useParameterPresets(
   });
 
   const reloadTable = async () => {
-    // if (!shouldLoadTable.value) {
-    //   tableData.value = [];
-    //   return;
-    // }
     tableLoading.value = true;
     try {
       const query = buildListQuery();
@@ -172,16 +161,18 @@ export function useParameterPresets(
   const fetchDetail = async (
     row: ParameterRow
   ): Promise<ParameterDetailState | null> => {
-    const cacheKey = row.id !== undefined && row.id !== null ? String(row.id) : null;
+    const cacheKey =
+      row.id !== undefined && row.id !== null ? String(row.id) : null;
     if (cacheKey && detailCache.value[cacheKey]) {
       return detailCache.value[cacheKey];
     }
-    let detail: ParameterDetailResponse | null = null;
     const detailId =
       row.id === undefined || row.id === null ? null : Number(row.id);
+    let paramsContent: ParamsContent = {};
     if (detailId !== null && !Number.isNaN(detailId)) {
       try {
-        detail = await getParamsDetail(detailId);
+        const detail = await getParameterDetailContent(detailId);
+        paramsContent = normalizeParamsContent(detail?.params);
       } catch (error) {
         ElMessage.error(
           (error as Error)?.message ?? ParameterPresetMessage.DetailFetchFailed
@@ -191,8 +182,7 @@ export function useParameterPresets(
       ElMessage.error(ParameterPresetMessage.InvalidDetailId);
     }
 
-    const paramsContent = normalizeParamsContent(detail?.params);
-    const versionSource: ParameterListItem = detail ?? {
+    const versionSource: ParameterListItem = {
       name: row.name,
       version: row.versionLabel
     };
@@ -201,11 +191,11 @@ export function useParameterPresets(
       relationName:
         row.relationName ||
         findRelationName(filters.parameterOptions.value, row.relationId),
-      name: detail?.name ?? row.name,
-      description: detail?.description ?? row.description,
+      name: row.name,
+      description: row.description,
       versionLabel: row.versionLabel || formatVersionLabel(versionSource),
-      createdBy: row.createdBy ?? detail?.username,
-      createdAt: row.createdAt ?? detail?.createdAt ?? detail?.createTime,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt,
       content: paramsContent
     };
 

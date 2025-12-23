@@ -33,12 +33,25 @@ interface CreateParameterBaseResponse {
   id?: number | string;
 }
 
+export enum ParameterApiPath {
+  Base = "/api/mes/v1/params/base",
+  Detail = "/api/mes/v1/params/detail",
+  Root = "/api/mes/v1/params",
+  Name = "/api/mes/v1/params/name",
+  Version = "/api/mes/v1/params/version"
+}
+
 export enum ParameterApiErrorMessage {
   MissingBackend = "未配置 Java 后端地址",
   BaseCreate = "创建参数集基础信息失败",
   BaseIdMissing = "参数集基础ID缺失",
   DetailCreate = "创建参数集详情失败",
+  DetailFetch = "获取参数内容失败",
   ListFetch = "获取参数清单失败"
+}
+
+export interface ParameterDetailContent {
+  params?: ParamsDetail["params"];
 }
 
 const isApiResponse = <T>(
@@ -94,7 +107,7 @@ export const createParameterBase = async (
     | ApiResponse<CreateParameterBaseResponse>
     | CreateParameterBaseResponse = await http.request(
     "post",
-    `${baseUrl}/api/mes/v1/params/base`,
+    `${baseUrl}${ParameterApiPath.Base}`,
     {
       data: payload
     }
@@ -113,7 +126,7 @@ export const createParameterDetail = async (
   const baseUrl = getJavaBackendUrl();
   const response: ApiResponse<ParamsDetail> | ParamsDetail = await http.request(
     "post",
-    `${baseUrl}/api/mes/v1/params/detail`,
+    `${baseUrl}${ParameterApiPath.Detail}`,
     {
       data: payload
     }
@@ -166,7 +179,7 @@ export const getParameterList = async (
   const baseUrl = getJavaBackendUrl();
   const params = buildListQueryParams(query);
   const response: ApiResponse<ParameterListItem[]> | ParameterListItem[] =
-    await http.request("get", `${baseUrl}/api/mes/v1/params`, {
+    await http.request("get", `${baseUrl}${ParameterApiPath.Root}`, {
       params
     });
   const list = unwrapResponse<ParameterListItem[]>(
@@ -174,4 +187,19 @@ export const getParameterList = async (
     ParameterApiErrorMessage.ListFetch
   );
   return list.map(item => attachParameterIdentifiers(item));
+};
+
+export const getParameterDetailContent = async (
+  detailId: number | string
+): Promise<ParameterDetailContent> => {
+  const baseUrl = getJavaBackendUrl();
+  const response: ApiResponse<ParameterDetailContent> | ParameterDetailContent =
+    await http.request(
+      "get",
+      `${baseUrl}${ParameterApiPath.Detail}/${detailId}`
+    );
+  return unwrapResponse<ParameterDetailContent>(
+    response,
+    ParameterApiErrorMessage.DetailFetch
+  );
 };

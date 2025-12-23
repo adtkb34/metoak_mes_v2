@@ -339,10 +339,7 @@ export function useParameterDialog(
         await updateParamsPreset(editingId.value, payload);
         ElMessage.success(ParameterDialogMessage.UpdateSuccess);
       } else {
-        const basePayload = buildBasePayload(
-          formState.value,
-          currentUsername
-        );
+        const basePayload = buildBasePayload(formState.value, currentUsername);
         const baseId = await createParameterBase(basePayload);
         const detailPayload = buildDetailPayload(
           baseId,
