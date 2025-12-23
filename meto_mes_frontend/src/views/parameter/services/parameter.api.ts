@@ -178,9 +178,11 @@ export const getParameterList = async (
 ): Promise<ParameterListItem[]> => {
   const baseUrl = getJavaBackendUrl();
   const params = buildListQueryParams(query);
+  console.log(params)
   const response: ApiResponse<ParameterListItem[]> | ParameterListItem[] =
-    await http.request("get", `${baseUrl}${ParameterApiPath.Root}`, {
-      params
+    await http.request("post", `${baseUrl}${ParameterApiPath.Root}`,
+    {
+      data: params
     });
   const list = unwrapResponse<ParameterListItem[]>(
     response,
