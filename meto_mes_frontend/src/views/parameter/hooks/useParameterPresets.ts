@@ -142,7 +142,7 @@ export function useParameterPresets(
   const detailCache = ref<Record<string, ParameterDetailState>>({});
 
   const buildRelationId = (): string | number | null =>
-    filters.isProjectType.value ? null : (filters.selectedOption.value ?? null);
+    filters.selectedOption.value ?? null;
 
   const buildListQuery = (): ParameterListQuery => {
     const relationId = buildRelationId();
@@ -164,8 +164,21 @@ export function useParameterPresets(
         [ParameterRelationField.StepTypeNo]: relationId
       };
     }
+    if (filters.selectedType.value === ParameterTypeEnum.Project) {
+      return {
+        type: filters.selectedType.value,
+        [ParameterRelationField.Name]:
+          relationId !== null && relationId !== undefined
+            ? String(relationId)
+            : undefined
+      };
+    }
     return {
-      type: filters.selectedType.value
+      type: filters.selectedType.value,
+      [ParameterRelationField.Name]:
+        relationId !== null && relationId !== undefined
+          ? String(relationId)
+          : undefined
     };
   };
 
@@ -182,7 +195,7 @@ export function useParameterPresets(
       flowNo: item.flowNo,
       orderId: item.orderId,
       stepTypeNo: item.stepTypeNo,
-      relationId: item.relationId
+      relationId: item.relationId ?? item.relation ?? item.name
     });
     const baseId = resolveBaseId(item);
     const detailId = resolveDetailId(item);
@@ -195,8 +208,7 @@ export function useParameterPresets(
       flowNo: item.flowNo ?? null,
       orderId: item.orderId ?? null,
       stepTypeNo: item.stepTypeNo ?? null,
-      relationId:
-        relationId ?? (filters.isProjectType.value ? null : buildRelationId()),
+      relationId: relationId ?? buildRelationId(),
       relationName: resolveRelationName(item, relationId),
       name: item.name,
       description: item.description ?? "",
