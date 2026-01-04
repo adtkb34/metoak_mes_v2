@@ -11,10 +11,13 @@ export const PACKING_WEIGHT_RULE_SUBMIT_LABEL = "保存";
 export const PACKING_WEIGHT_RULE_CANCEL_LABEL = "取消";
 export const PACKING_WEIGHT_RULE_UNIT_LABEL = "重量单位";
 export const PACKING_WEIGHT_RULE_PRODUCT_CODE_LABEL = "产品编码";
+export const PACKING_WEIGHT_RULE_PRODUCT_PLACEHOLDER = "请选择产品编码";
 export const PACKING_WEIGHT_RULE_FULL_BOX_QUANTITY_LABEL = "满箱数量";
 export const PACKING_WEIGHT_RULE_SINGLE_WEIGHT_LABEL = "单个产品重量";
 export const PACKING_WEIGHT_RULE_PACKAGE_WEIGHT_LABEL = "整箱包装重量";
 export const PACKING_WEIGHT_RULE_ALLOWED_DEVIATION_LABEL = "允许偏差";
+export const PACKING_WEIGHT_RULE_ALLOWED_DEVIATION_LIMIT_MESSAGE =
+  "允许偏差不能超过单个产品重量";
 export const PACKING_WEIGHT_RULE_CREATED_AT_LABEL = "创建时间";
 export const PACKING_WEIGHT_RULE_UPDATED_AT_LABEL = "更新时间";
 export const PACKING_WEIGHT_RULE_ACTIONS_LABEL = "操作";
@@ -36,10 +39,13 @@ export const PACKING_WEIGHT_RULE_LAYOUT_GAP = 12;
 export const PACKING_WEIGHT_RULE_PADDING = 12;
 export const PACKING_WEIGHT_RULE_INDEX_COLUMN_WIDTH = 60;
 export const PACKING_WEIGHT_RULE_ACTION_COLUMN_WIDTH = 120;
-export const PACKING_WEIGHT_RULE_API_BASE =
-  "/api/mes/v1/packing/weight-rules";
+export const PACKING_WEIGHT_RULE_API_BASE = "/api/mes/v1/packing/weight-rules";
+export const PACKING_WEIGHT_RULE_MATERIAL_API =
+  "/api/mes/v1/materials/fromWorkOrder";
+export const PACKING_WEIGHT_RULE_PRODUCT_OPTION_SEPARATOR = "";
 export const PACKING_WEIGHT_RULE_MESSAGE = {
   loadFailed: "装箱重量规则获取失败",
+  materialLoadFailed: "产品列表获取失败",
   createFailed: "装箱重量规则创建失败",
   createSuccess: "装箱重量规则创建成功",
   updateFailed: "装箱重量规则更新失败",

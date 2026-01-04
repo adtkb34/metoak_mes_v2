@@ -1,7 +1,13 @@
-import { ElMessage, type FormInstance, type FormRules } from "element-plus";
+import {
+  ElMessage,
+  type FormInstance,
+  type FormItemRule,
+  type FormRules
+} from "element-plus";
 import { ref } from "vue";
 import {
   PACKING_WEIGHT_RULE_FORM_MODE,
+  PACKING_WEIGHT_RULE_ALLOWED_DEVIATION_LIMIT_MESSAGE,
   PACKING_WEIGHT_RULE_MESSAGE
 } from "../packingWeightRule.constants";
 import {
@@ -38,6 +44,24 @@ export const usePackingWeightRuleForm = (
   );
   const activeId = ref<number | null>(null);
 
+  const validateAllowedDeviation: FormItemRule["validator"] = (
+    _rule,
+    value,
+    callback
+  ) => {
+    const deviation = value as number | null;
+    const singleWeight = formState.value.singleProductWeight;
+    if (deviation === null || singleWeight === null) {
+      callback();
+      return;
+    }
+    if (deviation > singleWeight) {
+      callback(new Error(PACKING_WEIGHT_RULE_ALLOWED_DEVIATION_LIMIT_MESSAGE));
+      return;
+    }
+    callback();
+  };
+
   const rules: FormRules<PackingWeightRuleFormState> = {
     productCode: [
       {
@@ -71,6 +95,10 @@ export const usePackingWeightRuleForm = (
       {
         required: true,
         message: PACKING_WEIGHT_RULE_MESSAGE.submitFailed,
+        trigger: "blur"
+      },
+      {
+        validator: validateAllowedDeviation,
         trigger: "blur"
       }
     ],
@@ -106,10 +134,8 @@ export const usePackingWeightRuleForm = (
   };
 
   const submit = async () => {
-
     submitting.value = true;
     try {
-      console.log(mode.value, activeId.value)
       if (mode.value === PACKING_WEIGHT_RULE_FORM_MODE.create) {
         await createPackingWeightRule(formState.value);
         notifyCreateSuccess();
@@ -119,7 +145,7 @@ export const usePackingWeightRuleForm = (
       }
       await options.onSubmitted?.();
       closeDialog();
-    } catch (error) {
+    } catch (error: Error | string | number | boolean | null | undefined) {
       if (error instanceof Error) {
         ElMessage.error(error.message);
       } else {

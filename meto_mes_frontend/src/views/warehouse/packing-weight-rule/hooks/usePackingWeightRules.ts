@@ -11,7 +11,7 @@ export const usePackingWeightRules = () => {
     loading.value = true;
     try {
       rules.value = await fetchPackingWeightRules();
-    } catch (error) {
+    } catch (error: Error | string | number | boolean | null | undefined) {
       notifyLoadFailure(error);
     } finally {
       loading.value = false;
