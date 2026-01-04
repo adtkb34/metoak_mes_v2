@@ -63,15 +63,6 @@ export default {
       }
     },
     {
-      path: "/statistics/final_check",
-      name: "final-check",
-      component: () => import("@/views/m55h/index.vue"),
-      meta: {
-        title: "M55H 单目终测",
-        showParent: true
-      }
-    },
-    {
       path: "/statistics/others",
       name: "others",
       component: () => import("@/views/quality/table-others/index.vue"),

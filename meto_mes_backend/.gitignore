@@ -42,6 +42,8 @@ lerna-debug.log*
 .env.production.local
 .env.local
 
+# 注意: .env.development, .env.test, .env.production 等模板文件应该提交
+
 # temp directory
 .temp
 .tmp
@@ -55,3 +57,5 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .vscode
+.qoder
+output

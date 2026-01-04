@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { store } from "@/store";
 import { useTagStore } from "@/store/modules/tag";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { getCurrentYearCode, spliceFields, exportToCSV } from "./utils";
 import { getBeamMaterialCode, markSerialNumbersUsed } from "@/api/tag";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
-import { generatebeamSN } from "@/api/tag";
+import { generateCustomBeamSN, generatebeamSN } from "@/api/tag";
 import { useUserListStore } from "@/store/modules/system";
 import type { BeamSerialItem } from "types/tag";
 
@@ -16,7 +16,7 @@ defineOptions({
 
 const userStore = useUserListStore(store);
 const selectMaterialCode = ref<string | null>(null);
-const total = ref(0);
+const autoTotal = ref(0);
 const currentOrderId = ref<number | null>(null);
 const backendUrl = import.meta.env.VITE_BACKEND_URL ?? "";
 const defaultOrigin = backendUrl.includes("11.11.11.15") ? "S" : "M";
@@ -29,11 +29,23 @@ const exportAll = ref(false);
 const tagStore = useTagStore(store);
 const materialFilterPrefix = ref("800.");
 const filteredOrderList = computed(() => {
-  return tagStore.getOrderList.filter(o => 
+  return tagStore.getOrderList.filter(o =>
     o.material_code?.startsWith(materialFilterPrefix.value)
   );
 });
 const snList = ref<BeamSerialItem[]>([]);
+const generationMode = ref("auto");
+const customSerialForm = reactive({
+  prefix: "",
+  serialLength: 5,
+  suffix: "",
+  total: 0
+});
+const customPreview = computed(() => {
+  const length = Math.max(customSerialForm.serialLength || 0, 0);
+  const serialPlaceholder = length ? "0".repeat(length) : "";
+  return `${customSerialForm.prefix || "-"}${serialPlaceholder}${customSerialForm.suffix || ""}`;
+});
 
 const selectedOrder = computed(() =>
   tagStore.getOrderList.find(order => order.id === currentOrderId.value) || null
@@ -75,23 +87,42 @@ const fetchSerialNumbers = async (options: { withMaterialCode?: boolean } = {}) 
 };
 
 async function handleGenerate() {
-  if (total.value === 0 || !beamSnPrefix.value) {
-    return;
-  }
-
   if (!selectedWorkOrderCode.value) {
     return;
   }
 
-  const result = await generatebeamSN(
-    total.value,
-    tagStore.getOrderCode,
-    tagStore.getProduceID,
-    beamSnPrefix.value
-  );
+  if (generationMode.value === "custom") {
+    if (!customSerialForm.total || !customSerialForm.prefix || !customSerialForm.serialLength) {
+      return;
+    }
 
-  if (result) {
-    snList.value = result.data ?? [];
+    const result = await generateCustomBeamSN({
+      total: customSerialForm.total,
+      produced_order_id: Number(tagStore.getProduceID) || undefined,
+      work_order_code: tagStore.getOrderCode || undefined,
+      sn_prefix: customSerialForm.prefix.toUpperCase(),
+      sn_suffix: customSerialForm.suffix?.toUpperCase() || undefined,
+      serial_length: customSerialForm.serialLength
+    });
+
+    if (result) {
+      snList.value = result.data ?? [];
+    }
+  } else {
+    if (autoTotal.value === 0 || !beamSnPrefix.value) {
+      return;
+    }
+
+    const result = await generatebeamSN(
+      autoTotal.value,
+      tagStore.getOrderCode,
+      tagStore.getProduceID,
+      beamSnPrefix.value
+    );
+
+    if (result) {
+      snList.value = result.data ?? [];
+    }
   }
 
   await fetchSerialNumbers();
@@ -136,8 +167,13 @@ watch(
     tagStore.setCurrentOrder(newVal ?? null);
     if (newVal == null) {
       snList.value = [];
-      total.value = 0;
+      autoTotal.value = 0;
       selectMaterialCode.value = null;
+      generationMode.value = "auto";
+      customSerialForm.prefix = "";
+      customSerialForm.serialLength = 5;
+      customSerialForm.suffix = "";
+      customSerialForm.total = 0;
     }
   }
 );
@@ -146,8 +182,9 @@ watch(
   () => selectedWorkOrderCode.value,
   async workOrderCode => {
     if (!workOrderCode) return;
-    total.value = 0;
+    autoTotal.value = 0;
     snList.value = [];
+    customSerialForm.total = 0;
     await fetchSerialNumbers();
   }
 );
@@ -203,96 +240,143 @@ watch(
     <div class="flex flex-col mr-5 w-full justify-center items-end">
       <div class="w-full flex flex-row">
         <el-card class="w-1/3 h-[40rem] mr-5">
-          <template #header> 自动生成 </template>
-          <el-row :gutter="20">
-            <el-col :span="24" class="mb-5">
-              <span>编码</span>
-              <div class="inline-flex w-1/2 ml-5">
-                <el-input v-model="selectMaterialCode" />
-              </div>
-            </el-col>
+          <template #header> 生成模式 </template>
+          <el-tabs v-model="generationMode" class="h-full">
+            <el-tab-pane label="自动生成" name="auto">
+              <el-row :gutter="20">
+                <el-col :span="24" class="mb-5">
+                  <span>编码</span>
+                  <div class="inline-flex w-1/2 ml-5">
+                    <el-input v-model="selectMaterialCode" />
+                  </div>
+                </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span>产地</span>
-              <div class="inline-flex ml-5 w-1/2">
-                <el-select
-                  v-model="selectAddr"
-                  placeholder="产地"
-                  :default-first-option="true"
-                >
-                  <el-option label="M_绵阳" value="M" />
-                  <el-option label="S_苏州" value="S" />
-                  <el-option label="J_嘉兴" value="J" />
-                  <el-option label="B_北京" value="B" />
-                  <el-option label="W_武汉" value="W" />
-                  <el-option label="H_合肥" value="H" />
-                </el-select>
-              </div>
-            </el-col>
+                <el-col :span="24" class="mb-5">
+                  <span>产地</span>
+                  <div class="inline-flex ml-5 w-1/2">
+                    <el-select
+                      v-model="selectAddr"
+                      placeholder="产地"
+                      :default-first-option="true"
+                    >
+                      <el-option label="M_绵阳" value="M" />
+                      <el-option label="S_苏州" value="S" />
+                      <el-option label="J_嘉兴" value="J" />
+                      <el-option label="B_北京" value="B" />
+                      <el-option label="W_武汉" value="W" />
+                      <el-option label="H_合肥" value="H" />
+                    </el-select>
+                  </div>
+                </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span>方式</span>
-              <div class="inline-flex w-1/2 ml-5">
-                <el-select v-model="selectOperate" placeholder="生产方式">
-                  <el-option label="S_手工" value="S" />
-                  <el-option label="Z_自动" value="Z" />
-                </el-select>
-              </div>
-            </el-col>
+                <el-col :span="24" class="mb-5">
+                  <span>方式</span>
+                  <div class="inline-flex w-1/2 ml-5">
+                    <el-select v-model="selectOperate" placeholder="生产方式">
+                      <el-option label="S_手工" value="S" />
+                      <el-option label="Z_自动" value="Z" />
+                    </el-select>
+                  </div>
+                </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span class="mr-5">周数</span>
-              <div class="inline-flex items-center">
-                <el-input
-                  v-model="weekNum"
-                  class="mr-5"
-                  :disabled="isWeekInputDisabled || userStore.getUserLevel > 1"
-                />
-                <el-checkbox
-                  v-if="userStore.getUserLevel <= 1"
-                  :value="isWeekInputDisabled"
-                  @change="() => (isWeekInputDisabled = !isWeekInputDisabled)"
-                />
-              </div>
-            </el-col>
+                <el-col :span="24" class="mb-5">
+                  <span class="mr-5">周数</span>
+                  <div class="inline-flex items-center">
+                    <el-input
+                      v-model="weekNum"
+                      class="mr-5"
+                      :disabled="isWeekInputDisabled || userStore.getUserLevel > 1"
+                    />
+                    <el-checkbox
+                      v-if="userStore.getUserLevel <= 1"
+                      :value="isWeekInputDisabled"
+                      @change="() => (isWeekInputDisabled = !isWeekInputDisabled)"
+                    />
+                  </div>
+                </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <span>数量</span>
-              <div class="inline-flex ml-5">
-                <el-input-number
-                  v-model="total"
-                  placeholder="请输入"
-                  :min="0"
-                />
-              </div>
-            </el-col>
+                <el-col :span="24" class="mb-5">
+                  <span>数量</span>
+                  <div class="inline-flex ml-5">
+                    <el-input-number
+                      v-model="autoTotal"
+                      placeholder="请输入"
+                      :min="0"
+                    />
+                  </div>
+                </el-col>
 
-            <el-col :span="24" class="mb-5">
-              <el-alert type="info" :closable="false" show-icon>
-                <template #title>
-                  当前序列号前缀: {{ beamSnPrefix || "-" }}
-                </template>
-              </el-alert>
-            </el-col>
+                <el-col :span="24" class="mb-5">
+                  <el-alert type="info" :closable="false" show-icon>
+                    <template #title>
+                      当前序列号前缀: {{ beamSnPrefix || "-" }}
+                    </template>
+                  </el-alert>
+                </el-col>
+              </el-row>
+            </el-tab-pane>
+            <el-tab-pane label="自定义" name="custom">
+              <el-row :gutter="20">
+                <el-col :span="24" class="mb-5 flex items-center">
+                  <span class="label-width">前缀</span>
+                  <div class="inline-flex w-1/2 ml-5">
+                    <el-input v-model="customSerialForm.prefix" placeholder="输入前缀" />
+                  </div>
+                </el-col>
 
-            <el-col :span="24">
-              <el-button
-                v-if="
-                  userStore.getUserLevel < 2 &&
-                  currentOrderId &&
-                  selectMaterialCode
-                "
-                @click="handleGenerate"
-                >生成</el-button
-              >
-              <el-button
-                class="ml-3"
-                :disabled="isExportDisabled"
-                @click="handleExport"
-                >导出标签</el-button
-              >
-            </el-col>
-          </el-row>
+                <el-col :span="24" class="mb-5 flex items-center">
+                  <span class="label-width">流水号长度</span>
+                  <div class="inline-flex ml-5">
+                    <el-input-number
+                      v-model="customSerialForm.serialLength"
+                      placeholder="长度"
+                      :min="1"
+                    />
+                  </div>
+                </el-col>
+
+                <el-col :span="24" class="mb-5 flex items-center">
+                  <span class="label-width">后缀</span>
+                  <div class="inline-flex w-1/2 ml-5">
+                    <el-input v-model="customSerialForm.suffix" placeholder="输入后缀" />
+                  </div>
+                </el-col>
+
+                <el-col :span="24" class="mb-5 flex items-center">
+                  <span class="label-width">数量</span>
+                  <div class="inline-flex ml-5">
+                    <el-input-number
+                      v-model="customSerialForm.total"
+                      placeholder="请输入"
+                      :min="0"
+                    />
+                  </div>
+                </el-col>
+
+                <el-col :span="24" class="mb-5">
+                  <el-alert type="info" :closable="false" show-icon>
+                    <template #title>
+                      预览: {{ customPreview }}
+                    </template>
+                  </el-alert>
+                </el-col>
+              </el-row>
+            </el-tab-pane>
+          </el-tabs>
+          <div class="mt-2">
+            <el-button
+              v-if="userStore.getUserLevel < 2 && currentOrderId"
+              :disabled="generationMode === 'auto' && !selectMaterialCode"
+              @click="handleGenerate"
+              >生成</el-button
+            >
+            <el-button
+              class="ml-3"
+              :disabled="isExportDisabled"
+              @click="handleExport"
+              >导出标签</el-button
+            >
+          </div>
         </el-card>
 
         <el-card class="w-auto flex-1">
@@ -320,4 +404,11 @@ watch(
   </div>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.label-width {
+  width: 80px; /* 根据最长的"流水号前缀"调整宽度 */
+  text-align: right;
+  display: inline-block;
+}
+
+</style>

@@ -201,7 +201,6 @@ export class DashboardController {
       stations?: string[] | string | null;
     },
   ): Promise<{ success: true; data: ProcessMetricsSummary | {}}> {
-    if (query.stepTypeNo != "020") return { success: true, data: {} }
     const origin = this.parseOrigin(query?.origin);
     const summary = await this.dashboardService.getProcessMetrics({
       origin,

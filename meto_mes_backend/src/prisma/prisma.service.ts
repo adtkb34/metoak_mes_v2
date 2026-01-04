@@ -54,8 +54,8 @@ export class PrismaService
 
   private registerOriginClients() {
     const originConfig: Array<[ProductOrigin, string | undefined]> = [
-      [ProductOrigin.SUZHOU, process.env.DATABASE_URL_SUZHOU],
-      [ProductOrigin.MIANYANG, process.env.DATABASE_URL_MIANYANG],
+      [ProductOrigin.SUZHOU, process.env.DATABASE_URL],
+      [ProductOrigin.MIANYANG, process.env.DATABASE_URL],
     ];
 
     for (const [origin, url] of originConfig) {

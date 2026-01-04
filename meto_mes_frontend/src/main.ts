@@ -53,6 +53,7 @@ app.component("Perms", Perms);
 import "tippy.js/dist/tippy.css";
 import "tippy.js/themes/light.css";
 import VueTippy from "vue-tippy";
+import { setDocumentTitle } from "./utils/title";
 app.use(VueTippy);
 
 if (typeof process !== 'undefined') {
@@ -68,4 +69,5 @@ getPlatformConfig(app).then(async config => {
   // .use(PureDescriptions)
   // .use(useEcharts);
   app.mount("#app");
+  setDocumentTitle();
 });

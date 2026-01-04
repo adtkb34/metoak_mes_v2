@@ -1,13 +1,20 @@
 import { defineStore } from "pinia";
 import { type setType, store, getConfig } from "../utils";
+import { generateTitleByRegion } from "@/utils/title";
 
 export const useSettingStore = defineStore({
   id: "pure-setting",
-  state: (): setType => ({
-    title: getConfig().Title,
-    fixedHeader: getConfig().FixedHeader,
-    hiddenSideBar: getConfig().HiddenSideBar
-  }),
+  state: (): setType => {
+    const configTitle = getConfig().Title;
+    // 如果配置中没有标题，则根据地区生成标题
+    const title = configTitle || generateTitleByRegion();
+
+    return {
+      title: title,
+      fixedHeader: getConfig().FixedHeader,
+      hiddenSideBar: getConfig().HiddenSideBar
+    };
+  },
   getters: {
     getTitle(state) {
       return state.title;

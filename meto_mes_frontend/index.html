@@ -11,6 +11,23 @@
   <link rel="icon" href="/favicon.ico" />
   <script>
     window.process = {};
+
+    // 根据地区配置动态设置标题
+    document.addEventListener('DOMContentLoaded', function () {
+      // 尝试从环境变量获取地区配置
+      const region = typeof process !== 'undefined' && process.env && process.env.VITE_REGION
+        ? process.env.VITE_REGION
+        : "suzhou";
+
+      const regionTitles = {
+        suzhou: "MES系统(苏州)",
+        mianyang: "MES系统(绵阳)",
+        "ji'an": "MES系统(吉安)"
+      };
+
+      const title = regionTitles[region] || regionTitles.suzhou;
+      document.title = title;
+    });
   </script>
 </head>
 

@@ -7,6 +7,7 @@ dist-ssr
 report.html
 vite.config.*.timestamp*
 .vite
+*.patch
 
 yarn.lock
 npm-debug.log*

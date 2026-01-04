@@ -116,51 +116,46 @@ watch(
   }
 )
 
-// ---------------- 地区筛选逻辑 ----------------
-const stations = [
+const ALL_STATIONS = [
   { label: '广浩捷', value: '1' },
   { label: '舜宇', value: '2' },
   { label: '艾薇视', value: '3' },
-]
+] as const
 
-const filteredStations = computed(() => {
-  if (spc.origin === '1') {
-    spc.selectedStation = '1'
-    return stations.slice(0, 2)
-  } else if (spc.origin === '2') {
-    spc.selectedStation = '3'
-    return stations.slice(-1)
-  }
-  return stations
-})
+type Station = (typeof ALL_STATIONS)[number]
 
-// 通过计算属性取当前任务和参数的显示名
-const currentStepLabel = computed(() => {
-  return spc.stepList.find(i => i.key === spc.selectedStep)?.label || spc.selectedStep || ''
-})
-const currentAttrLabel = computed(() => {
-  return spc.attrList.find(i => i.key === spc.selectedField)?.label || spc.selectedField || ''
-})
+const stations = ref<Station[]>([])
 
-// ---------------- 初始化 ----------------
 onMounted(async () => {
+  const region = import.meta.env.VITE_REGION
+
+  const map = {
+    suzhou: {
+      selected: '1',
+      stations: ALL_STATIONS.slice(0, 2),
+    },
+    mianyang: {
+      selected: '3',
+      stations: ALL_STATIONS.slice(-1),
+    },
+  } as const
+
+  const hit = map[region as keyof typeof map]
+
+  if (hit) {
+    spc.selectedStation = hit.selected
+    stations.value = hit.stations
+  } else {
+    stations.value = []
+  }
+
   await spc.fetchSteps()
-  if (spc.selectedStep) await spc.fetchAttrs(spc.selectedStep)
+  spc.selectedStep && (await spc.fetchAttrs(spc.selectedStep))
 })
 </script>
 
 <template>
   <el-card class="spc-control-panel" shadow="never">
-    <!-- <template #header>
-      <div class="panel-header">
-        <span>
-          控制面板
-          <template v-if="spc.selectedStep && spc.selectedField">
-            - {{ currentStepLabel }} : {{ currentAttrLabel }}
-          </template>
-        </span>
-      </div>
-    </template> -->
     <el-form label-width="90px" label-position="left" size="small">
       <el-row :gutter="20">
         <!-- 分析长度 -->
@@ -209,19 +204,11 @@ onMounted(async () => {
           </el-form-item>
         </el-col>
 
-        <!-- 地区 / 设备 -->
-        <el-col :span="8">
-          <el-form-item label="地区" v-if="spc.selectedStep && spc.selectedField">
-            <el-select v-model="spc.origin" placeholder="请选择地区">
-              <el-option label="苏州" value="1" />
-              <el-option label="绵阳" value="2" />
-            </el-select>
-          </el-form-item>
-        </el-col>
+        <!-- 设备 -->
         <el-col :span="8" v-show="spc.selectedStep === STEP_NO.AUTO_ADJUST">
-          <el-form-item label="设备" v-if="spc.selectedStep && spc.selectedField">
+          <el-form-item label="设备" v-if="spc.selectedStep && spc.selectedField && spc.selectedStation.length != 0">
             <el-select v-model="spc.selectedStation" placeholder="请选择设备">
-              <el-option v-for="station in filteredStations" :key="station.value" :label="station.label"
+              <el-option v-for="station in stations" :key="station.value" :label="station.label"
                 :value="station.value" />
             </el-select>
           </el-form-item>

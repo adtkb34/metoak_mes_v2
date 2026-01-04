@@ -182,18 +182,14 @@ const buildListQueryParams = (
   if (query.flowNo !== null && query.flowNo !== undefined) {
     params.flowNo = query.flowNo;
   }
+  if (query.name !== null && query.name !== undefined) {
+    params.name = query.name;
+  }
   if (query.orderId !== null && query.orderId !== undefined) {
     params.orderId = query.orderId;
   }
   if (query.stepTypeNo !== null && query.stepTypeNo !== undefined) {
     params.stepTypeNo = query.stepTypeNo;
-  }
-  if (
-    query.name !== undefined &&
-    query.name !== null &&
-    query.name !== ""
-  ) {
-    params[ParameterRelationField.Name] = query.name;
   }
   return params;
 };

@@ -48,7 +48,7 @@ export class K3CloudService {
 
         // try {
           const result = JSON.parse(stdout);
-          console.log(result)
+          // console.log(result)
           const fields = [
             'work_order_code',
             'material_name',
@@ -81,7 +81,6 @@ export class K3CloudService {
               }),
             ),
           );
-
           for (const dto of dtos) {
             // delete dto.id
             const existing = await this.prisma.mo_produce_order.findFirst({
@@ -89,17 +88,16 @@ export class K3CloudService {
             });
 
             if (existing) {
-              await this.prisma.mo_produce_order.update({
-                where: { id: existing.id }, // 假设你有唯一标识符 `id`
-                data: dto,
-              });
+              // await this.prisma.mo_produce_order.update({
+              //   where: { id: existing.id }, // 假设你有唯一标识符 `id`
+              //   data: dto,
+              // });
             } else {
               await this.prisma.mo_produce_order.create({
                 data: dto,
               });
             }
           }
-
           resolve(result);
         // } catch (err) {
         //   this.logger.error(`JSON parse error: ${err.message}, raw stdout: ${stdout}`);
@@ -255,7 +253,7 @@ export class K3CloudService {
 
         // try {
         const result = JSON.parse(stdout);
-        console.log(result)
+        // console.log(result)
         if (result.length === 0) {
           resolve([]);
         } else {

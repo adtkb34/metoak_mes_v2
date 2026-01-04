@@ -12,7 +12,6 @@ export class ProductionManagementService {
     private readonly k3cloudService: K3CloudService
   ) {}
   async getProduceOrders(): Promise<MoProduceOrder[]> {
-    
     await this.k3cloudService.queryPrdMO()
     // mysql 驱动遇到非法日期会报错, 这里用 CAST 直接作为字符串处理
     const orders: MoProduceOrder[] = await this.prisma.$queryRawUnsafe(`
@@ -23,18 +22,12 @@ export class ProductionManagementService {
         CAST(planned_endtime AS CHAR) AS planned_endtime,
         flow_code,
         order_state,
-        description,
-        params_detail_id
+        description
       FROM mo_produce_order
       WHERE order_state = 3 or order_state = 4
       ORDER BY order_date desc
     `);
-
-    return orders.map(o => ({
-        ...o,
-        params_detail_id: o.params_detail_id?.toString()
-      }));
-      ;
+    return orders;
   }
 
   async createProduceOrder(dto: CreateMoProduceOrderDto) {

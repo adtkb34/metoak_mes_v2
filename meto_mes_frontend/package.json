@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev:test": "vite --mode test",
     "dev": "NODE_OPTIONS=--max-old-space-size=4096 vite",
     "serve": "pnpm dev",
     "build": "rimraf dist && NODE_OPTIONS=--max-old-space-size=8192 vite build",
@@ -103,7 +104,9 @@
     "autoprefixer": "^10.4.20",
     "boxen": "^8.0.1",
     "code-inspector-plugin": "^0.18.2",
+    "cross-env": "^10.1.0",
     "cssnano": "^7.0.6",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-define-config": "^2.1.0",

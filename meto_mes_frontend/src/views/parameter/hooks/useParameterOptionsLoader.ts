@@ -27,13 +27,12 @@ const normalizeOptions = (
 const buildProcessOptions = async (): Promise<ParameterOption[]> => {
   try {
     const steps = await getProcessSteps();
-    const mappedOptions = steps.map(step => {
-      const stepTypeNo = step.step_type_no?.trim() ?? "";
-      return {
+    const mappedOptions = steps
+      .filter(step => step.step_type_no?.trim())
+      .map(step => ({
         label: step.stage_name ?? step.step_type_no ?? step.stage_code ?? "",
-        value: stepTypeNo
-      };
-    });
+        value: step.step_type_no!.trim()
+      }));
     return normalizeOptions(mappedOptions);
   } catch (error) {
     ElMessage.error(

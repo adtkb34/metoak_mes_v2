@@ -1,5 +1,6 @@
 import axios from "axios";
 import type { App } from "vue";
+import { generateTitleByRegion } from "@/utils/title";
 
 let config: object = {};
 const { VITE_PUBLIC_PATH } = import.meta.env;
@@ -41,6 +42,12 @@ export const getPlatformConfig = async (app: App): Promise<undefined> => {
         app.config.globalProperties.$config = $config;
         // 设置全局配置
         setConfig($config);
+
+        // 根据地区配置动态设置标题
+        if (!$config.Title) {
+          $config.Title = generateTitleByRegion();
+          setConfig($config);
+        }
       }
       return $config;
     })

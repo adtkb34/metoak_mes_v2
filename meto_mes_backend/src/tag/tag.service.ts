@@ -233,13 +233,31 @@ export class TagService {
     }
 
     const currentMax = await this.getCustomBeamSerialMax(sn_prefix, sn_suffix);
+    const lastSerialNumber = currentMax + total;
+
+    if (lastSerialNumber.toString().length > serial_length) {
+      return { type: 'error', message: 'serial length exceeded' };
+    }
+
     const create_time = new Date();
+    const serialNumbers = Array.from({ length: total }, (_, index) => currentMax + index + 1);
+    const serialTexts = serialNumbers.map((serial_number) =>
+      serial_number.toString().padStart(serial_length, '0'),
+    );
+    const candidateSerials = serialTexts.map((serialText) => `${sn_prefix}${serialText}${sn_suffix}`);
+
+    const duplicated = await this.prisma.mo_beam_info.findMany({
+      select: { beam_sn: true },
+      where: { beam_sn: { in: candidateSerials } },
+    });
+
+    if (duplicated.length > 0) {
+      return { type: 'error', message: 'serial number already exists', duplicated };
+    }
 
     const data: Prisma.mo_beam_infoCreateManyInput[] = [];
-    for (let index = 1; index <= total; index++) {
-      const serial_number = currentMax + index;
-      const serialText = serial_number.toString().padStart(serial_length, '0');
-      const beam_sn = `${sn_prefix}${serialText}${sn_suffix}`;
+    serialNumbers.forEach((serial_number, index) => {
+      const beam_sn = candidateSerials[index];
 
       data.push({
         beam_sn,
@@ -248,7 +266,7 @@ export class TagService {
         create_time,
         ...(material_code ? { material_code } : {}),
       });
-    }
+    });
 
     try {
       const result = await this.prisma.mo_beam_info.createMany({
@@ -400,13 +418,30 @@ export class TagService {
     }
 
     const currentMax = await this.getCustomShellSerialMax(sn_prefix, sn_suffix);
+    const lastSerialNumber = currentMax + total;
+
+    if (lastSerialNumber.toString().length > serial_length) {
+      return { type: 'error', message: 'serial length exceeded' };
+    }
     const create_time = new Date();
+    const serialNumbers = Array.from({ length: total }, (_, index) => currentMax + index + 1);
+    const serialTexts = serialNumbers.map((serial_number) =>
+      serial_number.toString().padStart(serial_length, '0'),
+    );
+    const candidateSerials = serialTexts.map((serialText) => `${sn_prefix}${serialText}${sn_suffix}`);
+
+    const duplicated = await this.prisma.mo_tag_info.findMany({
+      select: { tag_sn: true },
+      where: { tag_sn: { in: candidateSerials } },
+    });
+
+    if (duplicated.length > 0) {
+      return { type: 'error', message: 'serial number already exists', duplicated };
+    }
     const data: Prisma.mo_tag_infoCreateManyInput[] = [];
 
-    for (let index = 1; index <= total; index++) {
-      const serial_number = currentMax + index;
-      const serialText = serial_number.toString().padStart(serial_length, '0');
-      const tag_sn = `${sn_prefix}${serialText}${sn_suffix}`;
+    serialNumbers.forEach((serial_number, index) => {
+      const tag_sn = candidateSerials[index];
 
       const record: Prisma.mo_tag_infoCreateManyInput = {
         tag_sn,
@@ -421,7 +456,7 @@ export class TagService {
       }
 
       data.push(record);
-    }
+    });
 
     try {
       const result = await this.prisma.mo_tag_info.createMany({
