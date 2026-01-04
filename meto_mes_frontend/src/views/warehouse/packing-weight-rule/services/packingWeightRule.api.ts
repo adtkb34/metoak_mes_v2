@@ -4,37 +4,10 @@ import {
   PACKING_WEIGHT_RULE_MESSAGE
 } from "../packingWeightRule.constants";
 import type { PackingWeightRule, PackingWeightRuleFormState } from "../types";
-
-type ApiResponse<T> = {
-  code?: number;
-  data?: T;
-  message?: string;
-};
-
-const isApiResponse = <T>(value: ApiResponse<T> | T): value is ApiResponse<T> =>
-  typeof value === "object" && value !== null && "code" in value;
-
-const unwrapResponse = <T>(
-  response: ApiResponse<T> | T,
-  errorMessage: string
-): T => {
-  if (isApiResponse<T>(response)) {
-    if (
-      response.code !== undefined &&
-      response.code !== 0 &&
-      response.code !== 200
-    ) {
-      throw new Error(response.message ?? errorMessage);
-    }
-    if (response.data !== undefined) {
-      return response.data as T;
-    }
-  }
-  return response as T;
-};
-
-const getBackendBaseUrl = (): string =>
-  import.meta.env.VITE_JAVA_BACKEND_URL ?? "";
+import {
+  getBackendBaseUrl,
+  unwrapResponse
+} from "./packingWeightRuleApi.helper";
 
 export const fetchPackingWeightRules = async (): Promise<
   PackingWeightRule[]

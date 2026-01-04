@@ -8,6 +8,7 @@ import {
   PACKING_WEIGHT_RULE_FULL_BOX_QUANTITY_LABEL,
   PACKING_WEIGHT_RULE_PACKAGE_WEIGHT_LABEL,
   PACKING_WEIGHT_RULE_PRODUCT_CODE_LABEL,
+  PACKING_WEIGHT_RULE_PRODUCT_PLACEHOLDER,
   PACKING_WEIGHT_RULE_SINGLE_WEIGHT_LABEL,
   PACKING_WEIGHT_RULE_SUBMIT_LABEL,
   PACKING_WEIGHT_RULE_NUMBER_MIN,
@@ -20,7 +21,8 @@ import type { FormRules } from "element-plus";
 import { computed } from "vue";
 import type {
   PackingWeightRuleFormMode,
-  PackingWeightRuleFormState
+  PackingWeightRuleFormState,
+  ProductOption
 } from "../types";
 
 const props = defineProps<{
@@ -29,6 +31,8 @@ const props = defineProps<{
   formState: PackingWeightRuleFormState;
   rules: FormRules<PackingWeightRuleFormState>;
   submitting: boolean;
+  productOptions: ProductOption[];
+  productOptionsLoading: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -68,10 +72,20 @@ const updateField = <K extends keyof PackingWeightRuleFormState>(
         prop="productCode"
         :label="PACKING_WEIGHT_RULE_PRODUCT_CODE_LABEL"
       >
-        <el-input
+        <el-select
           :model-value="formState.productCode"
+          filterable
+          :placeholder="PACKING_WEIGHT_RULE_PRODUCT_PLACEHOLDER"
+          :loading="productOptionsLoading"
           @update:model-value="value => updateField('productCode', value)"
-        />
+        >
+          <el-option
+            v-for="item in productOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
       </el-form-item>
 
       <el-form-item

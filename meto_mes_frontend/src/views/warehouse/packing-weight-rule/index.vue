@@ -4,6 +4,7 @@ import PackingWeightRuleForm from "./components/PackingWeightRuleForm.vue";
 import PackingWeightRuleTable from "./components/PackingWeightRuleTable.vue";
 import { usePackingWeightRuleForm } from "./hooks/usePackingWeightRuleForm";
 import { usePackingWeightRules } from "./hooks/usePackingWeightRules";
+import { useWorkOrderMaterialOptions } from "./hooks/useWorkOrderMaterialOptions";
 import {
   PACKING_WEIGHT_RULE_CREATE_LABEL,
   PACKING_WEIGHT_RULE_LAYOUT_GAP,
@@ -17,6 +18,7 @@ defineOptions({
 });
 
 const ruleList = usePackingWeightRules();
+const materialOptions = useWorkOrderMaterialOptions();
 const ruleForm = usePackingWeightRuleForm({
   onSubmitted: ruleList.loadRules
 });
@@ -65,6 +67,8 @@ const handleSubmit = async () => {
       :form-state="ruleForm.formState.value"
       :rules="ruleForm.rules"
       :submitting="ruleForm.submitting.value"
+      :product-options="materialOptions.options.value"
+      :product-options-loading="materialOptions.loading.value"
       @close="handleDialogClose"
       @submit="handleSubmit"
       @update:form-state="ruleForm.updateFormState"

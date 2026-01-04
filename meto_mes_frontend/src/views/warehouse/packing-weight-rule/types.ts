@@ -38,3 +38,13 @@ export interface PackingWeightRuleFormContext {
   formState: PackingWeightRuleFormState;
   rules: FormRules<PackingWeightRuleFormState>;
 }
+
+export interface WorkOrderMaterial {
+  materialCode: string;
+  materialName: string;
+}
+
+export interface ProductOption {
+  value: string;
+  label: string;
+}
