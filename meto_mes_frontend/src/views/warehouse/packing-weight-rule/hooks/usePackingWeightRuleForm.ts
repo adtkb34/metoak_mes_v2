@@ -106,6 +106,7 @@ export const usePackingWeightRuleForm = (
   };
 
   const submit = async () => {
+    console.log(111)
     if (!formRef.value) return;
     const valid = await formRef.value.validate().catch(() => false);
     if (!valid) {

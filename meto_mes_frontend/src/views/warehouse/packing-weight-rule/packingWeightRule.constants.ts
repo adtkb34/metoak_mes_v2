@@ -37,7 +37,7 @@ export const PACKING_WEIGHT_RULE_PADDING = 12;
 export const PACKING_WEIGHT_RULE_INDEX_COLUMN_WIDTH = 60;
 export const PACKING_WEIGHT_RULE_ACTION_COLUMN_WIDTH = 120;
 export const PACKING_WEIGHT_RULE_API_BASE =
-  "/warehouse-management/packing-weight-rules";
+  "/api/mes/v1/packing/weight-rules";
 export const PACKING_WEIGHT_RULE_MESSAGE = {
   loadFailed: "装箱重量规则获取失败",
   createFailed: "装箱重量规则创建失败",
