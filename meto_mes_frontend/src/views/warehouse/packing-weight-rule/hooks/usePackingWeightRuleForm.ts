@@ -106,15 +106,10 @@ export const usePackingWeightRuleForm = (
   };
 
   const submit = async () => {
-    console.log(111)
-    if (!formRef.value) return;
-    const valid = await formRef.value.validate().catch(() => false);
-    if (!valid) {
-      return;
-    }
 
     submitting.value = true;
     try {
+      console.log(mode.value, activeId.value)
       if (mode.value === PACKING_WEIGHT_RULE_FORM_MODE.create) {
         await createPackingWeightRule(formState.value);
         notifyCreateSuccess();
