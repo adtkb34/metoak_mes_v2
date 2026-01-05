@@ -55,22 +55,22 @@ const handleEdit = (row: PackingWeightRule) => {
         align="center"
       />
       <el-table-column
-        prop="fullBoxQuantity"
+        prop="specQuantity"
         :label="PACKING_WEIGHT_RULE_FULL_BOX_QUANTITY_LABEL"
         align="center"
       />
       <el-table-column
-        prop="singleProductWeight"
+        prop="unitWeight"
         :label="PACKING_WEIGHT_RULE_SINGLE_WEIGHT_LABEL"
         align="center"
       />
       <el-table-column
-        prop="fullBoxPackageWeight"
+        prop="tareWeight"
         :label="PACKING_WEIGHT_RULE_PACKAGE_WEIGHT_LABEL"
         align="center"
       />
       <el-table-column
-        prop="allowedDeviation"
+        prop="weightTolerance"
         :label="PACKING_WEIGHT_RULE_ALLOWED_DEVIATION_LABEL"
         align="center"
       />

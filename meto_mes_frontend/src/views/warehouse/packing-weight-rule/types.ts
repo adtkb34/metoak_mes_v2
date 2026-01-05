@@ -13,10 +13,10 @@ export type PackingWeightRuleFormMode = ValueOf<
 export interface PackingWeightRule {
   id: number;
   productCode: string;
-  fullBoxQuantity: number;
-  singleProductWeight: number;
-  fullBoxPackageWeight: number;
-  allowedDeviation: number;
+  specQuantity: number;
+  unitWeight: number;
+  tareWeight: number;
+  weightTolerance: number;
   unit: (typeof PACKING_WEIGHT_RULE_UNIT_OPTIONS)[number]["value"];
   createdAt?: string;
   updatedAt?: string;
@@ -24,10 +24,10 @@ export interface PackingWeightRule {
 
 export interface PackingWeightRuleFormState {
   productCode: string;
-  fullBoxQuantity: number | null;
-  singleProductWeight: number | null;
-  fullBoxPackageWeight: number | null;
-  allowedDeviation: number | null;
+  specQuantity: number | null;
+  unitWeight: number | null;
+  tareWeight: number | null;
+  weightTolerance: number | null;
   unit: (typeof PACKING_WEIGHT_RULE_UNIT_OPTIONS)[number]["value"];
 }
 
