@@ -50,7 +50,7 @@ export const usePackingWeightRuleForm = (
     callback
   ) => {
     const deviation = value as number | null;
-    const singleWeight = formState.value.singleProductWeight;
+    const singleWeight = formState.value.unitWeight;
     if (deviation === null || singleWeight === null) {
       callback();
       return;
@@ -70,28 +70,28 @@ export const usePackingWeightRuleForm = (
         trigger: "blur"
       }
     ],
-    fullBoxQuantity: [
+    specQuantity: [
       {
         required: true,
         message: PACKING_WEIGHT_RULE_MESSAGE.submitFailed,
         trigger: "blur"
       }
     ],
-    singleProductWeight: [
+    unitWeight: [
       {
         required: true,
         message: PACKING_WEIGHT_RULE_MESSAGE.submitFailed,
         trigger: "blur"
       }
     ],
-    fullBoxPackageWeight: [
+    tareWeight: [
       {
         required: true,
         message: PACKING_WEIGHT_RULE_MESSAGE.submitFailed,
         trigger: "blur"
       }
     ],
-    allowedDeviation: [
+    weightTolerance: [
       {
         required: true,
         message: PACKING_WEIGHT_RULE_MESSAGE.submitFailed,

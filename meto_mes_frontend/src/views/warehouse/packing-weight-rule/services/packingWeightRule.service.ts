@@ -8,10 +8,10 @@ import type { PackingWeightRule, PackingWeightRuleFormState } from "../types";
 export const buildDefaultPackingWeightRuleForm =
   (): PackingWeightRuleFormState => ({
     productCode: "",
-    fullBoxQuantity: null,
-    singleProductWeight: null,
-    fullBoxPackageWeight: null,
-    allowedDeviation: null,
+    specQuantity: null,
+    unitWeight: null,
+    tareWeight: null,
+    weightTolerance: null,
     unit: PACKING_WEIGHT_RULE_UNIT_OPTIONS[0].value
   });
 
@@ -19,10 +19,10 @@ export const resolveRuleToFormState = (
   rule: PackingWeightRule
 ): PackingWeightRuleFormState => ({
   productCode: rule.productCode,
-  fullBoxQuantity: rule.fullBoxQuantity,
-  singleProductWeight: rule.singleProductWeight,
-  fullBoxPackageWeight: rule.fullBoxPackageWeight,
-  allowedDeviation: rule.allowedDeviation,
+  specQuantity: rule.specQuantity,
+  unitWeight: rule.unitWeight,
+  tareWeight: rule.tareWeight,
+  weightTolerance: rule.weightTolerance,
   unit: rule.unit
 });
 

@@ -89,63 +89,63 @@ const updateField = <K extends keyof PackingWeightRuleFormState>(
       </el-form-item>
 
       <el-form-item
-        prop="fullBoxQuantity"
+        prop="specQuantity"
         :label="PACKING_WEIGHT_RULE_FULL_BOX_QUANTITY_LABEL"
       >
         <el-input-number
-          :model-value="formState.fullBoxQuantity"
+          :model-value="formState.specQuantity"
           :min="PACKING_WEIGHT_RULE_NUMBER_MIN"
           controls-position="right"
           @update:model-value="
-            value => updateField('fullBoxQuantity', value ?? null)
+            value => updateField('specQuantity', value ?? null)
           "
         />
       </el-form-item>
 
       <el-form-item
-        prop="singleProductWeight"
+        prop="unitWeight"
         :label="PACKING_WEIGHT_RULE_SINGLE_WEIGHT_LABEL"
       >
         <el-input-number
-          :model-value="formState.singleProductWeight"
+          :model-value="formState.unitWeight"
           :precision="PACKING_WEIGHT_RULE_NUMBER_PRECISION"
           :step="PACKING_WEIGHT_RULE_NUMBER_STEP"
           :min="PACKING_WEIGHT_RULE_NUMBER_MIN"
           controls-position="right"
           @update:model-value="
-            value => updateField('singleProductWeight', value ?? null)
+            value => updateField('unitWeight', value ?? null)
           "
         />
       </el-form-item>
 
       <el-form-item
-        prop="fullBoxPackageWeight"
+        prop="tareWeight"
         :label="PACKING_WEIGHT_RULE_PACKAGE_WEIGHT_LABEL"
       >
         <el-input-number
-          :model-value="formState.fullBoxPackageWeight"
+          :model-value="formState.tareWeight"
           :precision="PACKING_WEIGHT_RULE_NUMBER_PRECISION"
           :step="PACKING_WEIGHT_RULE_NUMBER_STEP"
           :min="PACKING_WEIGHT_RULE_NUMBER_MIN"
           controls-position="right"
           @update:model-value="
-            value => updateField('fullBoxPackageWeight', value ?? null)
+            value => updateField('tareWeight', value ?? null)
           "
         />
       </el-form-item>
 
       <el-form-item
-        prop="allowedDeviation"
+        prop="weightTolerance"
         :label="PACKING_WEIGHT_RULE_ALLOWED_DEVIATION_LABEL"
       >
         <el-input-number
-          :model-value="formState.allowedDeviation"
+          :model-value="formState.weightTolerance"
           :precision="PACKING_WEIGHT_RULE_NUMBER_PRECISION"
           :step="PACKING_WEIGHT_RULE_NUMBER_STEP"
           :min="PACKING_WEIGHT_RULE_NUMBER_MIN"
           controls-position="right"
           @update:model-value="
-            value => updateField('allowedDeviation', value ?? null)
+            value => updateField('weightTolerance', value ?? null)
           "
         />
       </el-form-item>
