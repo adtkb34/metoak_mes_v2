@@ -4,11 +4,14 @@ import {
   type FormItemRule,
   type FormRules
 } from "element-plus";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { useUserListStore } from "@/store/modules/system";
 import {
   PACKING_WEIGHT_RULE_FORM_MODE,
   PACKING_WEIGHT_RULE_ALLOWED_DEVIATION_LIMIT_MESSAGE,
-  PACKING_WEIGHT_RULE_MESSAGE
+  PACKING_WEIGHT_RULE_MESSAGE,
+  PACKING_WEIGHT_RULE_USERNAME_FALLBACK,
+  PACKING_WEIGHT_RULE_USERNAME_FIELD
 } from "../packingWeightRule.constants";
 import {
   createPackingWeightRule,
@@ -23,7 +26,8 @@ import {
 import type {
   PackingWeightRule,
   PackingWeightRuleFormMode,
-  PackingWeightRuleFormState
+  PackingWeightRuleFormState,
+  PackingWeightRuleSubmitPayload
 } from "../types";
 
 interface UsePackingWeightRuleFormOptions {
@@ -33,6 +37,7 @@ interface UsePackingWeightRuleFormOptions {
 export const usePackingWeightRuleForm = (
   options: UsePackingWeightRuleFormOptions = {}
 ) => {
+  const userStore = useUserListStore();
   const formRef = ref<FormInstance>();
   const dialogVisible = ref(false);
   const mode = ref<PackingWeightRuleFormMode>(
@@ -43,6 +48,9 @@ export const usePackingWeightRuleForm = (
     buildDefaultPackingWeightRuleForm()
   );
   const activeId = ref<number | null>(null);
+  const username = computed(
+    () => userStore.getUsername ?? PACKING_WEIGHT_RULE_USERNAME_FALLBACK
+  );
 
   const validateAllowedDeviation: FormItemRule["validator"] = (
     _rule,
@@ -133,14 +141,20 @@ export const usePackingWeightRuleForm = (
     formState.value = state;
   };
 
+  const buildSubmitPayload = (): PackingWeightRuleSubmitPayload => ({
+    ...formState.value,
+    [PACKING_WEIGHT_RULE_USERNAME_FIELD]: username.value
+  });
+
   const submit = async () => {
     submitting.value = true;
     try {
+      const payload = buildSubmitPayload();
       if (mode.value === PACKING_WEIGHT_RULE_FORM_MODE.create) {
-        await createPackingWeightRule(formState.value);
+        await createPackingWeightRule(payload);
         notifyCreateSuccess();
       } else if (activeId.value !== null) {
-        await updatePackingWeightRule(activeId.value, formState.value);
+        await updatePackingWeightRule(activeId.value, payload);
         notifyUpdateSuccess();
       }
       await options.onSubmitted?.();
