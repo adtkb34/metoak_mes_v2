@@ -3,7 +3,10 @@ import {
   PACKING_WEIGHT_RULE_API_BASE,
   PACKING_WEIGHT_RULE_MESSAGE
 } from "../packingWeightRule.constants";
-import type { PackingWeightRule, PackingWeightRuleFormState } from "../types";
+import type {
+  PackingWeightRule,
+  PackingWeightRuleSubmitPayload
+} from "../types";
 import {
   getBackendBaseUrl,
   unwrapResponse
@@ -22,7 +25,7 @@ export const fetchPackingWeightRules = async (): Promise<
 };
 
 export const createPackingWeightRule = async (
-  payload: PackingWeightRuleFormState
+  payload: PackingWeightRuleSubmitPayload
 ): Promise<number> => {
   const url = `${getBackendBaseUrl()}${PACKING_WEIGHT_RULE_API_BASE}`;
   const response: ApiResponse<number> | number = await http.request(
@@ -40,7 +43,7 @@ export const createPackingWeightRule = async (
 
 export const updatePackingWeightRule = async (
   id: number,
-  payload: PackingWeightRuleFormState
+  payload: PackingWeightRuleSubmitPayload
 ): Promise<boolean> => {
   const url = `${getBackendBaseUrl()}${PACKING_WEIGHT_RULE_API_BASE}/${id}`;
   const response: ApiResponse<boolean> | boolean = await http.request(

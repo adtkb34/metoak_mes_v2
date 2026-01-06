@@ -31,6 +31,11 @@ export interface PackingWeightRuleFormState {
   unit: (typeof PACKING_WEIGHT_RULE_UNIT_OPTIONS)[number]["value"];
 }
 
+export interface PackingWeightRuleSubmitPayload
+  extends PackingWeightRuleFormState {
+  username: string;
+}
+
 export interface PackingWeightRuleFormContext {
   visible: boolean;
   mode: PackingWeightRuleFormMode;

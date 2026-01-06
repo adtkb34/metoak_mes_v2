@@ -42,6 +42,8 @@ export const PACKING_WEIGHT_RULE_ACTION_COLUMN_WIDTH = 120;
 export const PACKING_WEIGHT_RULE_API_BASE = "/api/mes/v1/packing/weight-rules";
 export const PACKING_WEIGHT_RULE_MATERIAL_API =
   "/api/mes/v1/materials/fromWorkOrder";
+export const PACKING_WEIGHT_RULE_USERNAME_FIELD = "username";
+export const PACKING_WEIGHT_RULE_USERNAME_FALLBACK = "";
 export const PACKING_WEIGHT_RULE_PRODUCT_OPTION_SEPARATOR = "";
 export const PACKING_WEIGHT_RULE_MESSAGE = {
   loadFailed: "装箱重量规则获取失败",
